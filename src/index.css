@@ -1,0 +1,64 @@
+:root {
+  font-family:
+    'Pretendard Variable', 'SUIT Variable', 'Noto Sans KR', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #345;
+  background:
+    radial-gradient(circle at top, rgba(255, 207, 116, 0.5), transparent 30%),
+    linear-gradient(180deg, #fbf7ef, #f3efe5 38%, #ebe7dd);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --paper: #fffdf8;
+  --panel: rgba(255, 252, 247, 0.82);
+  --panel-border: rgba(29, 53, 87, 0.12);
+  --accent: #e17a2e;
+  --accent-ink: #fff8ef;
+  --ink-strong: #203247;
+  --ink-soft: #425569;
+  --ink-muted: #6e7c8c;
+  --shadow-soft: 0 18px 40px rgba(75, 56, 30, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+body,
+button,
+input {
+  font: inherit;
+}
+
+button,
+input {
+  min-width: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 3vw, 3.4rem);
+  line-height: 1;
+  color: var(--ink-strong);
+}
+
+h2 {
+  font-size: clamp(1.2rem, 1.8vw, 1.8rem);
+  line-height: 1.1;
+  color: var(--ink-strong);
+}
+
+p {
+  margin: 0;
+}
