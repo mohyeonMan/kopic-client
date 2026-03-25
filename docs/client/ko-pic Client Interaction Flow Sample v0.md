@@ -1,310 +1,278 @@
-# ko-pic Client Interaction Flow Sample v0
+﻿# ko-pic Client Interaction Flow Sample v0
 
 ## 1. 목적
 
-이 문서는 `ko-pic Game Rules` 기준으로 클라이언트 화면 이동과 주요 상호작용 흐름을 샘플로 정리한다.
+이 문서는 `ko-pic Game Rules` 기준으로, 클라이언트 화면을 **2개 페이지 구조**로 운영할 때의 상호작용 흐름을 기획 관점에서 정리한다.
 
-- 목표는 "어떤 이벤트에서 어떤 화면/오버레이/입력 상태가 보여야 하는가"를 빠르게 맞추는 것이다.
-- private room MVP를 기준으로 작성한다.
-
----
-
-## 2. 큰 화면 흐름
-
-1. `Entry`
-2. `Lobby`
-3. `Game`
-5. `Lobby` 복귀
-
-주의:
-
-- private room은 게임 종료 후 바로 방이 사라지는 것이 아니라 결과 화면을 보여준 뒤 다시 lobby로 돌아간다.
-- `Game` 화면 안에서 `round`, `turn`, `drawer`, `word choice`, `drawing`, `turn result`, `game result`가 계속 바뀐다.
+- 페이지 구조: `MainPage`, `GamePage`
+- 핵심: `GamePage` 내부에서 `Lobby 상태`, `Game 진행 상태`, `Result 상태`를 모두 처리
+- 기준: private room MVP + random matching 진입
 
 ---
 
-## 3. Entry -> Lobby
+## 2. 페이지 구조 (고정)
 
-### 3.1 Entry 화면
+1. `MainPage`
+2. `GamePage`
 
-사용자 입력:
+정책:
 
-- nickname 입력
-- room create 또는 room code join
-
-성공 시:
-
-- HTTP 응답으로 `roomId`, `roomCode`, `userId` 등 진입 컨텍스트 확보
-- WS 연결 시작
-- 화면은 즉시 `Lobby` 또는 `Game` shell로 이동 가능
-- 단, 실데이터 렌더링은 `408 GAME_SNAPSHOT` 수신 후 확정
-
-실패 시:
-
-- Entry 화면에 에러 메시지 유지
+- `MainPage`: 게임 소개 + 닉네임 입력 + 입장 트리거 버튼 제공
+- `GamePage`: 입장 후의 모든 상태(`Lobby`, `InGame`, `Result`)를 단일 페이지 내부 상태 전환으로 처리
+- 현재 문서 범위는 **큰 모니터(Desktop) 전용**이며, 반응형은 후속 작업으로 분리
 
 ---
 
-## 4. Lobby 화면
+## 3. MainPage 구성/동작
 
-### 4.1 공통 표시
+### 3.1 화면 요소
 
-- room code
-- participant 목록
-- host 표시
-- private room 설정 값
+- 게임 개략 설명 블록
+- 닉네임 입력 input
+- 버튼 1: `무작위 매칭`
+- 버튼 2: `Private Room 생성`
 
-### 4.2 host 상호작용
+### 3.2 공통 입력 검증
 
-- `107 GAME_SETTINGS_UPDATE_REQUEST`
-- `105 GAME_START_REQUEST`
+- 닉네임 미입력/형식 오류 시 버튼 동작 차단
+- 요청 중에는 버튼 중복 클릭 방지(로딩 상태)
 
-클라이언트 규칙:
+### 3.3 버튼 1: 무작위 매칭
 
-- host만 설정 폼과 start 버튼을 활성화한다.
-- non-host는 read-only로 본다.
-- 설정 값은 lobby 상태에서만 수정 가능하다.
+1. 사용자 `무작위 매칭` 클릭.
+2. 클라이언트가 lobby 서버에 즉시 매칭 가능 여부/입장 정보를 요청.
+3. 서버 리턴값 기준으로 입장 절차 진행:
+- 빈 슬롯/대기 방이 있으면 해당 room으로 join 절차
+- 없으면 매칭용 room 생성 후 join 절차
+4. join 컨텍스트(`roomId`, `roomCode`, `userId`) 확보.
+5. WS 연결 후 `408 GAME_SNAPSHOT` 수신 기준으로 authoritative 상태 동기화.
+6. 라우팅: `GamePage` 진입.
 
-### 4.3 participant 변화
+### 3.4 버튼 2: Private Room 생성
 
-수신 이벤트:
+1. 사용자 `Private Room 생성` 클릭.
+2. 클라이언트가 lobby 서버에 private room 생성 요청.
+3. 생성 성공 응답(`roomId`, `roomCode`, `host userId`) 수신.
+4. 생성자 본인이 host로 join 절차 진행.
+5. WS 연결 후 `408 GAME_SNAPSHOT` 수신 기준으로 authoritative 상태 동기화.
+6. 라우팅: `GamePage` 진입.
 
-- `301 ROOM_JOINED`
-- `309 ROOM_LEFT`
+실패 처리(공통):
 
-화면 반응:
-
-- participant 목록 즉시 갱신
-- host가 나가면 새 host 표시 갱신
-- 현재 lobby에서 "다음 round drawer order는 현재 participant snapshot으로 결정된다"는 안내를 보여주는 편이 좋다.
-
----
-
-## 5. Game 시작 흐름
-
-### 5.1 game start
-
-수신 이벤트:
-
-- `302 GAME_STARTED`
-
-화면 반응:
-
-- `Lobby -> Game` 전환
-- scoreboard 초기화
-- "게임 시작" 전환 상태 노출
-
-### 5.2 first round start
-
-수신 이벤트:
-
-- `303 ROUND_STARTED`
-
-화면 반응:
-
-- `roundNo`
-- 현재 라운드의 `drawerOrder`
-- `turnCursor = 0`
-
-중요:
-
-- 이 시점에 현재 라운드의 drawer 순서를 rail 또는 stepper처럼 고정 표시하는 게 맞다.
-- 중간 입장자는 이 round의 `drawerOrder`에는 들어가지 않는다.
+- MainPage 유지
+- 실패 원인 메시지 노출(서버 오류, 검증 오류, 일시적 불가)
+- 재시도 가능 상태로 복귀
 
 ---
 
-## 6. Turn 샘플 흐름
+## 4. GamePage 내부 상태 모델
 
-### 6.1 turn started
+`GamePage`는 단일 페이지이며, 내부 상태만 전환한다.
 
-수신 이벤트:
+1. `GAMEPAGE_LOBBY`
+2. `GAMEPAGE_INGAME`
+3. `GAMEPAGE_RESULT`
 
-- `304 TURN_STARTED`
+전환 트리거:
 
-화면 반응:
-
-- 현재 drawer 강조
-- turn 번호 갱신
-- canvas 초기화
-- guess input은 잠시 비활성 또는 "단어 선택 대기" 상태
-
-### 6.2 word choice
-
-drawer 수신:
-
-- `406 WORD_CHOICES`
-
-guesser 수신:
-
-- `311 TURN_STATE(WORD_CHOICES_GIVEN)`
-
-화면 반응:
-
-- drawer: 단어 선택 모달/패널 표시
-- guesser: "drawer가 단어를 고르는 중" 오버레이 표시
-
-### 6.3 drawing started
-
-drawer 수신:
-
-- `310 DRAWING_STARTED`
-
-guesser 수신:
-
-- `311 TURN_STATE(DRAWING_STARTED)`
-
-화면 반응:
-
-- drawer: canvas 입력 활성화, 툴바 활성화
-- guesser: canvas 관전 상태, guess input 활성화
-- 공통: 남은 시간 표시
-
-### 6.4 drawing interaction
-
-drawer 입력:
-
-- `201 DRAW_STROKE`
-- `202 DRAW_CLEAR`
-
-guesser 입력:
-
-- `204 GUESS_SUBMIT`
-
-화면 반응:
-
-- canvas는 현재 turn의 stroke만 유지
-- 정답자가 아닌 사용자의 메시지는 전체 공개
-- 정답 처리된 사용자 이후 메시지는 정답자 집합 + drawer에게만 공개
-- drawer 메시지도 정답자 집합 + drawer에게만 공개
-
-### 6.5 correct guess
-
-수신 이벤트:
-
-- `404 GUESS_CORRECT`
-
-화면 반응:
-
-- 맞힌 사용자 표시
-- guess input 상태 갱신
-- `FIRST_CORRECT`면 곧바로 turn 종료 준비
-
-### 6.6 turn ended
-
-수신 이벤트:
-
-- `305 TURN_ENDED`
-
-화면 반응:
-
-- turn 결과 패널
-- 이번 turn earnedScores
-- 최신 scoreboard
-- 최소 3초 유지
-
-중요:
-
-- `TURN_ENDED`는 단순 토스트가 아니라 turn result 상태로 3초간 명확히 보여야 한다.
+- `302 GAME_STARTED` -> `GAMEPAGE_INGAME`
+- `307 GAME_ENDED` -> `GAMEPAGE_RESULT`
+- result view 종료 후 -> `GAMEPAGE_LOBBY`
 
 ---
 
-## 7. 다음 turn / 다음 round / 게임 종료
+## 5. GamePage Desktop 레이아웃 규격
 
-### 7.1 다음 turn
+### 5.1 상단 정보바 (독립 영역)
 
-조건:
+- 페이지 최상단에 가로로 긴 단일 `InfoBar` 배치
+- 하단의 좌/중/우 3영역과 분리된 별도 div
+- `InfoBar` 의미: 게임 진행 핵심 메타정보를 고정 노출하는 상단 상태 바
+- 고정 표시 정보:
+- `round`
+- `turn`
+- `timer`
+- `현재 drawer`
+- `draw 순서 rail`(이번 round 기준)
 
-- 현재 round의 `drawerOrder`에 아직 남은 drawer가 있음
+### 5.2 본문 3분할 레이아웃
 
-화면 반응:
+- 좌측: 참여자 영역
+- 중앙: 그림(캔버스) 영역
+- 우측: 채팅 영역
 
-- `turnCursor + 1`
-- 다음 drawer 강조
-- 다시 `304 -> 406/311 -> 310/311` 순환
+폭 비율 기준:
 
-### 7.2 round ended
+- 좌:중:우 = `2:5:3`
+- 우선순위 1: 중앙 캔버스 비율 유지
+- 우선순위 2: 우측 채팅 영역 확보
+- 우선순위 3: 좌측 참여자 영역
 
-수신 이벤트:
+### 5.3 캔버스 비율 고정 규칙
 
-- `306 ROUND_ENDED`
-
-화면 반응:
-
-- round 종료 상태를 짧게 표시
-- 다음 round가 있으면 새 `drawerOrder`로 갱신
-
-### 7.3 game ended
-
-수신 이벤트:
-
-- `307 GAME_ENDED`
-
-화면 반응:
-
-- `Game -> Result`
-- ranking 표시
-- 결과 화면 8초 유지
-
-### 7.4 result view end
-
-private room 기준:
-
-- result 유지 후 다시 `Lobby`
-- 이전 게임의 runtime 상태 제거
-- 다음 게임 설정 수정 가능
+- 그림 영역의 가로/세로 비율은 고정값(`CANVAS_ASPECT_RATIO = 4:3`) 유지
+- Viewport가 변해도 캔버스 비율을 먼저 지키고, 남는 공간에 좌/우 영역을 맞춤 배치
+- 턴 결과/게임 결과 오버레이는 **캔버스 박스 위치/크기에 정확히 맞춰** 표시
 
 ---
 
-## 8. 중간 입장 흐름
+## 6. GamePage 구성 요소 상세
 
-### 8.1 join during running game
+### 6.1 좌측 참여자 패널
 
-수신 이벤트:
+- 참여자 1명당 얇은 카드 UI
+- 카드 표시 정보:
+- 닉네임
+- 점수
+- host 뱃지
 
-- 기존 참여자: `301 ROOM_JOINED`
-- joiner: `408 GAME_SNAPSHOT`
+상태 스타일:
 
-화면 반응:
+- 현재 drawer 카드:
+- 테두리 색상 변경
+- 테두리 두께 증가
+- 정답자 카드:
+- 카드 배경 채움색 변경
 
-- joiner는 곧바로 `Game` 화면으로 들어온다.
-- 현재 turn canvas 전체 stroke를 snapshot으로 받아 즉시 재구성한다.
-- joiner는 현재 turn에서 guess 가능하다.
-- 단, 현재 round의 drawer rail에는 포함되지 않고 "next round부터 draw"로 표시하는 편이 좋다.
+메시지 말풍선:
+
+- 사용자가 채팅 입력 시, 해당 사용자 카드 오른쪽에 임시 말풍선 표시
+- 말풍선 투명도: `opacity 0.8`
+- 표시 시간: 2초 후 자동 사라짐
+
+### 6.2 중앙 캔버스 패널
+
+- drawer만 입력 가능
+- non-drawer는 완전 읽기 전용
+- drawer가 그리는 동안 정답 단어는 캔버스 상단 중앙에 고정 표시
+
+도구 범위(MVP):
+
+- 펜
+- 브러시형 지우기
+- 전체 지우기
+- 펜 굵기 `10단계(0~9)`
+- 색상 팔레트 `20개`
+
+### 6.3 우측 채팅 패널
+
+- 채팅 입력창 + 메시지 로그
+- 엔터 전송 지원
+- 전송 버튼 제공
+- 입력 길이 제한 `50자`
+- 모든 사용자 입력은 서버로 `204 GUESS_SUBMIT` 이벤트로 전송
+- 이벤트 명칭(`GUESS_SUBMIT`)은 후속 리네이밍 가능하나, 현재 스펙은 유지
+
+메시지 공개 규칙:
+
+- 일반 오답: 전체 공개
+- 정답 처리된 사용자 이후 메시지: 정답자 집합 + drawer에게만 공개
+- 정답자 메시지 색상은 일반 메시지와 다르게 표시
+- 정답자+drawer 전용 채팅과 전체 채팅의 구분은 텍스트 색상으로 처리
 
 ---
 
-## 9. snapshot recovery 흐름
+## 7. GamePage 동작 흐름 (스토리형)
 
-트리거:
+### 7.1 Lobby 상태
 
-- 새로고침
-- reconnect
-- stale event 의심
+- room code, 참여자 카드, 설정, 시작 버튼 표시
+- host만 설정/시작 조작 가능
+- `301 ROOM_JOINED`, `309 ROOM_LEFT` 즉시 반영
 
-클라이언트 입력:
+### 7.2 InGame 상태
 
-- `106 GAME_SNAPSHOT_REQUEST`
+1. `302 GAME_STARTED` 수신 -> in-game 전환
+2. `303 ROUND_STARTED` 수신 -> info bar와 draw 순서 rail 갱신
+3. `304 TURN_STARTED` 수신 -> 캔버스 초기화, drawer 강조
+4. 단어 선택:
+- drawer: `406 WORD_CHOICES`
+- guesser: `311 TURN_STATE(WORD_CHOICES_GIVEN)`
+ - drawer 단어 선택 UI는 캔버스 중앙에 후보 단어를 노출하고 클릭 선택
+5. 드로잉 시작:
+- drawer: `310 DRAWING_STARTED`
+- others: `311 TURN_STATE(DRAWING_STARTED)`
+6. 실시간 진행:
+- draw 입력: `201 DRAW_STROKE`, `202 DRAW_CLEAR`
+- 채팅/정답 제출: `204 GUESS_SUBMIT`
+7. 정답 발생 시 `404 GUESS_CORRECT` 반영
+8. 턴 종료 시 `305 TURN_ENDED`를 캔버스 정합 오버레이로 최소 3초 표시
 
-수신 이벤트:
+### 7.3 Result 상태
 
-- `408 GAME_SNAPSHOT`
+- `307 GAME_ENDED` 수신 -> result 상태 전환
+- 캔버스 위치 기준 결과 오버레이 표시
+- ranking/최종 점수 노출
+- 8초 후 lobby 상태로 복귀
 
-화면 반응:
+---
 
-- 현재 화면을 유지하되 runtime state만 authoritative snapshot으로 치환
-- 현재 turn, canvas, scoreboard, participants, host, settings를 전부 다시 맞춘다.
+## 8. 이벤트별 상태 변경 규칙
+
+클라이언트는 이벤트 수신 시 아래 state를 갱신한다.
+
+- `301 ROOM_JOINED`: `participants`, `hostUserId(필요 시)`, 좌측 카드 목록
+- `309 ROOM_LEFT`: `participants`, `hostUserId(필요 시)`, 좌측 카드 목록
+- `302 GAME_STARTED`: `pageState = GAMEPAGE_INGAME`, `scoreboard 초기화`, `turnResultOverlay 닫힘`
+- `303 ROUND_STARTED`: `roundNo`, `drawerOrder`, `turnCursor`, `infoBar.roundRail`
+- `304 TURN_STARTED`: `turnNo`, `currentDrawerUserId`, `canvas 초기화`, `turnPhase = WORD_CHOICE_PREP`
+- `406 WORD_CHOICES`(drawer only): `turnPhase = WORD_CHOOSING`, `wordChoiceOptions 표시`, `wordChoiceOverlayPosition = canvas.center`, `click to choose`
+- `311 TURN_STATE(WORD_CHOICES_GIVEN)`: `turnPhase = WORD_CHOOSING`, `guesser 입력 비활성`
+- `310 DRAWING_STARTED` 또는 `311 TURN_STATE(DRAWING_STARTED)`: `turnPhase = DRAWING`, `timer`, `입력 활성/비활성 전환`
+- `310 DRAWING_STARTED`(drawer): `secretWordBanner = canvas.top-center 고정`
+- `401 CANVAS_STROKE`: `canvas.strokes append`
+- `402 CANVAS_CLEAR`: `canvas.strokes clear`
+- `403 GUESS_MESSAGE`: `chatMessages append`, `participantBubble[writer] = 2초 표시`
+- `404 GUESS_CORRECT`: `correctUserIds`, `participantCard 상태색`, `정답자 채팅 스타일`
+- `305 TURN_ENDED`: `turnPhase = ENDED`, `earnedScores`, `scoreboard`, `turnResultOverlay open(최소 3초)`
+- `306 ROUND_ENDED`: `roundEndFlag`, `다음 round 대기 상태`
+- `307 GAME_ENDED`: `pageState = GAMEPAGE_RESULT`, `ranking`, `gameResultOverlay open`
+- `408 GAME_SNAPSHOT`: `runtimeState 전체 치환(participants/canvas/scoreboard/turn/round/settings)`
+
+---
+
+## 9. 예외/실패 흐름 (재접속 제외)
+
+### 9.1 서버 응답 지연/소통 타임아웃
+
+- 현재 페이지 유지
+- 중복 요청 유발 입력 임시 비활성
+- "서버 응답 지연" 안내 오버레이 표시
+- 이후 authoritative 이벤트(`408` 등) 수신 시 정상 상태 복구
+
+### 9.2 단어 선택 타임아웃
+
+- drawer 미선택 시 서버 자동 선택
+- 자동으로 드로잉 상태 전환
+- 별도 자동선정 안내 문구는 노출하지 않음
+
+### 9.3 드로잉 타임아웃
+
+- `305 TURN_ENDED(reason=TIMEOUT)` 기준으로 턴 종료 오버레이 전환
+- 입력 비활성, 다음 턴 대기
+
+### 9.4 참여자 이탈
+
+- `309 ROOM_LEFT` 반영: 참여자 카드/점수 즉시 갱신
+- drawer 이탈이면 `DRAWER_LEFT` 사유 턴 종료 표시
 
 ---
 
 ## 10. 화면 설계 포인트
 
-화면 구조는 아래처럼 잡는 편이 자연스럽다.
+1. `MainPage`는 진입 결정(닉네임 + 모드 선택)에 집중
+2. `GamePage`는 상태 전환(`Lobby/InGame/Result`)만으로 운영
+3. 레이아웃 우선순위는 캔버스 비율 > 채팅 > 참여자
+4. 채팅은 커뮤니케이션이자 정답 제출 입력으로 동시에 취급
+5. 결과/턴 종료 표시는 캔버스 정합 오버레이를 기본 원칙으로 사용
 
-1. 좌측 메인: turn 중심 canvas 영역
-2. 상단 또는 좌측 상단: round / turn / timer / drawer
-3. 우측 상단: 이번 round의 drawer order rail
-4. 우측 중단: participant + scoreboard
-5. 우측 하단: guess/chat
-6. 전면 오버레이: word choice, reconnect, turn result
+---
 
-핵심은 "방 화면"보다 "현재 turn 상태"가 화면의 주인이어야 한다는 점이다.
+## 11. 이번 단계 결정사항 메모
+
+- 점수 규칙은 서버 설계 단계에서 추후 확정
+- 시작 가능 최소 인원은 2명
+- 인원 감소로 인한 즉시 중단 처리는 서버 레벨 책임, 클라이언트 문서에서는 상세 분기 생략
+- 이벤트 수신 로그는 UI 노출 없이 `console.log`만 사용
+- 오버레이/상태 문구는 한곳에서 관리 가능하도록 추후 문구 모음 섹션으로 통합 예정
+
