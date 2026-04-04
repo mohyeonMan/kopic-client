@@ -1,8 +1,6 @@
 export const routes = {
-  entry: '/',
-  lobby: '/lobby',
+  main: '/',
   game: '/game',
-  result: '/result',
 } as const
 
 export type AppRoute = (typeof routes)[keyof typeof routes]

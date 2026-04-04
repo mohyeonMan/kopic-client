@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { isAppRoute, routes, type AppRoute } from './routes'
 
 function getCurrentRoute(): AppRoute {
-  return isAppRoute(window.location.pathname) ? window.location.pathname : routes.entry
+  return isAppRoute(window.location.pathname) ? window.location.pathname : routes.main
 }
 
 export function useAppRouter() {

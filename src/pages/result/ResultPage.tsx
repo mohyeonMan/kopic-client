@@ -32,12 +32,12 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
             onClick={() => {
               resetToLobby()
               setConnectionStatus('synced')
-              onNavigate(routes.lobby)
+              onNavigate(routes.game)
             }}
           >
             Back to lobby
           </button>
-          <button type="button" className="secondary-button" onClick={() => onNavigate(routes.entry)}>
+          <button type="button" className="secondary-button" onClick={() => onNavigate(routes.main)}>
             Exit room
           </button>
         </div>

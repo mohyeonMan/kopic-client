@@ -9,10 +9,8 @@ type AppLayoutProps = {
 }
 
 const routeLabels: Record<AppRoute, string> = {
-  [routes.entry]: 'Entry',
-  [routes.lobby]: 'Lobby',
+  [routes.main]: 'Main',
   [routes.game]: 'Game',
-  [routes.result]: 'Result',
 }
 
 export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps) {
@@ -26,24 +24,25 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
           <h1>Catchmind-style client scaffold</h1>
         </div>
         <div className="topbar-meta">
+          <button
+            type="button"
+            className={currentRoute === routes.main ? 'route-tab route-tab-active' : 'route-tab'}
+            onClick={() => onNavigate(routes.main)}
+          >
+            {routeLabels[routes.main]}
+          </button>
+          <button
+            type="button"
+            className={currentRoute === routes.game ? 'route-tab route-tab-active' : 'route-tab'}
+            onClick={() => onNavigate(routes.game)}
+          >
+            {routeLabels[routes.game]}
+          </button>
           <div className="pill">{state.connectionStatus}</div>
           <div className="pill">{state.room.roomCode}</div>
           <div className="pill">{state.session.nickname}</div>
         </div>
       </header>
-
-      <nav className="route-tabs" aria-label="Prototype routes">
-        {Object.values(routes).map((route) => (
-          <button
-            key={route}
-            type="button"
-            className={route === currentRoute ? 'route-tab route-tab-active' : 'route-tab'}
-            onClick={() => onNavigate(route)}
-          >
-            {routeLabels[route]}
-          </button>
-        ))}
-      </nav>
 
       <main className="page-frame">{children}</main>
     </div>

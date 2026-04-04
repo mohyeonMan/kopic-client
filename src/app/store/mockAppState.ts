@@ -1,7 +1,7 @@
 export type ConnectionStatus = 'idle' | 'connecting' | 'synced' | 'reconnecting'
 export type RoomState = 'LOBBY' | 'RUNNING' | 'RESULT'
 export type TurnPhase = 'WORD_CHOICE' | 'DRAWING' | 'TURN_END'
-export type DrawingTool = 'PEN' | 'ERASER'
+export type DrawingTool = 'PEN' | 'ERASER' | 'FILL'
 
 export type Participant = {
   userId: string

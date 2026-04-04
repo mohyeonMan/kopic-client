@@ -7,6 +7,7 @@ import {
   type ConnectionStatus,
   type GameSettings,
   type Participant,
+  type TurnPhase,
 } from './mockAppState'
 import { AppStateContext, type AppStateContextValue } from './appStateContextValue'
 
@@ -16,6 +17,8 @@ type AppAction =
   | { type: 'room/resetToLobby' }
   | { type: 'game/started' }
   | { type: 'game/wordChosen'; payload: string }
+  | { type: 'game/mockTurnPhaseSet'; payload: TurnPhase }
+  | { type: 'game/mockAdvanced' }
   | { type: 'canvas/strokeAdded'; payload: CanvasStroke }
   | { type: 'canvas/cleared' }
   | { type: 'game/ended' }
@@ -26,6 +29,27 @@ function getDrawerOrder(participants: Participant[]) {
     .filter((participant) => !participant.joinedMidRound)
     .sort((left, right) => left.joinOrder - right.joinOrder)
     .map((participant) => participant.userId)
+}
+
+function createMockTurn(
+  roundNo: number,
+  turnNo: number,
+  drawerUserId: string,
+  phase: TurnPhase,
+  settings: GameSettings,
+) {
+  return {
+    roundNo,
+    turnNo,
+    turnId: `turn-r${roundNo}-${turnNo}`,
+    drawerUserId,
+    phase,
+    remainingSec: phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0,
+    correctUserIds: phase === 'TURN_END' ? ['u-200'] : [],
+    wordChoices: ['사과', '기차', '고양이'],
+    selectedWord: phase === 'WORD_CHOICE' ? null : '사과',
+    canvasStrokes: [],
+  }
 }
 
 function appStateReducer(state: AppState, action: AppAction): AppState {
@@ -74,18 +98,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             turnCursor: 0,
             drawerOrder,
           },
-          currentTurn: {
-            roundNo: 1,
-            turnNo: 1,
-            turnId: 'turn-r1-1',
-            drawerUserId: drawerOrder[0],
-            phase: 'WORD_CHOICE',
-            remainingSec: state.room.settings.wordChoiceSec,
-            correctUserIds: [],
-            wordChoices: ['사과', '기차', '고양이'],
-            selectedWord: null,
-            canvasStrokes: [],
-          },
+          currentTurn: createMockTurn(1, 1, drawerOrder[0], 'WORD_CHOICE', state.room.settings),
           chat: [
             ...state.room.chat,
             { id: crypto.randomUUID(), nickname: 'system', text: '302 GAME_STARTED', tone: 'system' },
@@ -118,6 +131,121 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
               text: `310 DRAWING_STARTED (${action.payload})`,
               tone: 'system',
             },
+          ],
+        },
+      }
+    case 'game/mockTurnPhaseSet':
+      if (!state.room.currentTurn) {
+        return state
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          currentTurn: {
+            ...createMockTurn(
+              state.room.currentTurn.roundNo,
+              state.room.currentTurn.turnNo,
+              state.room.currentTurn.drawerUserId,
+              action.payload,
+              state.room.settings,
+            ),
+          },
+        },
+      }
+    case 'game/mockAdvanced':
+      if (!state.room.currentTurn || !state.room.currentRound) {
+        return state
+      }
+
+      if (state.room.currentTurn.phase !== 'TURN_END') {
+        const nextPhase: TurnPhase =
+          state.room.currentTurn.phase === 'WORD_CHOICE' ? 'DRAWING' : 'TURN_END'
+
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            currentTurn: {
+              ...createMockTurn(
+                state.room.currentTurn.roundNo,
+                state.room.currentTurn.turnNo,
+                state.room.currentTurn.drawerUserId,
+                nextPhase,
+                state.room.settings,
+              ),
+            },
+          },
+        }
+      }
+
+      const currentRound = state.room.currentRound
+      const nextCursor = currentRound.turnCursor + 1
+      const hasNextTurn = nextCursor < currentRound.drawerOrder.length
+
+      if (hasNextTurn) {
+        const nextTurnNo = state.room.currentTurn.turnNo + 1
+        const nextDrawerUserId = currentRound.drawerOrder[nextCursor]
+
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            currentRound: {
+              ...currentRound,
+              turnCursor: nextCursor,
+            },
+            currentTurn: createMockTurn(
+              currentRound.roundNo,
+              nextTurnNo,
+              nextDrawerUserId,
+              'WORD_CHOICE',
+              state.room.settings,
+            ),
+          },
+        }
+      }
+
+      const hasNextRound = currentRound.roundNo < currentRound.totalRounds
+
+      if (hasNextRound) {
+        const nextRoundNo = currentRound.roundNo + 1
+
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            currentRound: {
+              ...currentRound,
+              roundNo: nextRoundNo,
+              turnCursor: 0,
+            },
+            currentTurn: createMockTurn(
+              nextRoundNo,
+              1,
+              currentRound.drawerOrder[0],
+              'WORD_CHOICE',
+              state.room.settings,
+            ),
+            chat: [
+              ...state.room.chat,
+              { id: crypto.randomUUID(), nickname: 'system', text: `306 ROUND_ENDED R${currentRound.roundNo}`, tone: 'system' },
+              { id: crypto.randomUUID(), nickname: 'system', text: `303 ROUND_STARTED R${nextRoundNo}`, tone: 'system' },
+            ],
+          },
+        }
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RESULT',
+          currentTurn: null,
+          chat: [
+            ...state.room.chat,
+            { id: crypto.randomUUID(), nickname: 'system', text: '307 GAME_ENDED', tone: 'system' },
           ],
         },
       }
@@ -209,6 +337,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       patchSettings: (settings) => dispatch({ type: 'room/settingsPatched', payload: settings }),
       startGame: () => dispatch({ type: 'game/started' }),
       chooseMockWord: (word) => dispatch({ type: 'game/wordChosen', payload: word }),
+      setMockTurnPhase: (phase) => dispatch({ type: 'game/mockTurnPhaseSet', payload: phase }),
+      advanceMockFlow: () => dispatch({ type: 'game/mockAdvanced' }),
       appendStroke: (stroke) => dispatch({ type: 'canvas/strokeAdded', payload: stroke }),
       clearCanvas: () => dispatch({ type: 'canvas/cleared' }),
       finishGame: () => dispatch({ type: 'game/ended' }),

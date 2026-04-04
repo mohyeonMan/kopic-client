@@ -1,5 +1,11 @@
 import { createContext } from 'react'
-import type { CanvasStroke, ConnectionStatus, GameSettings, AppState } from './mockAppState'
+import type {
+  CanvasStroke,
+  ConnectionStatus,
+  GameSettings,
+  AppState,
+  TurnPhase,
+} from './mockAppState'
 
 export type AppStateContextValue = {
   state: AppState
@@ -7,6 +13,8 @@ export type AppStateContextValue = {
   patchSettings: (settings: Partial<GameSettings>) => void
   startGame: () => void
   chooseMockWord: (word: string) => void
+  setMockTurnPhase: (phase: TurnPhase) => void
+  advanceMockFlow: () => void
   appendStroke: (stroke: CanvasStroke) => void
   clearCanvas: () => void
   finishGame: () => void

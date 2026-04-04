@@ -1,6 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
-import type { DrawingTool } from '../../app/store/mockAppState'
+import type {
+  CanvasStroke,
+  ChatMessage,
+  DrawingTool,
+  Participant,
+  TurnPhase,
+} from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
 import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
 
@@ -8,221 +15,828 @@ type GamePageProps = {
   onNavigate: (route: AppRoute) => void
 }
 
-const TOOL_COLOR: Record<DrawingTool, string> = {
-  PEN: '#203247',
-  ERASER: '#fffaf0',
+type LocalMessage = ChatMessage & {
+  createdAt: number
+  visibility: 'global' | 'correct-only'
+}
+
+type OverlayPreview =
+  | 'actual'
+  | 'roundStart'
+  | 'turnStart'
+  | 'wordChoice'
+  | 'drawingDrawer'
+  | 'drawingGuesser'
+  | 'turnEnd'
+  | 'gameResult'
+
+const TOOL_COLORS = [
+  '#203247',
+  '#345a74',
+  '#56758f',
+  '#d14b3f',
+  '#ea6f58',
+  '#ef9b47',
+  '#f2c14e',
+  '#5f8d4e',
+  '#7aac63',
+  '#1d6b4e',
+  '#1f8a8a',
+  '#4aa3b8',
+  '#5f6dd9',
+  '#6f55c6',
+  '#9656a2',
+  '#bd6a88',
+  '#8d6e63',
+  '#6f5a4b',
+  '#9aa5b1',
+  '#ffffff',
+] as const
+
+type EarnedScore = {
+  nickname: string
+  score: number
+  isCorrect: boolean
+}
+
+type ParticipantBubblePosition = {
+  userId: string
+  text: string
+  createdAt: number
+  top: number
+  left: number
+}
+
+function participantTone(participant: Participant, drawerUserId?: string, correctUserIds?: string[]) {
+  if (participant.userId === drawerUserId) {
+    return 'participant-card participant-card-drawer'
+  }
+
+  if (correctUserIds?.includes(participant.userId)) {
+    return 'participant-card participant-card-correct'
+  }
+
+  return 'participant-card'
+}
+
+function buildEarnedScores(participants: Participant[], correctUserIds: string[], drawerUserId?: string) {
+  const rows: EarnedScore[] = participants.map((participant) => {
+    if (participant.userId === drawerUserId) {
+      return { nickname: participant.nickname, score: 40, isCorrect: false }
+    }
+
+    if (correctUserIds.includes(participant.userId)) {
+      return { nickname: participant.nickname, score: 80, isCorrect: true }
+    }
+
+    return { nickname: participant.nickname, score: 0, isCorrect: false }
+  })
+
+  return rows.sort((left, right) => right.score - left.score)
+}
+
+function getVisibleOrder(participants: Participant[], drawerOrder: string[] | undefined, turnCursor: number | undefined) {
+  if (!drawerOrder || drawerOrder.length === 0) {
+    return participants
+      .slice()
+      .sort((left, right) => left.joinOrder - right.joinOrder)
+      .map((participant) => participant.nickname)
+  }
+
+  return drawerOrder
+    .slice(turnCursor ?? 0)
+    .map((userId) => participants.find((participant) => participant.userId === userId)?.nickname)
+    .filter((nickname): nickname is string => Boolean(nickname))
+}
+
+function getMaskedWord(word: string | null) {
+  if (!word) {
+    return '●●●'
+  }
+
+  return '●'.repeat(word.length)
+}
+
+function getBubbleText(text: string) {
+  const chars = Array.from(text)
+  return chars.length > 20 ? `${chars.slice(0, 17).join('')}...` : text
+}
+
+function shouldSkipEnterSubmit(event: ReactKeyboardEvent<HTMLInputElement>) {
+  const nativeEvent = event.nativeEvent as KeyboardEvent & { isComposing?: boolean }
+
+  return nativeEvent.isComposing === true || nativeEvent.keyCode === 229
 }
 
 export function GamePage({ onNavigate }: GamePageProps) {
   const [tool, setTool] = useState<DrawingTool>('PEN')
-  const [size, setSize] = useState(6)
+  const [size, setSize] = useState(5)
+  const [color, setColor] = useState<string>(TOOL_COLORS[0])
+  const [guessInput, setGuessInput] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [overlayPreview, setOverlayPreview] = useState<OverlayPreview>('actual')
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
+  const [lobbyStrokes, setLobbyStrokes] = useState<CanvasStroke[]>([])
+  const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
+  const chatListRef = useRef<HTMLUListElement | null>(null)
+  const chatStickToBottomRef = useRef(true)
+  const stageRef = useRef<HTMLElement | null>(null)
+  const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
+  const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
   const {
     state,
     chooseMockWord,
+    setMockTurnPhase,
+    advanceMockFlow,
     appendStroke,
     clearCanvas,
     finishGame,
-    setConnectionStatus,
+    resetToLobby,
+    patchSettings,
+    startGame,
   } = useAppState()
-  const { participants, currentRound, currentTurn, chat } = state.room
+
+  const { participants, currentRound, currentTurn, chat, settings, roomCode, roomState, hostUserId } = state.room
+  const isHost = hostUserId === state.session.userId
   const drawer = participants.find((participant) => participant.userId === currentTurn?.drawerUserId)
-  const drawerOrderParticipants = currentRound
-    ? currentRound.drawerOrder
-        .map((userId) => participants.find((participant) => participant.userId === userId))
-        .filter((participant): participant is NonNullable<typeof participant> => participant !== undefined)
-    : []
   const isDrawer = state.session.userId === currentTurn?.drawerUserId
-  const canDraw = isDrawer && currentTurn?.phase === 'DRAWING'
+  const viewerRole =
+    overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
+  const orderNames = getVisibleOrder(participants, currentRound?.drawerOrder, currentRound?.turnCursor)
+  const nextDrawerName =
+    currentRound && currentRound.drawerOrder.length > 0
+      ? participants.find(
+          (participant) =>
+            participant.userId ===
+            currentRound.drawerOrder[(currentRound.turnCursor + 1) % currentRound.drawerOrder.length],
+        )?.nickname
+      : undefined
+  const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
+  const mergedChat = [...chat, ...localMessages]
+  const currentCorrectIds = currentTurn?.correctUserIds ?? []
+  const earnedScores = buildEarnedScores(participants, currentCorrectIds, currentTurn?.drawerUserId)
+  const canDraw =
+    roomState === 'LOBBY'
+      ? !settingsOpen
+      : roomState === 'RUNNING'
+        ? viewerRole === 'drawer' && currentTurn?.phase === 'DRAWING'
+        : false
+  const boardStrokes = roomState === 'LOBBY' ? lobbyStrokes : currentTurn?.canvasStrokes ?? []
+  const visibleChat = mergedChat.filter((message) => {
+    if (message.tone === 'system') {
+      return false
+    }
+
+    if ('visibility' in message) {
+      if (message.visibility === 'global') {
+        return true
+      }
+
+      return viewerRole === 'drawer' || currentCorrectIds.includes(state.session.userId)
+    }
+
+    return true
+  })
+
+  const participantBubbleById = useMemo(() => {
+    const map = new Map<string, { text: string; createdAt: number }>()
+    const now = Date.now()
+
+    for (const message of localMessages.slice(-3)) {
+      if (now - message.createdAt > 3000) {
+        continue
+      }
+
+      const author = participants.find((participant) => participant.nickname === message.nickname)
+
+      if (author) {
+        map.set(author.userId, { text: message.text, createdAt: message.createdAt })
+      }
+    }
+
+    return map
+  }, [localMessages, participants])
+
+  useEffect(() => {
+    if (roomState !== 'LOBBY') {
+      setSettingsOpen(false)
+    }
+  }, [roomState])
+
+  useEffect(() => {
+    if (localMessages.length === 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const now = Date.now()
+      setLocalMessages((messages) => messages.filter((message) => now - message.createdAt <= 3200))
+    }, 3200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [localMessages])
+
+  useLayoutEffect(() => {
+    const list = chatListRef.current
+
+    if (!list) {
+      return
+    }
+
+    if (chatStickToBottomRef.current) {
+      list.scrollTop = list.scrollHeight
+    }
+  }, [visibleChat])
+
+  useLayoutEffect(() => {
+    const stageElement = stageRef.current
+    const scrollElement = sidePanelScrollRef.current
+
+    if (!stageElement || !scrollElement) {
+      setParticipantBubbles([])
+      return
+    }
+
+    const updateBubblePositions = () => {
+      const stageRect = stageElement.getBoundingClientRect()
+      const nextBubbles: ParticipantBubblePosition[] = []
+
+      for (const [userId, bubble] of participantBubbleById.entries()) {
+        const item = participantItemRefs.current.get(userId)
+
+        if (!item) {
+          continue
+        }
+
+        const itemRect = item.getBoundingClientRect()
+        nextBubbles.push({
+          userId,
+          text: getBubbleText(bubble.text),
+          createdAt: bubble.createdAt,
+          top: itemRect.top - stageRect.top + itemRect.height / 2,
+          left: itemRect.right - stageRect.left + 14,
+        })
+      }
+
+      setParticipantBubbles(nextBubbles)
+    }
+
+    updateBubblePositions()
+    scrollElement.addEventListener('scroll', updateBubblePositions)
+    window.addEventListener('resize', updateBubblePositions)
+
+    return () => {
+      scrollElement.removeEventListener('scroll', updateBubblePositions)
+      window.removeEventListener('resize', updateBubblePositions)
+    }
+  }, [participantBubbleById])
+
+  const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
+    patchSettings({ [key]: Number(value) })
+  }
+
+  const submitGuess = () => {
+    const nextText = guessInput.trim().slice(0, 50)
+
+    if (!nextText) {
+      return
+    }
+
+    const visibility = currentCorrectIds.includes(state.session.userId) || viewerRole === 'drawer' ? 'correct-only' : 'global'
+
+    setLocalMessages((messages) => [
+      ...messages,
+      {
+        id: crypto.randomUUID(),
+        nickname: state.session.nickname,
+        text: nextText,
+        tone: visibility === 'global' ? 'guess' : 'correct',
+        createdAt: Date.now(),
+        visibility,
+      },
+    ])
+    setGuessInput('')
+  }
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(roomCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1200)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  const handleCommitStroke = (stroke: CanvasStroke) => {
+    if (roomState === 'LOBBY') {
+      setLobbyStrokes((strokes) => [...strokes, stroke])
+      return
+    }
+
+    appendStroke(stroke)
+  }
+
+  const handleClearCanvas = () => {
+    if (roomState === 'LOBBY') {
+      setLobbyStrokes([])
+      return
+    }
+
+    clearCanvas()
+  }
+
+  const ensureRunning = (phase?: TurnPhase) => {
+    if (roomState === 'RESULT') {
+      resetToLobby()
+      setLobbyStrokes([])
+      startGame()
+    } else if (roomState === 'LOBBY') {
+      startGame()
+    }
+
+    if (phase) {
+      setMockTurnPhase(phase)
+    }
+
+    setSettingsOpen(false)
+  }
+
+  const previewMode = (() => {
+    if (overlayPreview !== 'actual') {
+      return overlayPreview
+    }
+
+    if (roomState === 'RESULT') {
+      return 'gameResult'
+    }
+
+    if (roomState === 'LOBBY') {
+      return settingsOpen ? 'actual' : 'actual'
+    }
+
+    if (currentTurn?.phase === 'TURN_END') {
+      return 'turnEnd'
+    }
+
+    if (currentTurn?.phase === 'DRAWING') {
+      return isDrawer ? 'drawingDrawer' : 'drawingGuesser'
+    }
+
+    return 'wordChoice'
+  })()
 
   return (
-    <div className="game-layout">
-      <section className="panel board-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Game</p>
-            <h2>Round and turn driven play surface</h2>
+    <div className="gamepage-shell">
+      <section className="panel game-status-bar">
+        <div className="status-bar-row">
+          <div className="status-inline-chip">
+            <span>라운드</span>
+            <strong>{currentRound ? `${currentRound.roundNo} / ${currentRound.totalRounds}` : '대기 중'}</strong>
           </div>
-          {currentTurn ? <div className="pill">R{currentTurn.roundNo} T{currentTurn.turnNo}</div> : null}
-        </div>
-
-        <div className="board-stage">
-          <div className="board-hud">
-            <span>{drawer?.nickname ?? 'Drawer TBD'}</span>
-            <strong>{currentTurn?.phase ?? 'WAITING'}</strong>
-            <span>{currentTurn?.remainingSec ?? 0}s</span>
+          <div className="status-inline-chip">
+            <span>남은 시간</span>
+            <strong>{currentTurn ? `${currentTurn.remainingSec}초` : '-'}</strong>
           </div>
-          <div className="turn-rail">
-            <div>
-              <p className="panel-label">Current round</p>
-              <strong>
-                Round {currentRound?.roundNo ?? 0} / {currentRound?.totalRounds ?? 0}
-              </strong>
+          <div className="order-strip-box">
+            <span className="order-strip-label">이번 라운드 그림 순서</span>
+            <div className="order-strip" role="list">
+              {orderNames.map((nickname) => (
+                <span key={nickname} className="order-pill" role="listitem">
+                  {nickname}
+                </span>
+              ))}
             </div>
-            <div>
-              <p className="panel-label">Turn cursor</p>
-              <strong>
-                {(currentRound?.turnCursor ?? 0) + 1} / {currentRound?.drawerOrder.length ?? 0}
-              </strong>
-            </div>
-            <div>
-              <p className="panel-label">Drawer order</p>
-              <strong>{drawerOrderParticipants.map((participant) => participant.nickname).join(' -> ')}</strong>
-            </div>
-          </div>
-
-          {isDrawer && currentTurn?.phase === 'WORD_CHOICE' ? (
-            <div className="word-choice-panel">
-              <p className="panel-label">Word choice</p>
-              <p className="info-copy">drawer만 단어를 고를 수 있고, 선택 후에만 실제 드로잉이 열린다.</p>
-              <div className="button-row">
-                {currentTurn.wordChoices.map((word) => (
-                  <button
-                    key={word}
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => chooseMockWord(word)}
-                  >
-                    {word}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="board-canvas">
-            <div className="grid-overlay" />
-            <CanvasBoard
-              strokes={currentTurn?.canvasStrokes ?? []}
-              canDraw={canDraw}
-              tool={tool}
-              color={TOOL_COLOR[tool]}
-              size={size}
-              onCommitStroke={appendStroke}
-            />
-            {!canDraw ? (
-              <div className="canvas-overlay">
-                {currentTurn?.phase === 'WORD_CHOICE'
-                  ? 'drawer word choice 대기 중'
-                  : '현재 turn drawer만 그림을 그릴 수 있음'}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="toolbar-row">
-            <button
-              type="button"
-              className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
-              onClick={() => setTool('PEN')}
-            >
-              Pen
-            </button>
-            <button
-              type="button"
-              className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
-              onClick={() => setTool('ERASER')}
-            >
-              Eraser
-            </button>
-            <label className="size-control">
-              <span>Size {size}</span>
-              <input
-                type="range"
-                min={1}
-                max={20}
-                step={1}
-                value={size}
-                onChange={(event) => setSize(Number(event.target.value))}
-              />
-            </label>
-            <button type="button" className="secondary-button" onClick={clearCanvas}>
-              Clear
-            </button>
           </div>
         </div>
       </section>
 
-      <aside className="side-stack">
-        <section className="panel">
-          <div className="section-heading">
+      <section ref={stageRef} className="game-stage-layout">
+        <aside className="panel game-side-panel game-side-panel-left">
+          <div className="room-code-row">
             <div>
-              <p className="eyebrow">Turn Model</p>
-              <h2>All players draw once per round</h2>
+              <p className="eyebrow">Room</p>
+              <strong className="room-code-text">{roomCode}</strong>
             </div>
+            <button type="button" className="secondary-button" onClick={handleCopyCode}>
+              {copied ? '복사됨' : '링크 복사'}
+            </button>
           </div>
 
-          <ul className="turn-order-list">
-            {drawerOrderParticipants.map((participant, index) => (
-              <li
-                key={participant.userId}
-                className={participant.userId === currentTurn?.drawerUserId ? 'turn-order-active' : ''}
-              >
-                <span>Turn {index + 1}</span>
-                <strong>{participant.nickname}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
+          <div ref={sidePanelScrollRef} className="side-panel-scroll">
+            <div className="side-panel-scroll-inner">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Participants</p>
+                  <h2>참여자</h2>
+                </div>
+                <div className="pill">{participants.length}명</div>
+              </div>
 
-        <section className="panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Scoreboard</p>
-              <h2>Live ranking</h2>
-            </div>
-          </div>
-
-          <ul className="score-list">
-            {participants
-              .slice()
-              .sort((left, right) => right.score - left.score)
-              .map((participant, index) => (
-                <li key={participant.userId}>
-                  <span>#{index + 1}</span>
-                  <strong>{participant.nickname}</strong>
-                  <span>{participant.score} pts</span>
+              <ul className="participant-cards">
+                {participants.map((participant) => (
+                <li
+                  key={participant.userId}
+                  ref={(element) => {
+                    participantItemRefs.current.set(participant.userId, element)
+                  }}
+                  className={participantTone(participant, currentTurn?.drawerUserId, currentCorrectIds)}
+                >
+                    <div className="participant-main">
+                      <div className="participant-heading">
+                        <strong>{participant.nickname}</strong>
+                        {participant.isHost ? <span className="host-badge">Host</span> : null}
+                      </div>
+                      <p>{participant.score} pts</p>
+                    </div>
                 </li>
               ))}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Guess Feed</p>
-              <h2>Chat, correct guesses, and answer hiding</h2>
+            </ul>
             </div>
           </div>
+        </aside>
 
-          <ul className="chat-list">
-            {chat.map((message) => (
-              <li key={message.id} className={`chat-${message.tone}`}>
-                <strong>{message.nickname}</strong>
-                <span>{message.text}</span>
-              </li>
-            ))}
-          </ul>
+        <section className="panel game-center-panel">
+          <div className="board-shell">
+            <div className="board-frame">
+              <div className="grid-overlay" />
+              <CanvasBoard
+                strokes={boardStrokes}
+                canDraw={Boolean(canDraw)}
+                tool={tool}
+                color={tool === 'ERASER' ? '#ffffff' : color}
+                size={Math.max(2, size * 2)}
+                onCommitStroke={handleCommitStroke}
+              />
 
-          <label className="field">
-            <span>Guess input for current turn</span>
-            <input placeholder={`Submit guess for ${currentTurn?.turnId ?? 'turn'}...`} />
-          </label>
+              {roomState === 'RUNNING' && currentTurn?.selectedWord && viewerRole === 'drawer' ? (
+                <div className="secret-word-banner">{currentTurn.selectedWord}</div>
+              ) : null}
 
-          <div className="button-row">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => {
-                finishGame()
-                onNavigate(routes.result)
-              }}
-            >
-              Finish mock game
-            </button>
-            <button type="button" className="secondary-button" onClick={() => setConnectionStatus('reconnecting')}>
-              Snapshot recovery
-            </button>
+              {roomState === 'RUNNING' && currentTurn?.phase === 'DRAWING' && viewerRole !== 'drawer' ? (
+                <div className="secret-word-banner secret-word-banner-masked">
+                  {getMaskedWord(currentTurn.selectedWord)}
+                </div>
+              ) : null}
+
+              {isHost && roomState === 'LOBBY' ? (
+                <button
+                  type="button"
+                  className="board-settings-toggle secondary-button"
+                  onClick={() => setSettingsOpen((open) => !open)}
+                >
+                  {settingsOpen ? '설정 닫기' : '설정 열기'}
+                </button>
+              ) : null}
+
+              {!canDraw ? (
+                <div className="draw-lock-copy">
+                  {roomState === 'LOBBY'
+                    ? '설정 화면이 열려 있는 동안에는 그림을 그릴 수 없음'
+                    : '현재 차례인 사람만 그림을 그릴 수 있음'}
+                </div>
+              ) : null}
+
+              {roomState === 'LOBBY' && settingsOpen ? (
+                <div className="canvas-overlay-card">
+                  <div className="overlay-heading">
+                    <p className="panel-label">게임 시작 전 설정 화면</p>
+                    <strong>방장이 시작 전 설정을 바꾸는 영역</strong>
+                  </div>
+                  <div className="lobby-grid">
+                    <label className="field">
+                      <span>Round Count</span>
+                      <input
+                        type="number"
+                        min={3}
+                        max={10}
+                        value={settings.roundCount}
+                        onChange={(event) => applySetting('roundCount', event.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Draw Sec</span>
+                      <input
+                        type="number"
+                        min={20}
+                        max={60}
+                        value={settings.drawSec}
+                        onChange={(event) => applySetting('drawSec', event.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Choice Sec</span>
+                      <input
+                        type="number"
+                        min={5}
+                        max={15}
+                        value={settings.wordChoiceSec}
+                        onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div className="button-row overlay-actions">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => {
+                        setSettingsOpen(false)
+                        startGame()
+                      }}
+                    >
+                      게임 시작
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {previewMode === 'roundStart' ? (
+                <div className="canvas-full-overlay">
+                  <p className="panel-label">라운드 시작 안내 화면</p>
+                  <strong>{currentRound ? `${currentRound.roundNo} 라운드 시작` : '1 라운드 시작'}</strong>
+                </div>
+              ) : null}
+
+              {previewMode === 'wordChoice' && roomState === 'RUNNING' && currentTurn ? (
+                <div className="canvas-overlay-card canvas-overlay-card-center">
+                  <p className="panel-label">단어 고르기 화면</p>
+                  <strong>{drawer?.nickname} 차례</strong>
+                  <p className="info-copy">지금은 단어를 고르는 상태다.</p>
+                  <div className="button-row overlay-actions">
+                    {currentTurn.wordChoices.map((word) => (
+                      <button key={word} type="button" className="secondary-button" onClick={() => chooseMockWord(word)}>
+                        {word}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {previewMode === 'turnStart' && roomState === 'RUNNING' ? (
+                <div className="canvas-full-overlay">
+                  <p className="panel-label">턴 시작 안내 화면</p>
+                  <strong>{drawer?.nickname ?? '현재 drawer'} 차례</strong>
+                  <span>다음은 {nextDrawerName ?? '라운드 종료'}</span>
+                </div>
+              ) : null}
+
+              {previewMode === 'drawingDrawer' && roomState === 'RUNNING' ? null : null}
+
+              {previewMode === 'drawingGuesser' && roomState === 'RUNNING' ? null : null}
+
+              {previewMode === 'turnEnd' && roomState === 'RUNNING' ? (
+                <div className="canvas-overlay-card canvas-overlay-card-center">
+                  <p className="panel-label">턴 끝난 결과 화면</p>
+                  <strong>{drawer?.nickname ?? '현재 drawer'} 턴 종료</strong>
+                  <div className="earned-score-table">
+                    {earnedScores.map((row) => (
+                      <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                        <span>{row.nickname}</span>
+                        <strong>{row.score} pts</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {previewMode === 'gameResult' ? (
+                <div className="canvas-result-screen">
+                  {ranking.map((participant, index) => (
+                    <div key={participant.userId} className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}>
+                      <span>{index + 1}</span>
+                      <strong>{participant.nickname}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="tool-row">
+              <button
+                type="button"
+                className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
+                onClick={() => setTool('PEN')}
+              >
+                펜
+              </button>
+              <button
+                type="button"
+                className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
+                onClick={() => setTool('ERASER')}
+              >
+                지우개
+              </button>
+              <button
+                type="button"
+                className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
+                onClick={() => setTool('FILL')}
+              >
+                페인트통
+              </button>
+              <button type="button" className="secondary-button" onClick={handleClearCanvas}>
+                전체 지우기
+              </button>
+              <label className="size-control">
+                <span className="size-control-label">굵기 {size}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={9}
+                  step={1}
+                  value={size}
+                  onChange={(event) => setSize(Number(event.target.value))}
+                />
+              </label>
+              <div className="color-palette">
+                {TOOL_COLORS.map((swatch) => (
+                  <button
+                    key={swatch}
+                    type="button"
+                    aria-label={`Select ${swatch}`}
+                    className={swatch === color ? 'color-swatch color-swatch-active' : 'color-swatch'}
+                    style={{ background: swatch }}
+                    onClick={() => {
+                      setTool((currentTool) => (currentTool === 'ERASER' ? 'PEN' : currentTool))
+                      setColor(swatch)
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </section>
+
+        <aside className="panel game-side-panel game-side-panel-right">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Chat</p>
+              <h2>채팅</h2>
+            </div>
+            <div className="pill">항상 입력 가능</div>
+          </div>
+
+          <div className="chat-panel-box">
+            <ul
+              ref={chatListRef}
+              className="chat-list game-chat-list"
+              onScroll={(event) => {
+                const list = event.currentTarget
+                chatStickToBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40
+              }}
+            >
+              {visibleChat.map((message) => (
+                <li key={message.id} className={`chat-${message.tone}`}>
+                  <strong>{message.nickname}</strong>
+                  <span>{message.text}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="chat-input-row">
+              <input
+                value={guessInput}
+                maxLength={50}
+                placeholder="메시지를 입력하세요"
+                onChange={(event) => setGuessInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (shouldSkipEnterSubmit(event)) {
+                    return
+                  }
+
+                  if (event.key === 'Enter') {
+                    submitGuess()
+                  }
+                }}
+              />
+              <button type="button" className="primary-button" onClick={submitGuess}>
+                전송
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <div className="participant-bubble-layer" aria-hidden="true">
+          {participantBubbles.map((bubble) => (
+            <div
+              key={`${bubble.userId}-${bubble.createdAt}`}
+              className="participant-bubble-floating"
+              style={{ top: `${bubble.top}px`, left: `${bubble.left}px` }}
+            >
+              <span className="participant-bubble-text">{bubble.text}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <aside className="preview-shortcuts">
+        <p className="preview-shortcuts-title">바로가기 모음</p>
+        <div className="preview-shortcuts-grid">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              resetToLobby()
+              setLobbyStrokes([])
+              setOverlayPreview('actual')
+              setSettingsOpen(true)
+            }}
+          >
+            로비 설정
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('WORD_CHOICE')
+              setOverlayPreview('roundStart')
+            }}
+          >
+            라운드 시작
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('WORD_CHOICE')
+              setOverlayPreview('turnStart')
+            }}
+          >
+            턴 시작
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('WORD_CHOICE')
+              setOverlayPreview('wordChoice')
+            }}
+          >
+            단어 고르기
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('DRAWING')
+              setOverlayPreview('drawingDrawer')
+            }}
+          >
+            그리기(drawer)
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('DRAWING')
+              setOverlayPreview('drawingGuesser')
+            }}
+          >
+            그리기(guesser)
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              ensureRunning('TURN_END')
+              setOverlayPreview('turnEnd')
+            }}
+          >
+            턴 종료
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              finishGame()
+              setOverlayPreview('actual')
+            }}
+          >
+            게임 결과
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              if (roomState === 'RUNNING') {
+                advanceMockFlow()
+              }
+              setOverlayPreview('actual')
+            }}
+          >
+            실제 흐름
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => onNavigate(routes.main)}
+          >
+            첫 화면
+          </button>
+        </div>
       </aside>
     </div>
   )

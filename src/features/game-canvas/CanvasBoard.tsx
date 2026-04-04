@@ -21,6 +21,7 @@ type DraftStroke = Omit<CanvasStroke, 'id'>
 const BASE_WIDTH = 960
 const BASE_HEIGHT = 640
 const MAX_POINTS_PER_STROKE = 5
+const FILL_TOLERANCE = 12
 
 function getCanvasPoint(
   event: ReactPointerEvent<HTMLCanvasElement>,
@@ -35,7 +36,98 @@ function getCanvasPoint(
 }
 
 function strokeColor(stroke: Pick<CanvasStroke, 'tool' | 'color'>) {
-  return stroke.tool === 'ERASER' ? '#fffaf0' : stroke.color
+  return stroke.tool === 'ERASER' ? '#ffffff' : stroke.color
+}
+
+function colorsMatch(
+  imageData: Uint8ClampedArray,
+  index: number,
+  target: [number, number, number, number],
+  tolerance: number,
+) {
+  return (
+    Math.abs(imageData[index] - target[0]) <= tolerance &&
+    Math.abs(imageData[index + 1] - target[1]) <= tolerance &&
+    Math.abs(imageData[index + 2] - target[2]) <= tolerance &&
+    Math.abs(imageData[index + 3] - target[3]) <= tolerance
+  )
+}
+
+function hexToRgba(color: string): [number, number, number, number] {
+  const hex = color.replace('#', '')
+  const normalized =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map((char) => `${char}${char}`)
+          .join('')
+      : hex
+
+  const value = Number.parseInt(normalized, 16)
+
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255, 255]
+}
+
+function floodFill(
+  context: CanvasRenderingContext2D,
+  point: CanvasPoint,
+  fillColor: string,
+) {
+  const x = Math.max(0, Math.min(BASE_WIDTH - 1, Math.floor(point.x * BASE_WIDTH)))
+  const y = Math.max(0, Math.min(BASE_HEIGHT - 1, Math.floor(point.y * BASE_HEIGHT)))
+  const image = context.getImageData(0, 0, BASE_WIDTH, BASE_HEIGHT)
+  const { data, width, height } = image
+  const startIndex = (y * width + x) * 4
+  const target: [number, number, number, number] = [
+    data[startIndex],
+    data[startIndex + 1],
+    data[startIndex + 2],
+    data[startIndex + 3],
+  ]
+  const replacement = hexToRgba(fillColor)
+
+  if (
+    target[0] === replacement[0] &&
+    target[1] === replacement[1] &&
+    target[2] === replacement[2] &&
+    target[3] === replacement[3]
+  ) {
+    return
+  }
+
+  const stack = [[x, y]]
+
+  while (stack.length > 0) {
+    const next = stack.pop()
+
+    if (!next) {
+      continue
+    }
+
+    const [cx, cy] = next
+
+    if (cx < 0 || cy < 0 || cx >= width || cy >= height) {
+      continue
+    }
+
+    const index = (cy * width + cx) * 4
+
+    if (!colorsMatch(data, index, target, FILL_TOLERANCE)) {
+      continue
+    }
+
+    data[index] = replacement[0]
+    data[index + 1] = replacement[1]
+    data[index + 2] = replacement[2]
+    data[index + 3] = replacement[3]
+
+    stack.push([cx + 1, cy])
+    stack.push([cx - 1, cy])
+    stack.push([cx, cy + 1])
+    stack.push([cx, cy - 1])
+  }
+
+  context.putImageData(image, 0, 0)
 }
 
 function drawStroke(
@@ -43,6 +135,11 @@ function drawStroke(
   stroke: Pick<CanvasStroke, 'tool' | 'color' | 'size' | 'points'>,
 ) {
   if (stroke.points.length === 0) {
+    return
+  }
+
+  if (stroke.tool === 'FILL') {
+    floodFill(context, stroke.points[0], stroke.color)
     return
   }
 
@@ -109,7 +206,7 @@ export function CanvasBoard({
     }
 
     context.clearRect(0, 0, canvas.width, canvas.height)
-    context.fillStyle = '#fffaf0'
+    context.fillStyle = '#ffffff'
     context.fillRect(0, 0, canvas.width, canvas.height)
 
     strokes.forEach((stroke) => drawStroke(context, stroke))
@@ -158,6 +255,19 @@ export function CanvasBoard({
 
     const canvas = canvasRef.current
     if (!canvas) {
+      return
+    }
+
+    if (tool === 'FILL') {
+      const committedStroke = buildCommittedStroke({
+        tool,
+        color,
+        size,
+        points: [getCanvasPoint(event, canvas)],
+      })
+
+      onCommitStroke(committedStroke)
+      redraw()
       return
     }
 

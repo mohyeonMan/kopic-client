@@ -8,15 +8,16 @@ type EntryPageProps = {
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const { state, updateNickname, setConnectionStatus } = useAppState()
+  const nicknameValid = state.session.nickname.trim().length >= 2
 
   return (
     <div className="page-grid">
       <section className="panel hero-panel">
-        <p className="eyebrow">Phase 1</p>
-        <h2>Entry and room bootstrap</h2>
+        <p className="eyebrow">Main Page</p>
+        <h2>Enter the room flow</h2>
         <p className="hero-copy">
-          닉네임과 room 진입 컨텍스트를 먼저 만들고, 이후 HTTP API와 WS handshake를 연결할 수 있도록
-          화면 골격을 분리했다.
+          캐주얼한 스케치를 바로 시작할 수 있게 진입 결정을 단순하게 유지한다. 닉네임을 먼저 잡고
+          무작위 매칭 또는 private room 생성 중 하나를 선택한다.
         </p>
 
         <label className="field">
@@ -27,20 +28,32 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             placeholder="Enter nickname"
           />
         </label>
+        <p className="info-copy">
+          닉네임은 2자 이상으로 가정한다. 요청/에러/로딩 처리만 붙이면 그대로 실제 진입 버튼으로 전환 가능하다.
+        </p>
 
         <div className="button-row">
-          <button type="button" className="primary-button" onClick={() => onNavigate(routes.lobby)}>
-            Create private room
+          <button
+            type="button"
+            className="primary-button"
+            disabled={!nicknameValid}
+            onClick={() => {
+              setConnectionStatus('connecting')
+              onNavigate(routes.game)
+            }}
+          >
+            Random matching
           </button>
           <button
             type="button"
             className="secondary-button"
+            disabled={!nicknameValid}
             onClick={() => {
-              setConnectionStatus('connecting')
-              onNavigate(routes.lobby)
+              setConnectionStatus('synced')
+              onNavigate(routes.game)
             }}
           >
-            Join by room code
+            Create private room
           </button>
         </div>
       </section>
@@ -55,10 +68,10 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
         </div>
 
         <ul className="check-list">
-          <li>nickname input</li>
+          <li>nickname validation gate</li>
+          <li>random matching CTA</li>
           <li>private room create CTA</li>
-          <li>room code join CTA</li>
-          <li>latest error/connection hint slot</li>
+          <li>request error / loading slot</li>
         </ul>
 
         <div className="status-card">
@@ -78,7 +91,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             </div>
             <div>
               <dt>Next Route</dt>
-              <dd>{routes.lobby}</dd>
+              <dd>{routes.game}</dd>
             </div>
           </dl>
         </div>
