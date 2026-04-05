@@ -73,10 +73,10 @@ function floodFill(
   point: CanvasPoint,
   fillColor: string,
 ) {
-  const x = Math.max(0, Math.min(BASE_WIDTH - 1, Math.floor(point.x * BASE_WIDTH)))
-  const y = Math.max(0, Math.min(BASE_HEIGHT - 1, Math.floor(point.y * BASE_HEIGHT)))
-  const image = context.getImageData(0, 0, BASE_WIDTH, BASE_HEIGHT)
+  const image = context.getImageData(0, 0, context.canvas.width, context.canvas.height)
   const { data, width, height } = image
+  const x = Math.max(0, Math.min(width - 1, Math.floor(point.x * width)))
+  const y = Math.max(0, Math.min(height - 1, Math.floor(point.y * height)))
   const startIndex = (y * width + x) * 4
   const target: [number, number, number, number] = [
     data[startIndex],
@@ -190,12 +190,17 @@ export function CanvasBoard({
   size,
   onCommitStroke,
 }: CanvasBoardProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const committedCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const draftCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const strokesRef = useRef(strokes)
   const draftStrokeRef = useRef<DraftStroke | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
+  const renderedStrokeIdsRef = useRef<string[]>([])
 
-  const redraw = useCallback(() => {
-    const canvas = canvasRef.current
+  strokesRef.current = strokes
+
+  const syncCommittedCanvas = useCallback((nextStrokes: CanvasStroke[], forceFullRedraw = false) => {
+    const canvas = committedCanvasRef.current
     if (!canvas) {
       return
     }
@@ -205,55 +210,114 @@ export function CanvasBoard({
       return
     }
 
-    context.clearRect(0, 0, canvas.width, canvas.height)
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
+    const renderedStrokeIds = renderedStrokeIdsRef.current
+    const hasMismatch =
+      renderedStrokeIds.length > nextStrokes.length ||
+      renderedStrokeIds.some((id, index) => nextStrokes[index]?.id !== id)
 
-    strokes.forEach((stroke) => drawStroke(context, stroke))
+    if (forceFullRedraw || hasMismatch) {
+      context.save()
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.restore()
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
 
-    if (draftStrokeRef.current) {
-      drawStroke(context, draftStrokeRef.current)
+      nextStrokes.forEach((stroke) => drawStroke(context, stroke))
+      renderedStrokeIdsRef.current = nextStrokes.map((stroke) => stroke.id)
+      return
     }
-  }, [strokes])
 
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current
+    if (renderedStrokeIds.length === nextStrokes.length) {
+      return
+    }
+
+    const appendedStrokes = nextStrokes.slice(renderedStrokeIds.length)
+    appendedStrokes.forEach((stroke) => drawStroke(context, stroke))
+    renderedStrokeIdsRef.current = [...renderedStrokeIds, ...appendedStrokes.map((stroke) => stroke.id)]
+  }, [])
+
+  const redrawDraft = useCallback(() => {
+    const canvas = draftCanvasRef.current
     if (!canvas) {
       return
     }
 
-    const resize = () => {
-      const ratio = window.devicePixelRatio || 1
-      canvas.width = BASE_WIDTH * ratio
-      canvas.height = BASE_HEIGHT * ratio
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
+    const context = canvas.getContext('2d')
+    if (!context) {
+      return
+    }
 
-      const context = canvas.getContext('2d')
-      if (!context) {
+    context.save()
+    context.setTransform(1, 0, 0, 1, 0, 0)
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.restore()
+
+    if (draftStrokeRef.current) {
+      drawStroke(context, draftStrokeRef.current)
+    }
+  }, [])
+
+  const appendCommittedStroke = useCallback((stroke: CanvasStroke) => {
+    const canvas = committedCanvasRef.current
+    if (!canvas) {
+      return
+    }
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      return
+    }
+
+    drawStroke(context, stroke)
+    renderedStrokeIdsRef.current = [...renderedStrokeIdsRef.current, stroke.id]
+  }, [])
+
+  useLayoutEffect(() => {
+    const resize = () => {
+      const committedCanvas = committedCanvasRef.current
+      const draftCanvas = draftCanvasRef.current
+      if (!committedCanvas || !draftCanvas) {
         return
       }
 
-      context.setTransform(ratio, 0, 0, ratio, 0, 0)
-      redraw()
+      const ratio = window.devicePixelRatio || 1
+
+      ;[committedCanvas, draftCanvas].forEach((canvas) => {
+        canvas.width = BASE_WIDTH * ratio
+        canvas.height = BASE_HEIGHT * ratio
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+
+        const context = canvas.getContext('2d')
+        if (!context) {
+          return
+        }
+
+        context.setTransform(ratio, 0, 0, ratio, 0, 0)
+      })
+
+      renderedStrokeIdsRef.current = []
+      syncCommittedCanvas(strokesRef.current, true)
+      redrawDraft()
     }
 
     resize()
     window.addEventListener('resize', resize)
 
     return () => window.removeEventListener('resize', resize)
-  }, [redraw])
+  }, [redrawDraft, syncCommittedCanvas])
 
   useEffect(() => {
-    redraw()
-  }, [redraw])
+    syncCommittedCanvas(strokes, false)
+  }, [strokes, syncCommittedCanvas])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!canDraw) {
       return
     }
 
-    const canvas = canvasRef.current
+    const canvas = draftCanvasRef.current
     if (!canvas) {
       return
     }
@@ -266,8 +330,8 @@ export function CanvasBoard({
         points: [getCanvasPoint(event, canvas)],
       })
 
+      appendCommittedStroke(committedStroke)
       onCommitStroke(committedStroke)
-      redraw()
       return
     }
 
@@ -279,11 +343,11 @@ export function CanvasBoard({
       size,
       points: [getCanvasPoint(event, canvas)],
     }
-    redraw()
+    redrawDraft()
   }
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
+    const canvas = draftCanvasRef.current
     if (!canvas || activePointerIdRef.current !== event.pointerId || !draftStrokeRef.current) {
       return
     }
@@ -298,6 +362,7 @@ export function CanvasBoard({
         points: flushedPoints,
       })
 
+      appendCommittedStroke(committedStroke)
       onCommitStroke(committedStroke)
       console.log('DRAW_STROKE mock', committedStroke)
 
@@ -305,7 +370,7 @@ export function CanvasBoard({
         ...draftStrokeRef.current,
         points: [carryPoint, nextPoints[nextPoints.length - 1]],
       }
-      redraw()
+      redrawDraft()
       return
     }
 
@@ -313,11 +378,11 @@ export function CanvasBoard({
       ...draftStrokeRef.current,
       points: nextPoints,
     }
-    redraw()
+    redrawDraft()
   }
 
   const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
+    const canvas = draftCanvasRef.current
     if (!canvas || activePointerIdRef.current !== event.pointerId || !draftStrokeRef.current) {
       return
     }
@@ -328,30 +393,34 @@ export function CanvasBoard({
     const committedStroke = buildCommittedStroke(draftStrokeRef.current)
 
     draftStrokeRef.current = null
+    appendCommittedStroke(committedStroke)
     onCommitStroke(committedStroke)
     console.log('DRAW_STROKE mock', committedStroke)
-    redraw()
+    redrawDraft()
   }
 
   const cancelStroke = () => {
     activePointerIdRef.current = null
     draftStrokeRef.current = null
-    redraw()
+    redrawDraft()
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={canDraw ? 'draw-surface draw-surface-active' : 'draw-surface'}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={finishStroke}
-      onPointerCancel={cancelStroke}
-      onPointerLeave={(event) => {
-        if (event.buttons === 0) {
-          cancelStroke()
-        }
-      }}
-    />
+    <>
+      <canvas ref={committedCanvasRef} className="draw-surface draw-surface-static" aria-hidden="true" />
+      <canvas
+        ref={draftCanvasRef}
+        className={canDraw ? 'draw-surface draw-surface-active' : 'draw-surface'}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishStroke}
+        onPointerCancel={cancelStroke}
+        onPointerLeave={(event) => {
+          if (event.buttons === 0) {
+            cancelStroke()
+          }
+        }}
+      />
+    </>
   )
 }

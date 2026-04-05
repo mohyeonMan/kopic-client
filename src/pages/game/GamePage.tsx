@@ -53,10 +53,19 @@ const TOOL_COLORS = [
   '#ffffff',
 ] as const
 
+const SETTING_OPTIONS = {
+  roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
+  drawSec: [20, 30, 40, 50, 60],
+  wordChoiceSec: [5, 7, 10, 12, 15],
+} as const
+
+type NumericSettingKey = keyof typeof SETTING_OPTIONS
+
 type EarnedScore = {
   nickname: string
   score: number
   isCorrect: boolean
+  role: 'drawer' | 'correct' | 'miss'
 }
 
 type ParticipantBubblePosition = {
@@ -82,14 +91,14 @@ function participantTone(participant: Participant, drawerUserId?: string, correc
 function buildEarnedScores(participants: Participant[], correctUserIds: string[], drawerUserId?: string) {
   const rows: EarnedScore[] = participants.map((participant) => {
     if (participant.userId === drawerUserId) {
-      return { nickname: participant.nickname, score: 40, isCorrect: false }
+      return { nickname: participant.nickname, score: 40, isCorrect: false, role: 'drawer' }
     }
 
     if (correctUserIds.includes(participant.userId)) {
-      return { nickname: participant.nickname, score: 80, isCorrect: true }
+      return { nickname: participant.nickname, score: 80, isCorrect: true, role: 'correct' }
     }
 
-    return { nickname: participant.nickname, score: 0, isCorrect: false }
+    return { nickname: participant.nickname, score: 0, isCorrect: false, role: 'miss' }
   })
 
   return rows.sort((left, right) => right.score - left.score)
@@ -292,7 +301,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
     }
   }, [participantBubbleById])
 
-  const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
+  const applySetting = (key: NumericSettingKey, value: string) => {
     patchSettings({ [key]: Number(value) })
   }
 
@@ -413,30 +422,30 @@ export function GamePage({ onNavigate }: GamePageProps) {
       </section>
 
       <section ref={stageRef} className="game-stage-layout">
-        <aside className="panel game-side-panel game-side-panel-left">
-          <div className="room-code-row">
-            <div>
-              <p className="eyebrow">Room</p>
-              <strong className="room-code-text">{roomCode}</strong>
-            </div>
-            <button type="button" className="secondary-button" onClick={handleCopyCode}>
-              {copied ? '복사됨' : '링크 복사'}
-            </button>
-          </div>
+	        <aside className="panel game-side-panel game-side-panel-left">
+	          <div className="room-code-row">
+	            <div>
+	              <p className="eyebrow">Room</p>
+	              <strong className="room-code-text">{roomCode}</strong>
+	            </div>
+	            <button type="button" className="secondary-button" onClick={handleCopyCode}>
+	              {copied ? '복사됨' : '링크 복사'}
+	            </button>
+	          </div>
 
-          <div ref={sidePanelScrollRef} className="side-panel-scroll">
-            <div className="side-panel-scroll-inner">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Participants</p>
-                  <h2>참여자</h2>
-                </div>
-                <div className="pill">{participants.length}명</div>
-              </div>
-
-              <ul className="participant-cards">
-                {participants.map((participant) => (
-                <li
+	          <div className="section-heading">
+	            <div>
+	              <p className="eyebrow">Participants</p>
+	              <h2>참여자</h2>
+	            </div>
+	            <div className="pill">{participants.length}명</div>
+	          </div>
+	
+	          <div ref={sidePanelScrollRef} className="side-panel-scroll">
+	            <div className="side-panel-scroll-inner">
+	              <ul className="participant-cards">
+	                {participants.map((participant) => (
+	                <li
                   key={participant.userId}
                   ref={(element) => {
                     participantItemRefs.current.set(participant.userId, element)
@@ -470,6 +479,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 onCommitStroke={handleCommitStroke}
               />
 
+              {isHost && roomState === 'LOBBY' ? (
+                <button
+                  type="button"
+                  className={settingsOpen ? 'board-settings-toggle secondary-button board-settings-toggle-hidden' : 'board-settings-toggle secondary-button'}
+                  onClick={() => setSettingsOpen((open) => !open)}
+                >
+                  설정 열기
+                </button>
+              ) : null}
+
               {roomState === 'RUNNING' && currentTurn?.selectedWord && viewerRole === 'drawer' ? (
                 <div className="secret-word-banner">{currentTurn.selectedWord}</div>
               ) : null}
@@ -480,26 +499,15 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </div>
               ) : null}
 
-              {isHost && roomState === 'LOBBY' ? (
-                <button
-                  type="button"
-                  className="board-settings-toggle secondary-button"
-                  onClick={() => setSettingsOpen((open) => !open)}
+              {roomState === 'LOBBY' && isHost ? (
+                <div
+                  className={
+                    settingsOpen
+                      ? 'canvas-overlay-card canvas-overlay-card-settings canvas-overlay-card-settings-open'
+                      : 'canvas-overlay-card canvas-overlay-card-settings canvas-overlay-card-settings-closed'
+                  }
+                  aria-hidden={!settingsOpen}
                 >
-                  {settingsOpen ? '설정 닫기' : '설정 열기'}
-                </button>
-              ) : null}
-
-              {!canDraw ? (
-                <div className="draw-lock-copy">
-                  {roomState === 'LOBBY'
-                    ? '설정 화면이 열려 있는 동안에는 그림을 그릴 수 없음'
-                    : '현재 차례인 사람만 그림을 그릴 수 있음'}
-                </div>
-              ) : null}
-
-              {roomState === 'LOBBY' && settingsOpen ? (
-                <div className="canvas-overlay-card">
                   <div className="overlay-heading">
                     <p className="panel-label">게임 시작 전 설정 화면</p>
                     <strong>방장이 시작 전 설정을 바꾸는 영역</strong>
@@ -507,33 +515,42 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   <div className="lobby-grid">
                     <label className="field">
                       <span>Round Count</span>
-                      <input
-                        type="number"
-                        min={3}
-                        max={10}
+                      <select
                         value={settings.roundCount}
                         onChange={(event) => applySetting('roundCount', event.target.value)}
-                      />
+                      >
+                        {SETTING_OPTIONS.roundCount.map((option) => (
+                          <option key={option} value={option}>
+                            {option} 라운드
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label className="field">
                       <span>Draw Sec</span>
-                      <input
-                        type="number"
-                        min={20}
-                        max={60}
+                      <select
                         value={settings.drawSec}
                         onChange={(event) => applySetting('drawSec', event.target.value)}
-                      />
+                      >
+                        {SETTING_OPTIONS.drawSec.map((option) => (
+                          <option key={option} value={option}>
+                            {option}초
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label className="field">
                       <span>Choice Sec</span>
-                      <input
-                        type="number"
-                        min={5}
-                        max={15}
+                      <select
                         value={settings.wordChoiceSec}
                         onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
-                      />
+                      >
+                        {SETTING_OPTIONS.wordChoiceSec.map((option) => (
+                          <option key={option} value={option}>
+                            {option}초
+                          </option>
+                        ))}
+                      </select>
                     </label>
                   </div>
                   <div className="button-row overlay-actions">
@@ -547,28 +564,52 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     >
                       게임 시작
                     </button>
-                    <button type="button" className="secondary-button" onClick={() => setSettingsOpen(false)}>
+                    <button type="button" className="secondary-button settings-close-button" onClick={() => setSettingsOpen(false)}>
                       닫기
                     </button>
                   </div>
                 </div>
               ) : null}
 
-              {previewMode === 'roundStart' ? (
-                <div className="canvas-full-overlay">
+              {roomState === 'RUNNING' ? (
+                <div
+                  className={
+                    previewMode === 'roundStart'
+                      ? 'canvas-full-overlay canvas-full-overlay-open'
+                      : 'canvas-full-overlay canvas-full-overlay-closed'
+                  }
+                  aria-hidden={previewMode !== 'roundStart'}
+                >
                   <p className="panel-label">라운드 시작 안내 화면</p>
                   <strong>{currentRound ? `${currentRound.roundNo} 라운드 시작` : '1 라운드 시작'}</strong>
                 </div>
               ) : null}
 
-              {previewMode === 'wordChoice' && roomState === 'RUNNING' && currentTurn ? (
-                <div className="canvas-overlay-card canvas-overlay-card-center">
-                  <p className="panel-label">단어 고르기 화면</p>
-                  <strong>{drawer?.nickname} 차례</strong>
-                  <p className="info-copy">지금은 단어를 고르는 상태다.</p>
-                  <div className="button-row overlay-actions">
+              {roomState === 'RUNNING' && currentTurn ? (
+                <div
+                  className={
+                    previewMode === 'wordChoice'
+                      ? 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-open'
+                      : 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-closed'
+                  }
+                  aria-hidden={previewMode !== 'wordChoice'}
+                >
+                  <div className="overlay-heading">
+                    <p className="panel-label">단어 선택 단계</p>
+                    <strong>{drawer?.nickname} 차례</strong>
+                    <p className="info-copy">아래 단어 중 하나를 골라 바로 그림을 시작한다.</p>
+                  </div>
+                  <div className="button-row overlay-actions word-choice-actions">
                     {currentTurn.wordChoices.map((word) => (
-                      <button key={word} type="button" className="secondary-button" onClick={() => chooseMockWord(word)}>
+                      <button
+                        key={word}
+                        type="button"
+                        className="word-choice-button"
+                        onClick={() => {
+                          setOverlayPreview('actual')
+                          chooseMockWord(word)
+                        }}
+                      >
                         {word}
                       </button>
                     ))}
@@ -576,8 +617,15 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </div>
               ) : null}
 
-              {previewMode === 'turnStart' && roomState === 'RUNNING' ? (
-                <div className="canvas-full-overlay">
+              {roomState === 'RUNNING' ? (
+                <div
+                  className={
+                    previewMode === 'turnStart'
+                      ? 'canvas-full-overlay canvas-full-overlay-open'
+                      : 'canvas-full-overlay canvas-full-overlay-closed'
+                  }
+                  aria-hidden={previewMode !== 'turnStart'}
+                >
                   <p className="panel-label">턴 시작 안내 화면</p>
                   <strong>{drawer?.nickname ?? '현재 drawer'} 차례</strong>
                   <span>다음은 {nextDrawerName ?? '라운드 종료'}</span>
@@ -588,17 +636,45 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
               {previewMode === 'drawingGuesser' && roomState === 'RUNNING' ? null : null}
 
-              {previewMode === 'turnEnd' && roomState === 'RUNNING' ? (
-                <div className="canvas-overlay-card canvas-overlay-card-center">
-                  <p className="panel-label">턴 끝난 결과 화면</p>
-                  <strong>{drawer?.nickname ?? '현재 drawer'} 턴 종료</strong>
-                  <div className="earned-score-table">
-                    {earnedScores.map((row) => (
-                      <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
-                        <span>{row.nickname}</span>
-                        <strong>{row.score} pts</strong>
-                      </div>
-                    ))}
+              {roomState === 'RUNNING' ? (
+                <div
+                  className={
+                    previewMode === 'turnEnd'
+                      ? 'canvas-full-overlay canvas-full-overlay-open canvas-full-overlay-turn-end'
+                      : 'canvas-full-overlay canvas-full-overlay-closed canvas-full-overlay-turn-end'
+                  }
+                  aria-hidden={previewMode !== 'turnEnd'}
+                >
+                  <div className="canvas-full-overlay-panel">
+                    <p className="panel-label">턴 끝난 결과 화면</p>
+                    <strong>{drawer?.nickname ?? '현재 drawer'} 턴 종료</strong>
+                    <div className="earned-score-table-head" aria-hidden="true">
+                      <span>순위</span>
+                      <span>참여자</span>
+                      <span>점수</span>
+                    </div>
+                    <div className="earned-score-table">
+                      {earnedScores.map((row, index) => (
+                        <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                          <span className="earned-score-rank">{index + 1}</span>
+                          <div className="earned-score-row-main">
+                            <span className="earned-score-name">{row.nickname}</span>
+                            <span
+                              className={
+                                row.role === 'correct'
+                                  ? 'earned-score-role earned-score-role-correct'
+                                  : row.role === 'drawer'
+                                    ? 'earned-score-role earned-score-role-drawer'
+                                    : 'earned-score-role'
+                              }
+                            >
+                              {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
+                            </span>
+                          </div>
+                          <strong className="earned-score-points">{row.score} pts</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -607,8 +683,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 <div className="canvas-result-screen">
                   {ranking.map((participant, index) => (
                     <div key={participant.userId} className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}>
-                      <span>{index + 1}</span>
-                      <strong>{participant.nickname}</strong>
+                      <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
                     </div>
                   ))}
                 </div>
@@ -635,7 +710,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
                 onClick={() => setTool('FILL')}
               >
-                페인트통
+                채우기
               </button>
               <button type="button" className="secondary-button" onClick={handleClearCanvas}>
                 전체 지우기
@@ -745,7 +820,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
               setSettingsOpen(true)
             }}
           >
-            로비 설정
+            게임 설정
           </button>
           <button
             type="button"

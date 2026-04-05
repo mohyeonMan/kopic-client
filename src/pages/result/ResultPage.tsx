@@ -21,8 +21,7 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
         </p>
 
         <div className="winner-card">
-          <strong>{winner.nickname}</strong>
-          <span>{winner.score} pts</span>
+          <strong>{`1# ${winner.nickname} ${winner.score} pts`}</strong>
         </div>
 
         <div className="button-row">
@@ -54,9 +53,7 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
         <ul className="score-list">
           {ranking.map((participant, index) => (
             <li key={participant.userId}>
-              <span>#{index + 1}</span>
-              <strong>{participant.nickname}</strong>
-              <span>{participant.score} pts</span>
+              <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
             </li>
           ))}
         </ul>
