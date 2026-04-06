@@ -21,7 +21,9 @@ type DraftStroke = Omit<CanvasStroke, 'id'>
 const BASE_WIDTH = 960
 const BASE_HEIGHT = 640
 const MAX_POINTS_PER_STROKE = 5
-const FILL_TOLERANCE = 12
+const FILL_TOLERANCE = 56
+const SOLID_STROKE_ALPHA_THRESHOLD = 8
+const SOLID_STROKE_PADDING = 2
 
 function getCanvasPoint(
   event: ReactPointerEvent<HTMLCanvasElement>,
@@ -175,6 +177,58 @@ function drawStroke(
   context.restore()
 }
 
+function paintSolidStroke(
+  context: CanvasRenderingContext2D,
+  maskContext: CanvasRenderingContext2D,
+  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'size' | 'points'>,
+) {
+  if (stroke.points.length === 0) {
+    return
+  }
+
+  const maskCanvas = maskContext.canvas
+  const ratio = maskContext.getTransform().a || 1
+  const xs = stroke.points.map((point) => point.x * BASE_WIDTH)
+  const ys = stroke.points.map((point) => point.y * BASE_HEIGHT)
+  const padding = stroke.size / 2 + SOLID_STROKE_PADDING
+  const left = Math.max(0, Math.floor((Math.min(...xs) - padding) * ratio))
+  const top = Math.max(0, Math.floor((Math.min(...ys) - padding) * ratio))
+  const right = Math.min(maskCanvas.width, Math.ceil((Math.max(...xs) + padding) * ratio))
+  const bottom = Math.min(maskCanvas.height, Math.ceil((Math.max(...ys) + padding) * ratio))
+  const width = right - left
+  const height = bottom - top
+
+  if (width <= 0 || height <= 0) {
+    return
+  }
+
+  maskContext.save()
+  maskContext.setTransform(1, 0, 0, 1, 0, 0)
+  maskContext.clearRect(0, 0, maskCanvas.width, maskCanvas.height)
+  maskContext.restore()
+
+  drawStroke(maskContext, stroke)
+
+  const maskImage = maskContext.getImageData(left, top, width, height)
+  const nextImage = context.getImageData(left, top, width, height)
+  const nextData = nextImage.data
+  const maskData = maskImage.data
+  const [red, green, blue] = hexToRgba(strokeColor(stroke))
+
+  for (let index = 0; index < maskData.length; index += 4) {
+    if (maskData[index + 3] < SOLID_STROKE_ALPHA_THRESHOLD) {
+      continue
+    }
+
+    nextData[index] = red
+    nextData[index + 1] = green
+    nextData[index + 2] = blue
+    nextData[index + 3] = 255
+  }
+
+  context.putImageData(nextImage, left, top)
+}
+
 function buildCommittedStroke(draftStroke: DraftStroke): CanvasStroke {
   return {
     id: crypto.randomUUID(),
@@ -192,12 +246,30 @@ export function CanvasBoard({
 }: CanvasBoardProps) {
   const committedCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const draftCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const strokeMaskCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const strokesRef = useRef(strokes)
   const draftStrokeRef = useRef<DraftStroke | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
   const renderedStrokeIdsRef = useRef<string[]>([])
 
   strokesRef.current = strokes
+
+  const drawCommittedStroke = useCallback((context: CanvasRenderingContext2D, stroke: CanvasStroke) => {
+    if (stroke.tool === 'FILL') {
+      drawStroke(context, stroke)
+      return
+    }
+
+    const maskCanvas = strokeMaskCanvasRef.current
+    const maskContext = maskCanvas?.getContext('2d')
+
+    if (!maskContext) {
+      drawStroke(context, stroke)
+      return
+    }
+
+    paintSolidStroke(context, maskContext, stroke)
+  }, [])
 
   const syncCommittedCanvas = useCallback((nextStrokes: CanvasStroke[], forceFullRedraw = false) => {
     const canvas = committedCanvasRef.current
@@ -223,7 +295,7 @@ export function CanvasBoard({
       context.fillStyle = '#ffffff'
       context.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
 
-      nextStrokes.forEach((stroke) => drawStroke(context, stroke))
+      nextStrokes.forEach((stroke) => drawCommittedStroke(context, stroke))
       renderedStrokeIdsRef.current = nextStrokes.map((stroke) => stroke.id)
       return
     }
@@ -233,9 +305,9 @@ export function CanvasBoard({
     }
 
     const appendedStrokes = nextStrokes.slice(renderedStrokeIds.length)
-    appendedStrokes.forEach((stroke) => drawStroke(context, stroke))
+    appendedStrokes.forEach((stroke) => drawCommittedStroke(context, stroke))
     renderedStrokeIdsRef.current = [...renderedStrokeIds, ...appendedStrokes.map((stroke) => stroke.id)]
-  }, [])
+  }, [drawCommittedStroke])
 
   const redrawDraft = useCallback(() => {
     const canvas = draftCanvasRef.current
@@ -269,9 +341,9 @@ export function CanvasBoard({
       return
     }
 
-    drawStroke(context, stroke)
+    drawCommittedStroke(context, stroke)
     renderedStrokeIdsRef.current = [...renderedStrokeIdsRef.current, stroke.id]
-  }, [])
+  }, [drawCommittedStroke])
 
   useLayoutEffect(() => {
     const resize = () => {
@@ -281,13 +353,22 @@ export function CanvasBoard({
         return
       }
 
+      if (!strokeMaskCanvasRef.current) {
+        strokeMaskCanvasRef.current = document.createElement('canvas')
+      }
+
+      const strokeMaskCanvas = strokeMaskCanvasRef.current
+
       const ratio = window.devicePixelRatio || 1
 
-      ;[committedCanvas, draftCanvas].forEach((canvas) => {
+      ;[committedCanvas, draftCanvas, strokeMaskCanvas].forEach((canvas) => {
         canvas.width = BASE_WIDTH * ratio
         canvas.height = BASE_HEIGHT * ratio
-        canvas.style.width = '100%'
-        canvas.style.height = '100%'
+
+        if (canvas !== strokeMaskCanvas) {
+          canvas.style.width = '100%'
+          canvas.style.height = '100%'
+        }
 
         const context = canvas.getContext('2d')
         if (!context) {

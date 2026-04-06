@@ -764,6 +764,14 @@
   width: auto;
 }
 
+.game-side-panel-right .section-heading {
+  margin-bottom: 8px;
+}
+
+.game-side-panel-right .eyebrow {
+  margin-bottom: 0;
+}
+
 .game-side-panel-right .chat-panel-box {
   flex: 1 1 auto;
   min-height: 0;
@@ -1726,7 +1734,10 @@
   top: 20px;
   left: 50%;
   z-index: 4;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+  transition:
+    transform 240ms ease,
+    opacity 240ms ease;
   padding: 10px 16px;
   border-radius: 999px;
   background: rgba(255, 252, 247, 0.9);
@@ -1735,8 +1746,37 @@
   box-shadow: var(--shadow-soft);
 }
 
+.secret-word-banner-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(-50%, 0, 0);
+}
+
+.secret-word-banner-closed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-50%, calc(-100% - 24px), 0);
+}
+
+.secret-word-banner-landing {
+  animation: secret-word-banner-drop 720ms cubic-bezier(0.18, 0.82, 0.24, 1);
+  transform-origin: top center;
+}
+
 .secret-word-banner-masked {
   letter-spacing: 0.22em;
+}
+
+@keyframes secret-word-banner-drop {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-100% - 28px), 0) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
 }
 
 .board-settings-toggle {
@@ -1938,6 +1978,7 @@
 .chat-panel-box {
   min-height: 0;
   flex: 1 1 auto;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1945,6 +1986,36 @@
   border-radius: 22px;
   background: rgba(29, 53, 87, 0.05);
   overflow: hidden;
+}
+
+.chat-scroll-to-bottom-button {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(225, 122, 46, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: 0 10px 22px rgba(32, 50, 71, 0.16);
+}
+
+.chat-scroll-to-bottom-button::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 9px solid rgba(32, 50, 71, 0.82);
+}
+
+.chat-scroll-to-bottom-button:hover {
+  background: #fffaf0;
 }
 
 .chat-input-row {
@@ -2294,6 +2365,18 @@
     max-height: 210px;
     padding: 8px;
     border-radius: 14px;
+  }
+
+  .chat-scroll-to-bottom-button {
+    bottom: 56px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .chat-scroll-to-bottom-button::before {
+    border-left-width: 5px;
+    border-right-width: 5px;
+    border-top-width: 8px;
   }
 
   .word-choice-actions {

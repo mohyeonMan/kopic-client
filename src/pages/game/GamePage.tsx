@@ -180,6 +180,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
   const [lobbyStrokes, setLobbyStrokes] = useState<CanvasStroke[]>([])
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
+  const [showChatScrollButton, setShowChatScrollButton] = useState(false)
   const stageOverlayOpenRafRef = useRef<number | null>(null)
   const chatListRef = useRef<HTMLUListElement | null>(null)
   const chatStickToBottomRef = useRef(true)
@@ -287,8 +288,22 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
     if (chatStickToBottomRef.current) {
       list.scrollTop = list.scrollHeight
+      setShowChatScrollButton(false)
+      return
     }
+
+    setShowChatScrollButton(true)
   }, [visibleChat])
+
+  const scrollChatToBottom = () => {
+    const list = chatListRef.current
+
+    if (!list) {
+      return
+    }
+
+    list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' })
+  }
 
   useLayoutEffect(() => {
     const stageElement = stageRef.current
@@ -450,6 +465,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
     roomState === 'RUNNING' && STAGE_OVERLAY_PHASES.includes(previewMode as StageOverlayPhase) && (previewMode !== 'wordChoice' || Boolean(currentTurn))
       ? (previewMode as StageOverlayPhase)
       : null
+  const shouldShowSecretWordBanner =
+    roomState === 'RUNNING' &&
+    Boolean(currentTurn?.selectedWord) &&
+    (viewerRole === 'drawer' || currentTurn?.phase === 'DRAWING' || previewMode === 'turnEnd')
+  const isSecretWordBannerClosed = previewMode === 'turnEnd'
 
   const queueStageOverlayOpen = () => {
     if (stageOverlayOpenRafRef.current !== null) {
@@ -620,13 +640,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </button>
               ) : null}
 
-              {roomState === 'RUNNING' && currentTurn?.selectedWord && viewerRole === 'drawer' ? (
-                <div className="secret-word-banner">{currentTurn.selectedWord}</div>
-              ) : null}
-
-              {roomState === 'RUNNING' && currentTurn?.phase === 'DRAWING' && viewerRole !== 'drawer' ? (
-                <div className="secret-word-banner secret-word-banner-masked">
-                  {getMaskedWord(currentTurn.selectedWord, revealedHintCount)}
+              {shouldShowSecretWordBanner && currentTurn?.selectedWord ? (
+                <div
+                  key={viewerRole === 'drawer' ? `${currentTurn.turnId}-${currentTurn.selectedWord}` : `${currentTurn.turnId}-masked`}
+                  className={
+                    isSecretWordBannerClosed
+                      ? `secret-word-banner${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-closed`
+                      : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
+                  }
+                >
+                  {viewerRole === 'drawer' ? currentTurn.selectedWord : getMaskedWord(currentTurn.selectedWord, revealedHintCount)}
                 </div>
               ) : null}
 
@@ -950,6 +973,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
               onScroll={(event) => {
                 const list = event.currentTarget
                 chatStickToBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40
+                setShowChatScrollButton(!chatStickToBottomRef.current)
               }}
             >
               {visibleChat.map((message) => (
@@ -959,6 +983,15 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </li>
               ))}
             </ul>
+
+            {showChatScrollButton ? (
+              <button
+                type="button"
+                className="chat-scroll-to-bottom-button"
+                onClick={scrollChatToBottom}
+                aria-label="최신 채팅으로 이동"
+              />
+            ) : null}
 
             <div className="chat-input-row">
               <input
