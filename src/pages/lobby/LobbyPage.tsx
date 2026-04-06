@@ -6,7 +6,7 @@ type LobbyPageProps = {
 }
 
 export function LobbyPage({ onNavigate }: LobbyPageProps) {
-  const { state, patchSettings, setConnectionStatus, startGame } = useAppState()
+  const { state, actions, connection } = useAppState()
   const { settings } = state.room
   const nextRoundDrawerOrder = state.room.participants
     .slice()
@@ -14,7 +14,7 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
     .map((participant) => participant.nickname)
 
   const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
-    patchSettings({ [key]: Number(value) })
+    actions.patchLobbySettings({ [key]: Number(value) })
   }
 
   return (
@@ -66,7 +66,7 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
             type="button"
             className="primary-button"
             onClick={() => {
-              startGame()
+              actions.requestGameStart()
               onNavigate(routes.game)
             }}
           >
@@ -75,7 +75,7 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
           <button
             type="button"
             className="secondary-button"
-            onClick={() => setConnectionStatus('reconnecting')}
+            onClick={() => connection.setStatus('reconnecting')}
           >
             Simulate reconnect
           </button>

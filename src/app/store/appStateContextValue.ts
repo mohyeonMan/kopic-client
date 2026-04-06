@@ -1,25 +1,56 @@
 import { createContext } from 'react'
 import type {
+  AppState,
   CanvasStroke,
+  ChatMessage,
   ConnectionStatus,
   GameSettings,
-  AppState,
+  RoomSnapshot,
+  RoundSummary,
   TurnPhase,
+  TurnSummary,
 } from './mockAppState'
+
+export type ServerGameStartedPayload = {
+  gameId: string
+  currentRound: RoundSummary
+  currentTurn: TurnSummary
+  chatMessages?: ChatMessage[]
+}
+
+export type ServerWordChoicePayload = {
+  selectedWord: string
+  remainingSec: number
+  chatMessage?: ChatMessage
+}
 
 export type AppStateContextValue = {
   state: AppState
-  updateNickname: (nickname: string) => void
-  patchSettings: (settings: Partial<GameSettings>) => void
-  startGame: () => void
-  chooseMockWord: (word: string) => void
-  setMockTurnPhase: (phase: TurnPhase) => void
-  advanceMockFlow: () => void
-  appendStroke: (stroke: CanvasStroke) => void
-  clearCanvas: () => void
-  finishGame: () => void
-  resetToLobby: () => void
-  setConnectionStatus: (status: ConnectionStatus) => void
+  actions: {
+    updateNickname: (nickname: string) => void
+    patchLobbySettings: (settings: Partial<GameSettings>) => void
+    requestGameStart: () => void
+    requestWordChoice: (word: string) => void
+    sendCanvasStroke: (stroke: CanvasStroke) => void
+    requestCanvasClear: () => void
+  }
+  connection: {
+    setStatus: (status: ConnectionStatus) => void
+  }
+  server: {
+    applyRoomSnapshot: (snapshot: RoomSnapshot) => void
+    applyGameStarted: (payload: ServerGameStartedPayload) => void
+    applyWordChoice: (payload: ServerWordChoicePayload) => void
+    applyCanvasStroke: (stroke: CanvasStroke) => void
+    applyCanvasClear: () => void
+    applyGameEnded: () => void
+  }
+  devTools: {
+    forceTurnPhase: (phase: TurnPhase) => void
+    advanceMockFlow: () => void
+    finishGame: () => void
+    resetToLobby: () => void
+  }
 }
 
 export const AppStateContext = createContext<AppStateContextValue | null>(null)

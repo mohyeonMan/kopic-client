@@ -1,28 +1,48 @@
 import { useMemo, useReducer, type ReactNode } from 'react'
 import {
+  type AppState,
   type CanvasStroke,
+  type ChatMessage,
+  type ConnectionStatus,
   defaultSettings,
   initialAppState,
-  type AppState,
-  type ConnectionStatus,
   type GameSettings,
   type Participant,
+  type RoomSnapshot,
+  type RoundSummary,
   type TurnPhase,
+  type TurnSummary,
 } from './mockAppState'
-import { AppStateContext, type AppStateContextValue } from './appStateContextValue'
+import {
+  AppStateContext,
+  type AppStateContextValue,
+  type ServerGameStartedPayload,
+  type ServerWordChoicePayload,
+} from './appStateContextValue'
 
 type AppAction =
-  | { type: 'session/nicknameUpdated'; payload: string }
-  | { type: 'room/settingsPatched'; payload: Partial<GameSettings> }
-  | { type: 'room/resetToLobby' }
-  | { type: 'game/started' }
-  | { type: 'game/wordChosen'; payload: string }
-  | { type: 'game/mockTurnPhaseSet'; payload: TurnPhase }
-  | { type: 'game/mockAdvanced' }
-  | { type: 'canvas/strokeAdded'; payload: CanvasStroke }
-  | { type: 'canvas/cleared' }
-  | { type: 'game/ended' }
+  | { type: 'local/sessionNicknameUpdated'; payload: string }
+  | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'connection/statusChanged'; payload: ConnectionStatus }
+  | { type: 'server/roomSnapshotApplied'; payload: RoomSnapshot }
+  | { type: 'server/gameStartedApplied'; payload: ServerGameStartedPayload }
+  | { type: 'server/wordChoiceApplied'; payload: ServerWordChoicePayload }
+  | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
+  | { type: 'server/canvasCleared' }
+  | { type: 'server/gameEndedApplied' }
+  | { type: 'dev/turnPhaseForced'; payload: TurnPhase }
+  | { type: 'dev/mockFlowAdvanced' }
+
+const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
+
+function createSystemMessage(text: string): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    nickname: 'system',
+    text,
+    tone: 'system',
+  }
+}
 
 function getDrawerOrder(participants: Participant[]) {
   return participants
@@ -30,8 +50,6 @@ function getDrawerOrder(participants: Participant[]) {
     .sort((left, right) => left.joinOrder - right.joinOrder)
     .map((participant) => participant.userId)
 }
-
-const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
 
 function getWordChoices(count: number) {
   const safeCount = Math.max(3, Math.min(5, count))
@@ -44,7 +62,7 @@ function createMockTurn(
   drawerUserId: string,
   phase: TurnPhase,
   settings: GameSettings,
-) {
+): TurnSummary {
   const wordChoices = getWordChoices(settings.wordChoiceCount)
   const turnEndCorrectUserIds =
     settings.endMode === 'FIRST_CORRECT'
@@ -65,9 +83,79 @@ function createMockTurn(
   }
 }
 
+function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload {
+  const drawerOrder = getDrawerOrder(state.room.participants)
+  const currentRound: RoundSummary = {
+    roundNo: 1,
+    totalRounds: state.room.settings.roundCount,
+    turnCursor: 0,
+    drawerOrder,
+  }
+
+  return {
+    gameId: 'game-20260323-01',
+    currentRound,
+    currentTurn: createMockTurn(1, 1, drawerOrder[0], 'WORD_CHOICE', state.room.settings),
+    chatMessages: [
+      createSystemMessage('302 GAME_STARTED'),
+      createSystemMessage('303 ROUND_STARTED with drawerOrder snapshot'),
+      createSystemMessage('304 TURN_STARTED'),
+    ],
+  }
+}
+
+function createLobbySnapshot(state: AppState): RoomSnapshot {
+  return {
+    ...state.room,
+    roomState: 'LOBBY',
+    gameId: null,
+    currentRound: null,
+    currentTurn: null,
+    settings: { ...defaultSettings },
+    participants: state.room.participants.map((participant) => ({
+      ...participant,
+      joinedMidRound: false,
+    })),
+    chat: [
+      ...state.room.chat,
+      createSystemMessage('room reset to lobby mock state'),
+    ],
+  }
+}
+
+function createForcedTurn(currentTurn: TurnSummary, phase: TurnPhase, settings: GameSettings): TurnSummary {
+  const nextTurn = createMockTurn(
+    currentTurn.roundNo,
+    currentTurn.turnNo,
+    currentTurn.drawerUserId,
+    phase,
+    settings,
+  )
+
+  if (phase === 'DRAWING') {
+    return {
+      ...nextTurn,
+      selectedWord: currentTurn.selectedWord ?? currentTurn.wordChoices[0] ?? nextTurn.selectedWord,
+      wordChoices: currentTurn.wordChoices,
+      canvasStrokes: currentTurn.canvasStrokes,
+    }
+  }
+
+  if (phase === 'TURN_END') {
+    return {
+      ...nextTurn,
+      selectedWord: currentTurn.selectedWord ?? currentTurn.wordChoices[0] ?? nextTurn.selectedWord,
+      wordChoices: currentTurn.wordChoices,
+      canvasStrokes: currentTurn.canvasStrokes,
+    }
+  }
+
+  return nextTurn
+}
+
 function appStateReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'session/nicknameUpdated':
+    case 'local/sessionNicknameUpdated':
       return {
         ...state,
         session: {
@@ -83,7 +171,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ),
         },
       }
-    case 'room/settingsPatched':
+    case 'local/lobbySettingsPatched':
       return {
         ...state,
         room: {
@@ -94,34 +182,30 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           },
         },
       }
-    case 'game/started':
-      {
-        const drawerOrder = getDrawerOrder(state.room.participants)
-
+    case 'connection/statusChanged':
+      return {
+        ...state,
+        connectionStatus: action.payload,
+      }
+    case 'server/roomSnapshotApplied':
+      return {
+        ...state,
+        room: action.payload,
+      }
+    case 'server/gameStartedApplied':
       return {
         ...state,
         connectionStatus: 'synced',
         room: {
           ...state.room,
           roomState: 'RUNNING',
-          gameId: 'game-20260323-01',
-          currentRound: {
-            roundNo: 1,
-            totalRounds: state.room.settings.roundCount,
-            turnCursor: 0,
-            drawerOrder,
-          },
-          currentTurn: createMockTurn(1, 1, drawerOrder[0], 'WORD_CHOICE', state.room.settings),
-          chat: [
-            ...state.room.chat,
-            { id: crypto.randomUUID(), nickname: 'system', text: '302 GAME_STARTED', tone: 'system' },
-            { id: crypto.randomUUID(), nickname: 'system', text: '303 ROUND_STARTED with drawerOrder snapshot', tone: 'system' },
-            { id: crypto.randomUUID(), nickname: 'system', text: '304 TURN_STARTED', tone: 'system' },
-          ],
+          gameId: action.payload.gameId,
+          currentRound: action.payload.currentRound,
+          currentTurn: action.payload.currentTurn,
+          chat: [...state.room.chat, ...(action.payload.chatMessages ?? [])],
         },
       }
-      }
-    case 'game/wordChosen':
+    case 'server/wordChoiceApplied':
       if (!state.room.currentTurn) {
         return state
       }
@@ -133,21 +217,15 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           currentTurn: {
             ...state.room.currentTurn,
             phase: 'DRAWING',
-            selectedWord: action.payload,
-            remainingSec: state.room.settings.drawSec,
+            selectedWord: action.payload.selectedWord,
+            remainingSec: action.payload.remainingSec,
           },
-          chat: [
-            ...state.room.chat,
-            {
-              id: crypto.randomUUID(),
-              nickname: 'system',
-              text: `310 DRAWING_STARTED (${action.payload})`,
-              tone: 'system',
-            },
-          ],
+          chat: action.payload.chatMessage
+            ? [...state.room.chat, action.payload.chatMessage]
+            : state.room.chat,
         },
       }
-    case 'game/mockTurnPhaseSet':
+    case 'server/canvasStrokeReceived':
       if (!state.room.currentTurn) {
         return state
       }
@@ -157,17 +235,50 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         room: {
           ...state.room,
           currentTurn: {
-            ...createMockTurn(
-              state.room.currentTurn.roundNo,
-              state.room.currentTurn.turnNo,
-              state.room.currentTurn.drawerUserId,
-              action.payload,
-              state.room.settings,
-            ),
+            ...state.room.currentTurn,
+            canvasStrokes: [...state.room.currentTurn.canvasStrokes, action.payload],
           },
         },
       }
-    case 'game/mockAdvanced':
+    case 'server/canvasCleared':
+      if (!state.room.currentTurn) {
+        return state
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          currentTurn: {
+            ...state.room.currentTurn,
+            canvasStrokes: [],
+          },
+          chat: [...state.room.chat, createSystemMessage('402 CANVAS_CLEAR')],
+        },
+      }
+    case 'server/gameEndedApplied':
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RESULT',
+          currentTurn: null,
+          chat: [...state.room.chat, createSystemMessage('307 GAME_ENDED')],
+        },
+      }
+    case 'dev/turnPhaseForced':
+      if (!state.room.currentTurn) {
+        return state
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          currentTurn: createForcedTurn(state.room.currentTurn, action.payload, state.room.settings),
+        },
+      }
+    case 'dev/mockFlowAdvanced':
       if (!state.room.currentTurn || !state.room.currentRound) {
         return state
       }
@@ -180,15 +291,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state,
           room: {
             ...state.room,
-            currentTurn: {
-              ...createMockTurn(
-                state.room.currentTurn.roundNo,
-                state.room.currentTurn.turnNo,
-                state.room.currentTurn.drawerUserId,
-                nextPhase,
-                state.room.settings,
-              ),
-            },
+            currentTurn: createForcedTurn(state.room.currentTurn, nextPhase, state.room.settings),
           },
         }
       }
@@ -243,8 +346,8 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             ),
             chat: [
               ...state.room.chat,
-              { id: crypto.randomUUID(), nickname: 'system', text: `306 ROUND_ENDED R${currentRound.roundNo}`, tone: 'system' },
-              { id: crypto.randomUUID(), nickname: 'system', text: `303 ROUND_STARTED R${nextRoundNo}`, tone: 'system' },
+              createSystemMessage(`306 ROUND_ENDED R${currentRound.roundNo}`),
+              createSystemMessage(`303 ROUND_STARTED R${nextRoundNo}`),
             ],
           },
         }
@@ -256,83 +359,8 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.room,
           roomState: 'RESULT',
           currentTurn: null,
-          chat: [
-            ...state.room.chat,
-            { id: crypto.randomUUID(), nickname: 'system', text: '307 GAME_ENDED', tone: 'system' },
-          ],
+          chat: [...state.room.chat, createSystemMessage('307 GAME_ENDED')],
         },
-      }
-    case 'canvas/strokeAdded':
-      if (!state.room.currentTurn) {
-        return state
-      }
-
-      return {
-        ...state,
-        room: {
-          ...state.room,
-          currentTurn: {
-            ...state.room.currentTurn,
-            canvasStrokes: [...state.room.currentTurn.canvasStrokes, action.payload],
-          },
-        },
-      }
-    case 'canvas/cleared':
-      if (!state.room.currentTurn) {
-        return state
-      }
-
-      return {
-        ...state,
-        room: {
-          ...state.room,
-          currentTurn: {
-            ...state.room.currentTurn,
-            canvasStrokes: [],
-          },
-          chat: [
-            ...state.room.chat,
-            { id: crypto.randomUUID(), nickname: 'system', text: '402 CANVAS_CLEAR', tone: 'system' },
-          ],
-        },
-      }
-    case 'game/ended':
-      return {
-        ...state,
-        room: {
-          ...state.room,
-          roomState: 'RESULT',
-          currentTurn: null,
-          chat: [
-            ...state.room.chat,
-            { id: crypto.randomUUID(), nickname: 'system', text: '307 GAME_ENDED', tone: 'system' },
-          ],
-        },
-      }
-    case 'room/resetToLobby':
-      return {
-        ...state,
-        room: {
-          ...state.room,
-          roomState: 'LOBBY',
-          gameId: null,
-          currentRound: null,
-          currentTurn: null,
-          settings: { ...defaultSettings },
-          participants: state.room.participants.map((participant) => ({
-            ...participant,
-            joinedMidRound: false,
-          })),
-          chat: [
-            ...state.room.chat,
-            { id: crypto.randomUUID(), nickname: 'system', text: 'room reset to lobby mock state', tone: 'system' },
-          ],
-        },
-      }
-    case 'connection/statusChanged':
-      return {
-        ...state,
-        connectionStatus: action.payload,
       }
     default:
       return state
@@ -342,24 +370,56 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
 
-  const value = useMemo<AppStateContextValue>(
-    () => ({
+  const value = useMemo<AppStateContextValue>(() => {
+    const server: AppStateContextValue['server'] = {
+      applyRoomSnapshot: (snapshot) => dispatch({ type: 'server/roomSnapshotApplied', payload: snapshot }),
+      applyGameStarted: (payload) => dispatch({ type: 'server/gameStartedApplied', payload }),
+      applyWordChoice: (payload) => dispatch({ type: 'server/wordChoiceApplied', payload }),
+      applyCanvasStroke: (stroke) => dispatch({ type: 'server/canvasStrokeReceived', payload: stroke }),
+      applyCanvasClear: () => dispatch({ type: 'server/canvasCleared' }),
+      applyGameEnded: () => dispatch({ type: 'server/gameEndedApplied' }),
+    }
+
+    return {
       state,
-      updateNickname: (nickname) =>
-        dispatch({ type: 'session/nicknameUpdated', payload: nickname.trim() || 'Guest' }),
-      patchSettings: (settings) => dispatch({ type: 'room/settingsPatched', payload: settings }),
-      startGame: () => dispatch({ type: 'game/started' }),
-      chooseMockWord: (word) => dispatch({ type: 'game/wordChosen', payload: word }),
-      setMockTurnPhase: (phase) => dispatch({ type: 'game/mockTurnPhaseSet', payload: phase }),
-      advanceMockFlow: () => dispatch({ type: 'game/mockAdvanced' }),
-      appendStroke: (stroke) => dispatch({ type: 'canvas/strokeAdded', payload: stroke }),
-      clearCanvas: () => dispatch({ type: 'canvas/cleared' }),
-      finishGame: () => dispatch({ type: 'game/ended' }),
-      resetToLobby: () => dispatch({ type: 'room/resetToLobby' }),
-      setConnectionStatus: (status) => dispatch({ type: 'connection/statusChanged', payload: status }),
-    }),
-    [state],
-  )
+      actions: {
+        updateNickname: (nickname) =>
+          dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname.trim() || 'Guest' }),
+        patchLobbySettings: (settings) =>
+          dispatch({ type: 'local/lobbySettingsPatched', payload: settings }),
+        requestGameStart: () => {
+          server.applyGameStarted(createMockGameStartedPayload(state))
+        },
+        requestWordChoice: (word) => {
+          server.applyWordChoice({
+            selectedWord: word,
+            remainingSec: state.room.settings.drawSec,
+            chatMessage: createSystemMessage(`310 DRAWING_STARTED (${word})`),
+          })
+        },
+        sendCanvasStroke: (stroke) => {
+          server.applyCanvasStroke(stroke)
+        },
+        requestCanvasClear: () => {
+          server.applyCanvasClear()
+        },
+      },
+      connection: {
+        setStatus: (status) => dispatch({ type: 'connection/statusChanged', payload: status }),
+      },
+      server,
+      devTools: {
+        forceTurnPhase: (phase) => dispatch({ type: 'dev/turnPhaseForced', payload: phase }),
+        advanceMockFlow: () => dispatch({ type: 'dev/mockFlowAdvanced' }),
+        finishGame: () => {
+          server.applyGameEnded()
+        },
+        resetToLobby: () => {
+          server.applyRoomSnapshot(createLobbySnapshot(state))
+        },
+      },
+    }
+  }, [state])
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
 }

@@ -6,7 +6,7 @@ type ResultPageProps = {
 }
 
 export function ResultPage({ onNavigate }: ResultPageProps) {
-  const { state, resetToLobby, setConnectionStatus } = useAppState()
+  const { state, connection, devTools } = useAppState()
   const ranking = state.room.participants.slice().sort((left, right) => right.score - left.score)
   const winner = ranking[0]
 
@@ -29,8 +29,8 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
             type="button"
             className="primary-button"
             onClick={() => {
-              resetToLobby()
-              setConnectionStatus('synced')
+              devTools.resetToLobby()
+              connection.setStatus('synced')
               onNavigate(routes.game)
             }}
           >

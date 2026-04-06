@@ -189,18 +189,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
-  const {
-    state,
-    chooseMockWord,
-    setMockTurnPhase,
-    advanceMockFlow,
-    appendStroke,
-    clearCanvas,
-    finishGame,
-    resetToLobby,
-    patchSettings,
-    startGame,
-  } = useAppState()
+  const { state, actions, devTools } = useAppState()
 
   const { participants, currentRound, currentTurn, chat, settings, roomState, hostUserId } = state.room
   const isHost = hostUserId === state.session.userId
@@ -373,11 +362,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
   }, [])
 
   const applySetting = (key: NumericSettingKey, value: string) => {
-    patchSettings({ [key]: Number(value) })
+    actions.patchLobbySettings({ [key]: Number(value) })
   }
 
   const applyEndMode = (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => {
-    patchSettings({ endMode: value })
+    actions.patchLobbySettings({ endMode: value })
   }
 
   const submitGuess = () => {
@@ -409,7 +398,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
       return
     }
 
-    appendStroke(stroke)
+    actions.sendCanvasStroke(stroke)
   }
 
   const handleClearCanvas = () => {
@@ -418,20 +407,20 @@ export function GamePage({ onNavigate }: GamePageProps) {
       return
     }
 
-    clearCanvas()
+    actions.requestCanvasClear()
   }
 
   const ensureRunning = (phase?: TurnPhase) => {
     if (roomState === 'RESULT') {
-      resetToLobby()
+      devTools.resetToLobby()
       setLobbyStrokes([])
-      startGame()
+      actions.requestGameStart()
     } else if (roomState === 'LOBBY') {
-      startGame()
+      actions.requestGameStart()
     }
 
     if (phase) {
-      setMockTurnPhase(phase)
+      devTools.forceTurnPhase(phase)
     }
 
     setSettingsOpen(false)
@@ -764,7 +753,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                       className="primary-button"
                       onClick={() => {
                         setSettingsOpen(false)
-                        startGame()
+                        actions.requestGameStart()
                       }}
                     >
                       게임 시작
@@ -814,7 +803,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                         className="word-choice-button"
                         onClick={() => {
                           setOverlayPreview('actual')
-                          chooseMockWord(word)
+                          actions.requestWordChoice(word)
                         }}
                       >
                         {word}
@@ -1051,7 +1040,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
             type="button"
             className="secondary-button"
             onClick={() => {
-              resetToLobby()
+              devTools.resetToLobby()
               setLobbyStrokes([])
               setOverlayPreview('actual')
               setSettingsOpen(true)
@@ -1123,7 +1112,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
             type="button"
             className="secondary-button"
             onClick={() => {
-              finishGame()
+              devTools.finishGame()
               setOverlayPreview('actual')
             }}
           >
@@ -1134,7 +1123,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
             className="secondary-button"
             onClick={() => {
               if (roomState === 'RUNNING') {
-                advanceMockFlow()
+                devTools.advanceMockFlow()
               }
               setOverlayPreview('actual')
             }}

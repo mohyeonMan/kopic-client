@@ -6,7 +6,7 @@ type EntryPageProps = {
 }
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
-  const { state, updateNickname, setConnectionStatus } = useAppState()
+  const { state, actions, connection } = useAppState()
   const nicknameValid = state.session.nickname.trim().length >= 2
 
   return (
@@ -30,7 +30,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
           <span>{'\uB2C9\uB124\uC784'}</span>
           <input
             value={state.session.nickname}
-            onChange={(event) => updateNickname(event.target.value)}
+            onChange={(event) => actions.updateNickname(event.target.value)}
             placeholder={'\uB2C9\uB124\uC784 \uC785\uB825'}
           />
         </label>
@@ -41,7 +41,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             className="primary-button"
             disabled={!nicknameValid}
             onClick={() => {
-              setConnectionStatus('connecting')
+              connection.setStatus('connecting')
               onNavigate(routes.game)
             }}
           >
@@ -52,7 +52,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             className="secondary-button"
             disabled={!nicknameValid}
             onClick={() => {
-              setConnectionStatus('synced')
+              connection.setStatus('synced')
               onNavigate(routes.game)
             }}
           >
