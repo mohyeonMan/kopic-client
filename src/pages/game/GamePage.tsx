@@ -143,8 +143,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [color, setColor] = useState<string>(TOOL_COLORS[0])
   const [guessInput, setGuessInput] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [overlayPreview, setOverlayPreview] = useState<OverlayPreview>('actual')
+  const [shortcutsOpen, setShortcutsOpen] = useState(true)
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
   const [lobbyStrokes, setLobbyStrokes] = useState<CanvasStroke[]>([])
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
@@ -166,7 +166,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
     startGame,
   } = useAppState()
 
-  const { participants, currentRound, currentTurn, chat, settings, roomCode, roomState, hostUserId } = state.room
+  const { participants, currentRound, currentTurn, chat, settings, roomState, hostUserId } = state.room
   const isHost = hostUserId === state.session.userId
   const drawer = participants.find((participant) => participant.userId === currentTurn?.drawerUserId)
   const isDrawer = state.session.userId === currentTurn?.drawerUserId
@@ -232,19 +232,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
       setSettingsOpen(false)
     }
   }, [roomState])
-
-  useEffect(() => {
-    if (localMessages.length === 0) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      const now = Date.now()
-      setLocalMessages((messages) => messages.filter((message) => now - message.createdAt <= 3200))
-    }, 3200)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [localMessages])
 
   useLayoutEffect(() => {
     const list = chatListRef.current
@@ -328,16 +315,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
     setGuessInput('')
   }
 
-  const handleCopyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(roomCode)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1200)
-    } catch {
-      setCopied(false)
-    }
-  }
-
   const handleCommitStroke = (stroke: CanvasStroke) => {
     if (roomState === 'LOBBY') {
       setLobbyStrokes((strokes) => [...strokes, stroke])
@@ -406,7 +383,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
           </div>
           <div className="status-inline-chip">
             <span>남은 시간</span>
-            <strong>{currentTurn ? `${currentTurn.remainingSec}초` : '-'}</strong>
+            <strong>{currentTurn ? `${currentTurn.remainingSec}s` : '-'}</strong>
           </div>
           <div className="order-strip-box">
             <span className="order-strip-label">이번 라운드 그림 순서</span>
@@ -423,22 +400,9 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
       <section ref={stageRef} className="game-stage-layout">
 	        <aside className="panel game-side-panel game-side-panel-left">
-	          <div className="room-code-row">
-	            <div>
-	              <p className="eyebrow">Room</p>
-	              <strong className="room-code-text">{roomCode}</strong>
-	            </div>
-	            <button type="button" className="secondary-button" onClick={handleCopyCode}>
-	              {copied ? '복사됨' : '링크 복사'}
-	            </button>
-	          </div>
-
-	          <div className="section-heading">
-	            <div>
-	              <p className="eyebrow">Participants</p>
-	              <h2>참여자</h2>
-	            </div>
-	            <div className="pill">{participants.length}명</div>
+	          <div className="section-heading participant-heading-compact">
+	            <h2>참여자</h2>
+	            <div className="pill participant-count-pill">{participants.length}명</div>
 	          </div>
 	
 	          <div ref={sidePanelScrollRef} className="side-panel-scroll">
@@ -457,7 +421,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                         <strong>{participant.nickname}</strong>
                         {participant.isHost ? <span className="host-badge">Host</span> : null}
                       </div>
-                      <p>{participant.score} pts</p>
+                      <p className="participant-score">{participant.score} pts</p>
                     </div>
                 </li>
               ))}
@@ -656,24 +620,26 @@ export function GamePage({ onNavigate }: GamePageProps) {
                           <span className="score-col-result">결과</span>
                           <span className="score-col-points">점수</span>
                         </div>
-                        {earnedScores.map((row, index) => (
-                          <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
-                            <span className="earned-score-rank score-col-rank">{index + 1}</span>
-                            <span className="earned-score-name score-col-name">{row.nickname}</span>
-                            <span
-                              className={
-                                row.role === 'correct'
-                                  ? 'earned-score-role earned-score-role-correct score-col-result'
-                                  : row.role === 'drawer'
-                                    ? 'earned-score-role earned-score-role-drawer score-col-result'
-                                    : 'earned-score-role score-col-result'
-                              }
-                            >
-                              {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
-                            </span>
-                            <strong className="earned-score-points score-col-points">{row.score} pts</strong>
-                          </div>
-                        ))}
+                        <div className="earned-score-table-body">
+                          {earnedScores.map((row, index) => (
+                            <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                              <span className="earned-score-rank score-col-rank">{index + 1}</span>
+                              <span className="earned-score-name score-col-name">{row.nickname}</span>
+                              <span
+                                className={
+                                  row.role === 'correct'
+                                    ? 'earned-score-role earned-score-role-correct score-col-result'
+                                    : row.role === 'drawer'
+                                      ? 'earned-score-role earned-score-role-drawer score-col-result'
+                                      : 'earned-score-role score-col-result'
+                                }
+                              >
+                                {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
+                              </span>
+                              <strong className="earned-score-points score-col-points">{row.score} pts</strong>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -750,9 +716,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Chat</p>
-              <h2>채팅</h2>
             </div>
-            <div className="pill">항상 입력 가능</div>
           </div>
 
           <div className="chat-panel-box">
@@ -809,8 +773,23 @@ export function GamePage({ onNavigate }: GamePageProps) {
       </section>
 
       <aside className="preview-shortcuts">
-        <p className="preview-shortcuts-title">바로가기 모음</p>
-        <div className="preview-shortcuts-grid">
+        <div className="preview-shortcuts-header">
+          <p className="preview-shortcuts-title">바로가기 모음</p>
+          <button
+            type="button"
+            className="secondary-button preview-shortcuts-toggle"
+            onClick={() => setShortcutsOpen((open) => !open)}
+            aria-expanded={shortcutsOpen}
+            aria-controls="preview-shortcuts-grid"
+          >
+            {shortcutsOpen ? '접기' : '펼치기'}
+          </button>
+        </div>
+        <div
+          id="preview-shortcuts-grid"
+          className={shortcutsOpen ? 'preview-shortcuts-grid' : 'preview-shortcuts-grid preview-shortcuts-grid-closed'}
+          aria-hidden={!shortcutsOpen}
+        >
           <button
             type="button"
             className="secondary-button"

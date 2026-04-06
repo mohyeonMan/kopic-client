@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { routes, type AppRoute } from '../router/routes'
 import { useAppState } from '../store/useAppState'
 
@@ -8,39 +8,38 @@ type AppLayoutProps = {
   children: ReactNode
 }
 
-const routeLabels: Record<AppRoute, string> = {
-  [routes.main]: 'Main',
-  [routes.game]: 'Game',
-}
-
 export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps) {
   const { state } = useAppState()
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(state.room.roomCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1200)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">kopic-client</p>
-          <h1>Catchmind-style client scaffold</h1>
+          <p className="eyebrow">KOPIC-CLIENT</p>
         </div>
-        <div className="topbar-meta">
-          <button
-            type="button"
-            className={currentRoute === routes.main ? 'route-tab route-tab-active' : 'route-tab'}
-            onClick={() => onNavigate(routes.main)}
-          >
-            {routeLabels[routes.main]}
+        <div className={currentRoute === routes.game ? 'topbar-meta topbar-meta-game' : 'topbar-meta'}>
+          {currentRoute === routes.game ? (
+            <strong className="topbar-room-name">{state.room.roomCode}</strong>
+          ) : null}
+          {currentRoute === routes.game ? (
+            <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
+              {copied ? '복사됨' : '링크 복사'}
+            </button>
+          ) : null}
+          <button type="button" className="route-tab topbar-exit-button" onClick={() => onNavigate(routes.main)}>
+            나가기
           </button>
-          <button
-            type="button"
-            className={currentRoute === routes.game ? 'route-tab route-tab-active' : 'route-tab'}
-            onClick={() => onNavigate(routes.game)}
-          >
-            {routeLabels[routes.game]}
-          </button>
-          <div className="pill">{state.connectionStatus}</div>
-          <div className="pill">{state.room.roomCode}</div>
-          <div className="pill">{state.session.nickname}</div>
         </div>
       </header>
 
