@@ -648,32 +648,33 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   <div className="canvas-full-overlay-panel">
                     <p className="panel-label">턴 끝난 결과 화면</p>
                     <strong>{drawer?.nickname ?? '현재 drawer'} 턴 종료</strong>
-                    <div className="earned-score-table-head" aria-hidden="true">
-                      <span>순위</span>
-                      <span>참여자</span>
-                      <span>점수</span>
-                    </div>
-                    <div className="earned-score-table">
-                      {earnedScores.map((row, index) => (
-                        <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
-                          <span className="earned-score-rank">{index + 1}</span>
-                          <div className="earned-score-row-main">
-                            <span className="earned-score-name">{row.nickname}</span>
+                    <div className="earned-score-content">
+                      <div className="earned-score-table">
+                        <div className="earned-score-table-head" aria-hidden="true">
+                          <span className="score-col-rank">순위</span>
+                          <span className="score-col-name">참여자</span>
+                          <span className="score-col-result">결과</span>
+                          <span className="score-col-points">점수</span>
+                        </div>
+                        {earnedScores.map((row, index) => (
+                          <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                            <span className="earned-score-rank score-col-rank">{index + 1}</span>
+                            <span className="earned-score-name score-col-name">{row.nickname}</span>
                             <span
                               className={
                                 row.role === 'correct'
-                                  ? 'earned-score-role earned-score-role-correct'
+                                  ? 'earned-score-role earned-score-role-correct score-col-result'
                                   : row.role === 'drawer'
-                                    ? 'earned-score-role earned-score-role-drawer'
-                                    : 'earned-score-role'
+                                    ? 'earned-score-role earned-score-role-drawer score-col-result'
+                                    : 'earned-score-role score-col-result'
                               }
                             >
                               {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
                             </span>
+                            <strong className="earned-score-points score-col-points">{row.score} pts</strong>
                           </div>
-                          <strong className="earned-score-points">{row.score} pts</strong>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
