@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, TransitionEvent as ReactTransitionEvent } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import type {
   CanvasStroke,
@@ -29,6 +29,8 @@ type OverlayPreview =
   | 'drawingGuesser'
   | 'turnEnd'
   | 'gameResult'
+
+type StageOverlayPhase = 'roundStart' | 'turnStart' | 'wordChoice' | 'turnEnd'
 
 const TOOL_COLORS = [
   '#203247',
@@ -66,6 +68,8 @@ const END_MODE_OPTIONS = [
   { value: 'FIRST_CORRECT', label: '1인' },
   { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
 ] as const
+
+const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['roundStart', 'turnStart', 'wordChoice', 'turnEnd']
 
 type NumericSettingKey = keyof typeof SETTING_OPTIONS
 
@@ -169,10 +173,14 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [guessInput, setGuessInput] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [overlayPreview, setOverlayPreview] = useState<OverlayPreview>('actual')
+  const [activeStageOverlay, setActiveStageOverlay] = useState<StageOverlayPhase | null>(null)
+  const [pendingStageOverlay, setPendingStageOverlay] = useState<StageOverlayPhase | null>(null)
+  const [stageOverlayOpen, setStageOverlayOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(true)
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
   const [lobbyStrokes, setLobbyStrokes] = useState<CanvasStroke[]>([])
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
+  const stageOverlayOpenRafRef = useRef<number | null>(null)
   const chatListRef = useRef<HTMLUListElement | null>(null)
   const chatStickToBottomRef = useRef(true)
   const stageRef = useRef<HTMLElement | null>(null)
@@ -438,6 +446,95 @@ export function GamePage({ onNavigate }: GamePageProps) {
     return 'wordChoice'
   })()
 
+  const requestedStageOverlay: StageOverlayPhase | null =
+    roomState === 'RUNNING' && STAGE_OVERLAY_PHASES.includes(previewMode as StageOverlayPhase) && (previewMode !== 'wordChoice' || Boolean(currentTurn))
+      ? (previewMode as StageOverlayPhase)
+      : null
+
+  const queueStageOverlayOpen = () => {
+    if (stageOverlayOpenRafRef.current !== null) {
+      window.cancelAnimationFrame(stageOverlayOpenRafRef.current)
+    }
+
+    stageOverlayOpenRafRef.current = window.requestAnimationFrame(() => {
+      stageOverlayOpenRafRef.current = null
+      setStageOverlayOpen(true)
+    })
+  }
+
+  const handleStageOverlayTransitionEnd = (event: ReactTransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') {
+      return
+    }
+
+    if (stageOverlayOpen) {
+      return
+    }
+
+    if (pendingStageOverlay) {
+      setActiveStageOverlay(pendingStageOverlay)
+      setPendingStageOverlay(null)
+      queueStageOverlayOpen()
+      return
+    }
+
+    setActiveStageOverlay(null)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (stageOverlayOpenRafRef.current !== null) {
+        window.cancelAnimationFrame(stageOverlayOpenRafRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!requestedStageOverlay) {
+      setPendingStageOverlay(null)
+
+      if (activeStageOverlay && stageOverlayOpen) {
+        setStageOverlayOpen(false)
+        return
+      }
+
+      if (activeStageOverlay) {
+        setActiveStageOverlay(null)
+      }
+
+      return
+    }
+
+    if (!activeStageOverlay) {
+      setPendingStageOverlay(null)
+      setActiveStageOverlay(requestedStageOverlay)
+      setStageOverlayOpen(false)
+      queueStageOverlayOpen()
+      return
+    }
+
+    if (activeStageOverlay === requestedStageOverlay) {
+      setPendingStageOverlay(null)
+
+      if (!stageOverlayOpen) {
+        queueStageOverlayOpen()
+      }
+
+      return
+    }
+
+    setPendingStageOverlay(requestedStageOverlay)
+
+    if (stageOverlayOpen) {
+      setStageOverlayOpen(false)
+      return
+    }
+
+    setActiveStageOverlay(requestedStageOverlay)
+    setPendingStageOverlay(null)
+    queueStageOverlayOpen()
+  }, [activeStageOverlay, requestedStageOverlay, stageOverlayOpen])
+
   const stageStyle: CSSProperties | undefined =
     sideSyncHeight && sideSyncHeight > 0
       ? ({ ['--game-side-sync-height' as string]: `${sideSyncHeight}px` } as CSSProperties)
@@ -447,11 +544,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
     <div className="gamepage-shell">
       <section className="panel game-status-bar">
         <div className="status-bar-row">
-          <div className="status-inline-chip">
+          <div className="status-inline-chip status-inline-chip-round">
             <span>라운드</span>
-            <strong>{currentRound ? `${currentRound.roundNo} / ${currentRound.totalRounds}` : '대기 중'}</strong>
+            <strong>{currentRound ? `${currentRound.roundNo} / ${currentRound.totalRounds}` : '-'}</strong>
           </div>
-          <div className="status-inline-chip">
+          <div className="status-inline-chip status-inline-chip-time">
             <span>남은 시간</span>
             <strong>{currentTurn ? `${currentTurn.remainingSec}s` : '-'}</strong>
           </div>
@@ -659,11 +756,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {roomState === 'RUNNING' ? (
                 <div
                   className={
-                    previewMode === 'roundStart'
+                    activeStageOverlay === 'roundStart' && stageOverlayOpen
                       ? 'canvas-full-overlay canvas-full-overlay-open'
                       : 'canvas-full-overlay canvas-full-overlay-closed'
                   }
-                  aria-hidden={previewMode !== 'roundStart'}
+                  aria-hidden={activeStageOverlay !== 'roundStart'}
+                  onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
                   <p className="panel-label">라운드 시작 안내 화면</p>
                   <strong>{currentRound ? `${currentRound.roundNo} 라운드 시작` : '1 라운드 시작'}</strong>
@@ -673,11 +771,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {roomState === 'RUNNING' && currentTurn ? (
                 <div
                   className={
-                    previewMode === 'wordChoice'
+                    activeStageOverlay === 'wordChoice' && stageOverlayOpen
                       ? 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-open'
                       : 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-closed'
                   }
-                  aria-hidden={previewMode !== 'wordChoice'}
+                  aria-hidden={activeStageOverlay !== 'wordChoice'}
+                  onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
                   <div className="overlay-heading">
                     <p className="panel-label">단어 선택 단계</p>
@@ -705,11 +804,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {roomState === 'RUNNING' ? (
                 <div
                   className={
-                    previewMode === 'turnStart'
+                    activeStageOverlay === 'turnStart' && stageOverlayOpen
                       ? 'canvas-full-overlay canvas-full-overlay-open'
                       : 'canvas-full-overlay canvas-full-overlay-closed'
                   }
-                  aria-hidden={previewMode !== 'turnStart'}
+                  aria-hidden={activeStageOverlay !== 'turnStart'}
+                  onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
                   <p className="panel-label">턴 시작 안내 화면</p>
                   <strong>{drawer?.nickname ?? '현재 drawer'} 차례</strong>
@@ -724,11 +824,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {roomState === 'RUNNING' ? (
                 <div
                   className={
-                    previewMode === 'turnEnd'
+                    activeStageOverlay === 'turnEnd' && stageOverlayOpen
                       ? 'canvas-full-overlay canvas-full-overlay-open canvas-full-overlay-turn-end'
                       : 'canvas-full-overlay canvas-full-overlay-closed canvas-full-overlay-turn-end'
                   }
-                  aria-hidden={previewMode !== 'turnEnd'}
+                  aria-hidden={activeStageOverlay !== 'turnEnd'}
+                  onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
                   <div className="canvas-full-overlay-panel">
                     <p className="panel-label">턴 끝난 결과 화면</p>
