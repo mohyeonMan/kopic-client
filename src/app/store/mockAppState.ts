@@ -18,6 +18,8 @@ export type GameSettings = {
   drawSec: number
   wordChoiceSec: number
   wordChoiceCount: number
+  hintRevealSec: number
+  hintLetterCount: number
   drawerOrderMode: 'JOIN_ORDER' | 'RANDOM'
   endMode: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT'
 }
@@ -92,6 +94,8 @@ export const defaultSettings: GameSettings = {
   drawSec: 40,
   wordChoiceSec: 10,
   wordChoiceCount: 3,
+  hintRevealSec: 10,
+  hintLetterCount: 1,
   drawerOrderMode: 'JOIN_ORDER',
   endMode: 'TIME_OR_ALL_CORRECT',
 }

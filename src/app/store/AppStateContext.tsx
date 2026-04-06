@@ -31,6 +31,13 @@ function getDrawerOrder(participants: Participant[]) {
     .map((participant) => participant.userId)
 }
 
+const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
+
+function getWordChoices(count: number) {
+  const safeCount = Math.max(3, Math.min(5, count))
+  return mockWordPool.slice(0, safeCount)
+}
+
 function createMockTurn(
   roundNo: number,
   turnNo: number,
@@ -38,6 +45,12 @@ function createMockTurn(
   phase: TurnPhase,
   settings: GameSettings,
 ) {
+  const wordChoices = getWordChoices(settings.wordChoiceCount)
+  const turnEndCorrectUserIds =
+    settings.endMode === 'FIRST_CORRECT'
+      ? ['u-200']
+      : ['u-200', 'u-300', 'u-400', 'u-500', 'u-600', 'u-700', 'u-800', 'u-900', 'u-1000']
+
   return {
     roundNo,
     turnNo,
@@ -45,9 +58,9 @@ function createMockTurn(
     drawerUserId,
     phase,
     remainingSec: phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0,
-    correctUserIds: phase === 'TURN_END' ? ['u-200'] : [],
-    wordChoices: ['사과', '기차', '고양이'],
-    selectedWord: phase === 'WORD_CHOICE' ? null : '사과',
+    correctUserIds: phase === 'TURN_END' ? turnEndCorrectUserIds : [],
+    wordChoices,
+    selectedWord: phase === 'WORD_CHOICE' ? null : wordChoices[0],
     canvasStrokes: [],
   }
 }

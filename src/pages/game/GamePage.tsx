@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import type {
   CanvasStroke,
@@ -57,7 +57,15 @@ const SETTING_OPTIONS = {
   roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
   drawSec: [20, 30, 40, 50, 60],
   wordChoiceSec: [5, 7, 10, 12, 15],
+  wordChoiceCount: [3, 4, 5],
+  hintRevealSec: [5, 7, 10, 12, 15],
+  hintLetterCount: [1, 2, 3],
 } as const
+
+const END_MODE_OPTIONS = [
+  { value: 'FIRST_CORRECT', label: '1인' },
+  { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
+] as const
 
 type NumericSettingKey = keyof typeof SETTING_OPTIONS
 
@@ -118,12 +126,29 @@ function getVisibleOrder(participants: Participant[], drawerOrder: string[] | un
     .filter((nickname): nickname is string => Boolean(nickname))
 }
 
-function getMaskedWord(word: string | null) {
+function getMaskedWord(word: string | null, revealedCount: number) {
   if (!word) {
     return '●●●'
   }
 
-  return '●'.repeat(word.length)
+  const chars = Array.from(word)
+  const visibleCount = Math.max(0, Math.min(chars.length, revealedCount))
+  let revealed = 0
+
+  return chars
+    .map((char) => {
+      if (char === ' ') {
+        return ' '
+      }
+
+      if (revealed < visibleCount) {
+        revealed += 1
+        return char
+      }
+
+      return '●'
+    })
+    .join('')
 }
 
 function getBubbleText(text: string) {
@@ -151,8 +176,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const chatListRef = useRef<HTMLUListElement | null>(null)
   const chatStickToBottomRef = useRef(true)
   const stageRef = useRef<HTMLElement | null>(null)
+  const centerPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
+  const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
   const {
     state,
     chooseMockWord,
@@ -184,6 +211,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
   const mergedChat = [...chat, ...localMessages]
   const currentCorrectIds = currentTurn?.correctUserIds ?? []
+  const revealedHintCount = (() => {
+    if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
+      return 0
+    }
+
+    const interval = Math.max(1, settings.hintRevealSec)
+    const lettersPerReveal = Math.max(1, settings.hintLetterCount)
+    const elapsedSec = Math.max(0, settings.drawSec - currentTurn.remainingSec)
+    return Math.floor(elapsedSec / interval) * lettersPerReveal
+  })()
   const earnedScores = buildEarnedScores(participants, currentCorrectIds, currentTurn?.drawerUserId)
   const canDraw =
     roomState === 'LOBBY'
@@ -288,8 +325,36 @@ export function GamePage({ onNavigate }: GamePageProps) {
     }
   }, [participantBubbleById])
 
+  useLayoutEffect(() => {
+    const centerPanelElement = centerPanelRef.current
+
+    if (!centerPanelElement) {
+      return
+    }
+
+    const updateHeight = () => {
+      const nextHeight = Math.ceil(centerPanelElement.getBoundingClientRect().height)
+      setSideSyncHeight((current) => (current === nextHeight ? current : nextHeight))
+    }
+
+    updateHeight()
+
+    const observer = new ResizeObserver(() => updateHeight())
+    observer.observe(centerPanelElement)
+    window.addEventListener('resize', updateHeight)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateHeight)
+    }
+  }, [])
+
   const applySetting = (key: NumericSettingKey, value: string) => {
     patchSettings({ [key]: Number(value) })
+  }
+
+  const applyEndMode = (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => {
+    patchSettings({ endMode: value })
   }
 
   const submitGuess = () => {
@@ -373,6 +438,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
     return 'wordChoice'
   })()
 
+  const stageStyle: CSSProperties | undefined =
+    sideSyncHeight && sideSyncHeight > 0
+      ? ({ ['--game-side-sync-height' as string]: `${sideSyncHeight}px` } as CSSProperties)
+      : undefined
+
   return (
     <div className="gamepage-shell">
       <section className="panel game-status-bar">
@@ -398,7 +468,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
         </div>
       </section>
 
-      <section ref={stageRef} className="game-stage-layout">
+      <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
 	        <aside className="panel game-side-panel game-side-panel-left">
 	          <div className="section-heading participant-heading-compact">
 	            <h2>참여자</h2>
@@ -430,7 +500,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
           </div>
         </aside>
 
-        <section className="panel game-center-panel">
+        <section ref={centerPanelRef} className="panel game-center-panel">
           <div className="board-shell">
             <div className="board-frame">
               <div className="grid-overlay" />
@@ -459,7 +529,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
               {roomState === 'RUNNING' && currentTurn?.phase === 'DRAWING' && viewerRole !== 'drawer' ? (
                 <div className="secret-word-banner secret-word-banner-masked">
-                  {getMaskedWord(currentTurn.selectedWord)}
+                  {getMaskedWord(currentTurn.selectedWord, revealedHintCount)}
                 </div>
               ) : null}
 
@@ -473,12 +543,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   aria-hidden={!settingsOpen}
                 >
                   <div className="overlay-heading">
-                    <p className="panel-label">게임 시작 전 설정 화면</p>
-                    <strong>방장이 시작 전 설정을 바꾸는 영역</strong>
+                    <p className="panel-label">게임 설정</p>
                   </div>
                   <div className="lobby-grid">
                     <label className="field">
-                      <span>Round Count</span>
+                      <span>라운드 수</span>
                       <select
                         value={settings.roundCount}
                         onChange={(event) => applySetting('roundCount', event.target.value)}
@@ -491,7 +560,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                       </select>
                     </label>
                     <label className="field">
-                      <span>Draw Sec</span>
+                      <span>그리기 시간</span>
                       <select
                         value={settings.drawSec}
                         onChange={(event) => applySetting('drawSec', event.target.value)}
@@ -504,7 +573,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                       </select>
                     </label>
                     <label className="field">
-                      <span>Choice Sec</span>
+                      <span>단어 선택 시간</span>
                       <select
                         value={settings.wordChoiceSec}
                         onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
@@ -512,6 +581,58 @@ export function GamePage({ onNavigate }: GamePageProps) {
                         {SETTING_OPTIONS.wordChoiceSec.map((option) => (
                           <option key={option} value={option}>
                             {option}초
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>선택 단어 수</span>
+                      <select
+                        value={settings.wordChoiceCount}
+                        onChange={(event) => applySetting('wordChoiceCount', event.target.value)}
+                      >
+                        {SETTING_OPTIONS.wordChoiceCount.map((option) => (
+                          <option key={option} value={option}>
+                            {option}개
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>종료 정답자 수</span>
+                      <select
+                        value={settings.endMode}
+                        onChange={(event) => applyEndMode(event.target.value as 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT')}
+                      >
+                        {END_MODE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>힌트 공개 주기</span>
+                      <select
+                        value={settings.hintRevealSec}
+                        onChange={(event) => applySetting('hintRevealSec', event.target.value)}
+                      >
+                        {SETTING_OPTIONS.hintRevealSec.map((option) => (
+                          <option key={option} value={option}>
+                            {option}초
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>힌트 공개 글자 수</span>
+                      <select
+                        value={settings.hintLetterCount}
+                        onChange={(event) => applySetting('hintLetterCount', event.target.value)}
+                      >
+                        {SETTING_OPTIONS.hintLetterCount.map((option) => (
+                          <option key={option} value={option}>
+                            {option}글자
                           </option>
                         ))}
                       </select>
@@ -563,7 +684,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <strong>{drawer?.nickname} 차례</strong>
                     <p className="info-copy">아래 단어 중 하나를 골라 바로 그림을 시작한다.</p>
                   </div>
-                  <div className="button-row overlay-actions word-choice-actions">
+                  <div className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}>
                     {currentTurn.wordChoices.map((word) => (
                       <button
                         key={word}
@@ -658,30 +779,32 @@ export function GamePage({ onNavigate }: GamePageProps) {
             </div>
 
             <div className="tool-row">
-              <button
-                type="button"
-                className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
-                onClick={() => setTool('PEN')}
-              >
-                펜
-              </button>
-              <button
-                type="button"
-                className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
-                onClick={() => setTool('ERASER')}
-              >
-                지우개
-              </button>
-              <button
-                type="button"
-                className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
-                onClick={() => setTool('FILL')}
-              >
-                채우기
-              </button>
-              <button type="button" className="secondary-button" onClick={handleClearCanvas}>
-                전체 지우기
-              </button>
+              <div className="tool-main-actions">
+                <button
+                  type="button"
+                  className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
+                  onClick={() => setTool('PEN')}
+                >
+                  펜
+                </button>
+                <button
+                  type="button"
+                  className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
+                  onClick={() => setTool('ERASER')}
+                >
+                  지우개
+                </button>
+                <button
+                  type="button"
+                  className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
+                  onClick={() => setTool('FILL')}
+                >
+                  채우기
+                </button>
+                <button type="button" className="secondary-button" onClick={handleClearCanvas}>
+                  전체 지우기
+                </button>
+              </div>
               <label className="size-control">
                 <span className="size-control-label">굵기 {size}</span>
                 <input
