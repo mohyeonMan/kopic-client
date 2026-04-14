@@ -13,6 +13,7 @@ type CanvasBoardProps = {
   tool: DrawingTool
   color: string
   size: number
+  onSendStrokeChunk?: (stroke: CanvasStroke) => void
   onCommitStroke: (stroke: CanvasStroke) => void
 }
 
@@ -242,6 +243,7 @@ export function CanvasBoard({
   tool,
   color,
   size,
+  onSendStrokeChunk,
   onCommitStroke,
 }: CanvasBoardProps) {
   const committedCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -249,6 +251,7 @@ export function CanvasBoard({
   const strokeMaskCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const strokesRef = useRef(strokes)
   const draftStrokeRef = useRef<DraftStroke | null>(null)
+  const transmitStrokeRef = useRef<DraftStroke | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
   const renderedStrokeIdsRef = useRef<string[]>([])
 
@@ -411,18 +414,26 @@ export function CanvasBoard({
         points: [getCanvasPoint(event, canvas)],
       })
 
+      onSendStrokeChunk?.(committedStroke)
       appendCommittedStroke(committedStroke)
       onCommitStroke(committedStroke)
       return
     }
 
+    const startPoint = getCanvasPoint(event, canvas)
     activePointerIdRef.current = event.pointerId
     canvas.setPointerCapture(event.pointerId)
     draftStrokeRef.current = {
       tool,
       color,
       size,
-      points: [getCanvasPoint(event, canvas)],
+      points: [startPoint],
+    }
+    transmitStrokeRef.current = {
+      tool,
+      color,
+      size,
+      points: [startPoint],
     }
     redrawDraft()
   }
@@ -433,31 +444,41 @@ export function CanvasBoard({
       return
     }
 
-    const nextPoints = [...draftStrokeRef.current.points, getCanvasPoint(event, canvas)]
+    const nextPoint = getCanvasPoint(event, canvas)
+    const nextDraftPoints = [...draftStrokeRef.current.points, nextPoint]
+    const nextTransmitPoints = [...(transmitStrokeRef.current?.points ?? []), nextPoint]
 
-    if (nextPoints.length > MAX_POINTS_PER_STROKE) {
-      const flushedPoints = nextPoints.slice(0, MAX_POINTS_PER_STROKE)
+    draftStrokeRef.current = {
+      ...draftStrokeRef.current,
+      points: nextDraftPoints,
+    }
+
+    if (nextTransmitPoints.length > MAX_POINTS_PER_STROKE) {
+      const flushedPoints = nextTransmitPoints.slice(0, MAX_POINTS_PER_STROKE)
       const carryPoint = flushedPoints[flushedPoints.length - 1]
-      const committedStroke = buildCommittedStroke({
-        ...draftStrokeRef.current,
+      const chunkStroke = buildCommittedStroke({
+        tool: draftStrokeRef.current.tool,
+        color: draftStrokeRef.current.color,
+        size: draftStrokeRef.current.size,
         points: flushedPoints,
       })
 
-      appendCommittedStroke(committedStroke)
-      onCommitStroke(committedStroke)
-      console.log('DRAW_STROKE mock', committedStroke)
-
-      draftStrokeRef.current = {
-        ...draftStrokeRef.current,
-        points: [carryPoint, nextPoints[nextPoints.length - 1]],
+      onSendStrokeChunk?.(chunkStroke)
+      transmitStrokeRef.current = {
+        tool: draftStrokeRef.current.tool,
+        color: draftStrokeRef.current.color,
+        size: draftStrokeRef.current.size,
+        points: [carryPoint, nextPoint],
       }
       redrawDraft()
       return
     }
 
-    draftStrokeRef.current = {
-      ...draftStrokeRef.current,
-      points: nextPoints,
+    transmitStrokeRef.current = {
+      tool: draftStrokeRef.current.tool,
+      color: draftStrokeRef.current.color,
+      size: draftStrokeRef.current.size,
+      points: nextTransmitPoints,
     }
     redrawDraft()
   }
@@ -471,18 +492,24 @@ export function CanvasBoard({
     canvas.releasePointerCapture(event.pointerId)
     activePointerIdRef.current = null
 
+    const remainingTransmitStroke = transmitStrokeRef.current
+    if (remainingTransmitStroke && remainingTransmitStroke.points.length > 0) {
+      onSendStrokeChunk?.(buildCommittedStroke(remainingTransmitStroke))
+    }
+
     const committedStroke = buildCommittedStroke(draftStrokeRef.current)
 
     draftStrokeRef.current = null
+    transmitStrokeRef.current = null
     appendCommittedStroke(committedStroke)
     onCommitStroke(committedStroke)
-    console.log('DRAW_STROKE mock', committedStroke)
     redrawDraft()
   }
 
   const cancelStroke = () => {
     activePointerIdRef.current = null
     draftStrokeRef.current = null
+    transmitStrokeRef.current = null
     redrawDraft()
   }
 

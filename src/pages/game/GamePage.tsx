@@ -10,6 +10,7 @@ import type {
 } from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
 import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
+import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
 
 type GamePageProps = {
   onNavigate: (route: AppRoute) => void
@@ -189,7 +190,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
-  const { state, actions, devTools } = useAppState()
+  const { state, actions, server, devTools } = useAppState()
 
   const { participants, currentRound, currentTurn, chat, settings, roomState, hostUserId } = state.room
   const isHost = hostUserId === state.session.userId
@@ -392,13 +393,35 @@ export function GamePage({ onNavigate }: GamePageProps) {
     setGuessInput('')
   }
 
+  const handleSendStrokeChunk = (stroke: CanvasStroke) => {
+    if (roomState === 'LOBBY') {
+      logOutgoingClientEvent(
+        'DRAW_STROKE',
+        {
+          stroke,
+          turnId: null,
+          roomState,
+          localOnly: true,
+        },
+        { transport: 'mock' },
+      )
+      return
+    }
+
+    if (roomState !== 'RUNNING') {
+      return
+    }
+
+    actions.sendCanvasStroke(stroke)
+  }
+
   const handleCommitStroke = (stroke: CanvasStroke) => {
     if (roomState === 'LOBBY') {
       setLobbyStrokes((strokes) => [...strokes, stroke])
       return
     }
 
-    actions.sendCanvasStroke(stroke)
+    server.applyCanvasStroke(stroke)
   }
 
   const handleClearCanvas = () => {
@@ -616,6 +639,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 tool={tool}
                 color={tool === 'ERASER' ? '#ffffff' : color}
                 size={Math.max(2, size * 2)}
+                onSendStrokeChunk={handleSendStrokeChunk}
                 onCommitStroke={handleCommitStroke}
               />
 
