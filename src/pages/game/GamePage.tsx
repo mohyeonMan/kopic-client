@@ -377,6 +377,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
       return
     }
 
+    actions.submitGuess(nextText)
+
     const visibility = currentCorrectIds.includes(state.session.userId) || viewerRole === 'drawer' ? 'correct-only' : 'global'
 
     setLocalMessages((messages) => [
@@ -405,10 +407,9 @@ export function GamePage({ onNavigate }: GamePageProps) {
         },
         { transport: 'mock' },
       )
-      return
     }
 
-    if (roomState !== 'RUNNING') {
+    if (roomState !== 'RUNNING' && roomState !== 'LOBBY') {
       return
     }
 

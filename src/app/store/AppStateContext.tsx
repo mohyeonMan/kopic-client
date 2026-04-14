@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, type ReactNode } f
 import {
   type AppState,
   type CanvasStroke,
+  type DrawingTool,
   type ChatMessage,
   type ConnectionStatus,
   defaultSettings,
@@ -26,6 +27,7 @@ import {
   type ServerEventCode,
 } from '../../ws/protocol/events'
 import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
+import { wsSessionManager } from '../../ws/client/wsSessionManager'
 
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
@@ -43,18 +45,96 @@ type AppAction =
 const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
 
 type ClientEventName = (typeof clientEventMeta)[number]['name']
+type CompactPoint = [number, number]
+type CompactStrokePayload = [number, number, number, CompactPoint[]]
+
+const WS_COLOR_PALETTE = [
+  '#203247',
+  '#345a74',
+  '#56758f',
+  '#d14b3f',
+  '#ea6f58',
+  '#ef9b47',
+  '#f2c14e',
+  '#5f8d4e',
+  '#7aac63',
+  '#1d6b4e',
+  '#1f8a8a',
+  '#4aa3b8',
+  '#5f6dd9',
+  '#6f55c6',
+  '#9656a2',
+  '#bd6a88',
+  '#8d6e63',
+  '#6f5a4b',
+  '#9aa5b1',
+  '#ffffff',
+] as const
+
+const colorIndexByHex = new Map<string, number>(
+  WS_COLOR_PALETTE.map((color, index) => [color, index]),
+)
+const TOOL_CODE_BY_NAME: Record<DrawingTool, number> = {
+  PEN: 0,
+  ERASER: 1,
+  FILL: 2,
+}
+const TOOL_NAME_BY_CODE: DrawingTool[] = ['PEN', 'ERASER', 'FILL']
 
 const clientEventCodeByName = new Map<ClientEventName, ClientEventCode>(
   clientEventMeta.map((event) => [event.name, event.code]),
 )
 
-function resolveWsUrl() {
-  if (typeof window === 'undefined') {
-    return 'ws://localhost:8080/ws'
+function roundTo(value: number, digits: number) {
+  const factor = 10 ** digits
+  return Math.round(value * factor) / factor
+}
+
+function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload {
+  const toolCode = TOOL_CODE_BY_NAME[stroke.tool]
+  const colorIndex = colorIndexByHex.get(stroke.color) ?? colorIndexByHex.get('#203247') ?? 0
+
+  return [
+    toolCode,
+    colorIndex,
+    roundTo(stroke.size, 1),
+    stroke.points.map((point) => [roundTo(point.x, 3), roundTo(point.y, 3)]),
+  ]
+}
+
+function decodeCompactStroke(payload: unknown): CanvasStroke | null {
+  if (!Array.isArray(payload)) {
+    return null
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${protocol}://${window.location.hostname}:8080/ws`
+  const [toolCode, color, size, points] = payload
+  const tool = TOOL_NAME_BY_CODE[toolCode]
+  if (
+    !tool ||
+    typeof color !== 'number' ||
+    typeof size !== 'number' ||
+    !Array.isArray(points)
+  ) {
+    return null
+  }
+
+  const colorHex = WS_COLOR_PALETTE[color] ?? '#203247'
+  const normalizedPoints = points
+    .filter((point): point is [number, number] =>
+      Array.isArray(point) &&
+      point.length === 2 &&
+      typeof point[0] === 'number' &&
+      typeof point[1] === 'number',
+    )
+    .map(([x, y]) => ({ x, y }))
+
+  return {
+    id: crypto.randomUUID(),
+    tool,
+    color: colorHex,
+    size,
+    points: normalizedPoints,
+  }
 }
 
 function createSystemMessage(text: string): ChatMessage {
@@ -392,17 +472,10 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
   const stateRef = useRef(state)
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimerRef = useRef<number | null>(null)
-  const reconnectAttemptRef = useRef(0)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
-
-  const setConnectionStatus = useCallback((status: ConnectionStatus) => {
-    dispatch({ type: 'connection/statusChanged', payload: status })
-  }, [])
 
   const server = useMemo<AppStateContextValue['server']>(
     () => ({
@@ -438,8 +511,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           }
           return
         case 401:
-          if (payload && typeof payload === 'object') {
-            server.applyCanvasStroke(payload as CanvasStroke)
+          {
+            const stroke = decodeCompactStroke(payload)
+            if (stroke) {
+              server.applyCanvasStroke(stroke)
+            }
           }
           return
         case 402:
@@ -459,9 +535,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     <TPayload,>(eventName: ClientEventName, payload: TPayload, fallback?: () => void) => {
       logOutgoingClientEvent(eventName, payload)
       const code = clientEventCodeByName.get(eventName)
-      const ws = wsRef.current
 
-      if (!code || !ws || ws.readyState !== WebSocket.OPEN) {
+      if (!code) {
         fallback?.()
         return
       }
@@ -471,90 +546,44 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         p: payload,
       }
 
-      ws.send(JSON.stringify(envelope))
+      const sent = wsSessionManager.send(JSON.stringify(envelope))
+      if (!sent) {
+        console.warn('[ws:out] dropped (socket not open)', { eventName, payload })
+        fallback?.()
+      }
     },
     [],
   )
 
   useEffect(() => {
-    let disposed = false
-
-    const clearReconnectTimer = () => {
-      if (reconnectTimerRef.current !== null) {
-        window.clearTimeout(reconnectTimerRef.current)
-        reconnectTimerRef.current = null
-      }
-    }
-
-    const scheduleReconnect = () => {
-      if (disposed) {
+    const unsubscribe = wsSessionManager.subscribe((event) => {
+      if (event.type === 'status') {
+        dispatch({ type: 'connection/statusChanged', payload: event.status })
         return
       }
 
-      clearReconnectTimer()
-      setConnectionStatus('reconnecting')
-      const delayMs = Math.min(1000 * 2 ** reconnectAttemptRef.current, 5000)
-      reconnectAttemptRef.current += 1
-
-      reconnectTimerRef.current = window.setTimeout(() => {
-        reconnectTimerRef.current = null
-        connect()
-      }, delayMs)
-    }
-
-    const connect = () => {
-      if (disposed) {
+      if (event.type === 'error') {
+        console.error('[ws] transport error', event.error)
         return
       }
 
-      setConnectionStatus('connecting')
-      const ws = new WebSocket(resolveWsUrl())
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        reconnectAttemptRef.current = 0
-        setConnectionStatus('synced')
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(String(event.data)) as Envelope<unknown, number>
-          if (typeof parsed?.e !== 'number') {
-            return
-          }
-
-          handleServerEnvelope(parsed as Envelope<unknown, ServerEventCode>)
-        } catch (error) {
-          console.error('[ws:in] invalid payload', error)
-        }
-      }
-
-      ws.onerror = () => {
-        // reconnect is handled by onclose; keep onerror silent to avoid noise.
-      }
-
-      ws.onclose = () => {
-        if (wsRef.current === ws) {
-          wsRef.current = null
+      try {
+        const parsed = JSON.parse(event.data) as Envelope<unknown, number>
+        if (typeof parsed?.e !== 'number') {
+          return
         }
 
-        scheduleReconnect()
+        handleServerEnvelope(parsed as Envelope<unknown, ServerEventCode>)
+      } catch (error) {
+        console.error('[ws:in] invalid payload', error)
+        return
       }
-    }
-
-    connect()
+    })
 
     return () => {
-      disposed = true
-      clearReconnectTimer()
-
-      const ws = wsRef.current
-      wsRef.current = null
-      if (ws) {
-        ws.close()
-      }
+      unsubscribe()
     }
-  }, [handleServerEnvelope, setConnectionStatus])
+  }, [handleServerEnvelope])
 
   const value = useMemo<AppStateContextValue>(() => {
     return {
@@ -586,8 +615,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
               }),
           )
         },
+        submitGuess: (text) => {
+          sendClientEvent('GUESS_SUBMIT', {
+            t: text,
+            tid: stateRef.current.room.currentTurn?.turnId ?? null,
+          })
+        },
         sendCanvasStroke: (stroke) => {
-          sendClientEvent('DRAW_STROKE', stroke)
+          sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
         },
         requestCanvasClear: () => {
           sendClientEvent(

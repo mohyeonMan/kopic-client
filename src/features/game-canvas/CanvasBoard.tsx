@@ -33,8 +33,8 @@ function getCanvasPoint(
   const rect = canvas.getBoundingClientRect()
 
   return {
-    x: Number(((event.clientX - rect.left) / rect.width).toFixed(5)),
-    y: Number(((event.clientY - rect.top) / rect.height).toFixed(5)),
+    x: Number(((event.clientX - rect.left) / rect.width).toFixed(3)),
+    y: Number(((event.clientY - rect.top) / rect.height).toFixed(3)),
   }
 }
 

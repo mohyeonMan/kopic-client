@@ -31,6 +31,7 @@ export type AppStateContextValue = {
     patchLobbySettings: (settings: Partial<GameSettings>) => void
     requestGameStart: () => void
     requestWordChoice: (word: string) => void
+    submitGuess: (text: string) => void
     sendCanvasStroke: (stroke: CanvasStroke) => void
     requestCanvasClear: () => void
   }
