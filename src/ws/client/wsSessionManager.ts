@@ -1,4 +1,5 @@
 import type { ConnectionStatus } from '../../app/store/mockAppState'
+import { routes } from '../../app/router/routes'
 
 type SessionEvent =
   | { type: 'status'; status: ConnectionStatus }
@@ -10,6 +11,7 @@ type SessionSubscriber = (event: SessionEvent) => void
 const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
+const WS_MAX_RECONNECT_ATTEMPTS = 3
 const WS_ROOM_ID = 'room-01'
 const WS_GE_ID = 'ge-01'
 
@@ -102,6 +104,34 @@ function isPongMessage(raw: string) {
   }
 }
 
+function handleReconnectFailure() {
+  clearReconnectTimer()
+  clearHeartbeatTimer()
+
+  const current = ws
+  ws = null
+  owners.clear()
+  reconnectAttempt = 0
+  setStatus('idle')
+
+  if (current) {
+    current.close()
+  }
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.alert('서버와 연결에 실패했습니다.')
+
+  if (window.location.pathname === routes.main) {
+    return
+  }
+
+  window.history.pushState({}, '', routes.main)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 function scheduleReconnect() {
   if (owners.size === 0) {
     setStatus('idle')
@@ -109,6 +139,12 @@ function scheduleReconnect() {
   }
 
   clearReconnectTimer()
+
+  if (reconnectAttempt >= WS_MAX_RECONNECT_ATTEMPTS) {
+    handleReconnectFailure()
+    return
+  }
+
   setStatus('reconnecting')
   const delayMs = Math.min(1000 * 2 ** reconnectAttempt, 5000)
   reconnectAttempt += 1
@@ -143,7 +179,16 @@ function connectIfNeeded() {
   }
 
   setStatus('connecting')
-  const next = new WebSocket(resolveWsUrl())
+  let next: WebSocket
+
+  try {
+    next = new WebSocket(resolveWsUrl())
+  } catch (error) {
+    publish({ type: 'error', error })
+    scheduleReconnect()
+    return
+  }
+
   ws = next
 
   next.onopen = () => {
