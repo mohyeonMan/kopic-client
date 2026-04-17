@@ -38,6 +38,7 @@ type AppAction =
   | { type: 'server/gameStartedApplied'; payload: ServerGameStartedPayload }
   | { type: 'server/wordChoiceApplied'; payload: ServerWordChoicePayload }
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
+  | { type: 'server/canvasStrokesReceived'; payload: CanvasStroke[] }
   | { type: 'server/canvasCleared' }
   | { type: 'server/gameEndedApplied' }
   | { type: 'dev/turnPhaseForced'; payload: TurnPhase }
@@ -485,6 +486,31 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           },
         },
       }
+    case 'server/canvasStrokesReceived':
+      if (action.payload.length === 0) {
+        return state
+      }
+
+      if (!state.room.currentTurn) {
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), ...action.payload],
+          },
+        }
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          currentTurn: {
+            ...state.room.currentTurn,
+            canvasStrokes: [...state.room.currentTurn.canvasStrokes, ...action.payload],
+          },
+        },
+      }
     case 'server/canvasCleared':
       if (!state.room.currentTurn) {
         return {
@@ -621,6 +647,8 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
   const stateRef = useRef(state)
+  const inboundStrokeQueueRef = useRef<CanvasStroke[]>([])
+  const inboundStrokeFlushRafRef = useRef<number | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -636,6 +664,38 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       applyGameEnded: () => dispatch({ type: 'server/gameEndedApplied' }),
     }),
     [],
+  )
+
+  const flushInboundStrokeQueue = useCallback(() => {
+    inboundStrokeFlushRafRef.current = null
+    const pending = inboundStrokeQueueRef.current
+    if (pending.length === 0) {
+      return
+    }
+
+    inboundStrokeQueueRef.current = []
+    dispatch({ type: 'server/canvasStrokesReceived', payload: pending })
+  }, [])
+
+  const clearInboundStrokeQueue = useCallback(() => {
+    inboundStrokeQueueRef.current = []
+    if (inboundStrokeFlushRafRef.current !== null) {
+      window.cancelAnimationFrame(inboundStrokeFlushRafRef.current)
+      inboundStrokeFlushRafRef.current = null
+    }
+  }, [])
+
+  const enqueueInboundStroke = useCallback(
+    (stroke: CanvasStroke) => {
+      inboundStrokeQueueRef.current.push(stroke)
+
+      if (inboundStrokeFlushRafRef.current !== null) {
+        return
+      }
+
+      inboundStrokeFlushRafRef.current = window.requestAnimationFrame(flushInboundStrokeQueue)
+    },
+    [flushInboundStrokeQueue],
   )
 
   const handleServerEnvelope = useCallback(
@@ -677,11 +737,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           {
             const stroke = decodeCompactStroke(payload)
             if (stroke) {
-              server.applyCanvasStroke(stroke)
+              enqueueInboundStroke(stroke)
             }
           }
           return
         case 402:
+          clearInboundStrokeQueue()
           server.applyCanvasClear()
           return
         case 307:
@@ -691,8 +752,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           return
       }
     },
-    [server],
+    [clearInboundStrokeQueue, enqueueInboundStroke, server],
   )
+
+  useEffect(() => {
+    return () => {
+      clearInboundStrokeQueue()
+    }
+  }, [clearInboundStrokeQueue])
 
   const sendClientEvent = useCallback(
     <TPayload,>(eventName: ClientEventName, payload: TPayload, fallback?: () => void) => {
