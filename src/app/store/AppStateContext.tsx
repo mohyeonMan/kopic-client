@@ -89,6 +89,7 @@ const TOOL_CODE_BY_NAME: Record<DrawingTool, number> = {
   FILL: 2,
 }
 const TOOL_NAME_BY_CODE: DrawingTool[] = ['PEN', 'ERASER', 'FILL']
+const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, 0, []]
 
 const clientEventCodeByName = new Map<ClientEventName, ClientEventCode>(
   clientEventMeta.map((event) => [event.name, event.code]),
@@ -214,6 +215,23 @@ function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload
       createSystemMessage('304 TURN_STARTED'),
     ],
   }
+}
+
+function isCanvasClearPayload(payload: unknown) {
+  if (Array.isArray(payload) && payload.length > 0 && payload[0] === 3) {
+    return true
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return false
+  }
+
+  const { clear, type, op } = payload as { clear?: unknown; type?: unknown; op?: unknown }
+  if (clear === true) {
+    return true
+  }
+
+  return type === 'CANVAS_CLEAR' || op === 'CANVAS_CLEAR'
 }
 
 function createLobbySnapshot(state: AppState): RoomSnapshot {
@@ -735,6 +753,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         case 201:
         case 401:
           {
+            if (isCanvasClearPayload(payload)) {
+              clearInboundStrokeQueue()
+              server.applyCanvasClear()
+              return
+            }
+
             const stroke = decodeCompactStroke(payload)
             if (stroke) {
               enqueueInboundStroke(stroke)
@@ -855,10 +879,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
         },
         requestCanvasClear: () => {
+          clearInboundStrokeQueue()
+          server.applyCanvasClear()
           sendClientEvent(
-            'DRAW_CLEAR',
-            { turnId: stateRef.current.room.currentTurn?.turnId ?? null },
-            () => server.applyCanvasClear(),
+            'DRAW_STROKE',
+            CANVAS_CLEAR_MARKER,
           )
         },
       },
@@ -877,7 +902,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         },
       },
     }
-  }, [sendClientEvent, server, state])
+  }, [clearInboundStrokeQueue, sendClientEvent, server, state])
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
 }

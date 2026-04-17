@@ -174,7 +174,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [stageOverlayOpen, setStageOverlayOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(true)
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
-  const [lobbyStrokes, setLobbyStrokes] = useState<CanvasStroke[]>([])
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
   const [showChatScrollButton, setShowChatScrollButton] = useState(false)
   const stageOverlayOpenRafRef = useRef<number | null>(null)
@@ -228,7 +227,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
         : false
   const boardStrokes =
     roomState === 'LOBBY'
-      ? [...lobbyCanvasStrokes, ...lobbyStrokes]
+      ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const visibleChat = mergedChat.filter((message) => {
     if (message.tone === 'system') {
@@ -419,28 +418,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
   }
 
   const handleCommitStroke = (stroke: CanvasStroke) => {
-    if (roomState === 'LOBBY') {
-      setLobbyStrokes((strokes) => [...strokes, stroke])
-      return
-    }
-
     server.applyCanvasStroke(stroke)
   }
 
   const handleClearCanvas = () => {
-    if (roomState === 'LOBBY') {
-      setLobbyStrokes([])
-      server.applyCanvasClear()
-      return
-    }
-
     actions.requestCanvasClear()
   }
 
   const ensureRunning = (phase?: TurnPhase) => {
     if (roomState === 'RESULT') {
       devTools.resetToLobby()
-      setLobbyStrokes([])
       actions.requestGameStart()
     } else if (roomState === 'LOBBY') {
       actions.requestGameStart()
@@ -1069,7 +1056,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
             className="secondary-button"
             onClick={() => {
               devTools.resetToLobby()
-              setLobbyStrokes([])
               setOverlayPreview('actual')
               setSettingsOpen(true)
             }}
