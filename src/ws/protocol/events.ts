@@ -10,7 +10,7 @@ export const clientEventMeta = [
 
 export const serverEventMeta = [
   { code: 301, name: 'ROOM_JOINED' },
-  { code: 302, name: 'GAME_STARTED' },
+  { code: 302, name: 'ROOM_LEFT' },
   { code: 303, name: 'ROUND_STARTED' },
   { code: 304, name: 'TURN_STARTED' },
   { code: 305, name: 'TURN_ENDED' },

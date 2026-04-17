@@ -70,6 +70,7 @@ export type RoomSnapshot = {
   roomType: 'PRIVATE'
   hostUserId: string
   participants: Participant[]
+  lobbyCanvasStrokes?: CanvasStroke[]
   settings: GameSettings
   roomState: RoomState
   gameId: string | null
@@ -100,99 +101,6 @@ export const defaultSettings: GameSettings = {
   endMode: 'TIME_OR_ALL_CORRECT',
 }
 
-const initialParticipants: Participant[] = [
-  {
-    userId: 'u-100',
-    nickname: 'Jihoon',
-    isHost: true,
-    score: 32,
-    isOnline: true,
-    joinOrder: 1,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-200',
-    nickname: 'Mina',
-    isHost: false,
-    score: 26,
-    isOnline: true,
-    joinOrder: 2,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-300',
-    nickname: 'Theo',
-    isHost: false,
-    score: 14,
-    isOnline: true,
-    joinOrder: 3,
-    joinedMidRound: true,
-  },
-  {
-    userId: 'u-400',
-    nickname: 'Sora',
-    isHost: false,
-    score: 18,
-    isOnline: true,
-    joinOrder: 4,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-500',
-    nickname: 'Evan',
-    isHost: false,
-    score: 22,
-    isOnline: true,
-    joinOrder: 5,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-600',
-    nickname: 'Yuna',
-    isHost: false,
-    score: 16,
-    isOnline: true,
-    joinOrder: 6,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-700',
-    nickname: 'Luca',
-    isHost: false,
-    score: 9,
-    isOnline: true,
-    joinOrder: 7,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-800',
-    nickname: 'Hana',
-    isHost: false,
-    score: 27,
-    isOnline: true,
-    joinOrder: 8,
-    joinedMidRound: false,
-  },
-  {
-    userId: 'u-900',
-    nickname: 'Noah',
-    isHost: false,
-    score: 12,
-    isOnline: true,
-    joinOrder: 9,
-    joinedMidRound: true,
-  },
-  {
-    userId: 'u-1000',
-    nickname: 'Momo',
-    isHost: false,
-    score: 21,
-    isOnline: true,
-    joinOrder: 10,
-    joinedMidRound: false,
-  },
-]
-
 export const initialAppState: AppState = {
   session: {
     userId: 'u-100',
@@ -204,7 +112,8 @@ export const initialAppState: AppState = {
     roomCode: 'KOPIC7',
     roomType: 'PRIVATE',
     hostUserId: 'u-100',
-    participants: initialParticipants,
+    participants: [],
+    lobbyCanvasStrokes: [],
     settings: defaultSettings,
     roomState: 'LOBBY',
     gameId: null,

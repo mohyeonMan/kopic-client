@@ -24,7 +24,6 @@ import {
   clientEventMeta,
   type ClientEventCode,
   type Envelope,
-  type ServerEventCode,
 } from '../../ws/protocol/events'
 import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
 import { wsSessionManager } from '../../ws/client/wsSessionManager'
@@ -34,6 +33,8 @@ type AppAction =
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'connection/statusChanged'; payload: ConnectionStatus }
   | { type: 'server/roomSnapshotApplied'; payload: RoomSnapshot }
+  | { type: 'server/roomJoinedApplied'; payload: ServerRoomJoinedPayload }
+  | { type: 'server/roomLeftApplied'; payload: ServerRoomLeftPayload }
   | { type: 'server/gameStartedApplied'; payload: ServerGameStartedPayload }
   | { type: 'server/wordChoiceApplied'; payload: ServerWordChoicePayload }
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
@@ -47,6 +48,13 @@ const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
 type ClientEventName = (typeof clientEventMeta)[number]['name']
 type CompactPoint = [number, number]
 type CompactStrokePayload = [number, number, number, CompactPoint[]]
+type ServerRoomJoinedPayload = {
+  userId: string
+  nickname: string
+}
+type ServerRoomLeftPayload = {
+  userId: string
+}
 
 const WS_COLOR_PALETTE = [
   '#203247',
@@ -187,6 +195,7 @@ function createMockTurn(
 
 function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload {
   const drawerOrder = getDrawerOrder(state.room.participants)
+  const firstDrawerUserId = drawerOrder[0] ?? state.session.userId
   const currentRound: RoundSummary = {
     roundNo: 1,
     totalRounds: state.room.settings.roundCount,
@@ -197,9 +206,9 @@ function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload
   return {
     gameId: 'game-20260323-01',
     currentRound,
-    currentTurn: createMockTurn(1, 1, drawerOrder[0], 'WORD_CHOICE', state.room.settings),
+    currentTurn: createMockTurn(1, 1, firstDrawerUserId, 'WORD_CHOICE', state.room.settings),
     chatMessages: [
-      createSystemMessage('302 GAME_STARTED'),
+      createSystemMessage('GAME_STARTED'),
       createSystemMessage('303 ROUND_STARTED with drawerOrder snapshot'),
       createSystemMessage('304 TURN_STARTED'),
     ],
@@ -255,6 +264,58 @@ function createForcedTurn(currentTurn: TurnSummary, phase: TurnPhase, settings: 
   return nextTurn
 }
 
+function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const { userId, sessionId, nickname } = payload as {
+    userId?: unknown
+    sessionId?: unknown
+    nickname?: unknown
+  }
+  const participantId =
+    typeof userId === 'string' && userId.trim().length > 0
+      ? userId
+      : typeof sessionId === 'string' && sessionId.trim().length > 0
+        ? sessionId
+        : null
+
+  if (!participantId) {
+    return null
+  }
+  if (typeof nickname !== 'string' || nickname.trim().length === 0) {
+    return null
+  }
+
+  return {
+    userId: participantId.trim(),
+    nickname: nickname.trim(),
+  }
+}
+
+function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const { userId, sessionId } = payload as { userId?: unknown; sessionId?: unknown }
+  const participantId =
+    typeof userId === 'string' && userId.trim().length > 0
+      ? userId
+      : typeof sessionId === 'string' && sessionId.trim().length > 0
+        ? sessionId
+        : null
+
+  if (!participantId) {
+    return null
+  }
+
+  return {
+    userId: participantId.trim(),
+  }
+}
+
 function appStateReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'local/sessionNicknameUpdated':
@@ -292,8 +353,84 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
     case 'server/roomSnapshotApplied':
       return {
         ...state,
-        room: action.payload,
+        room: {
+          ...action.payload,
+          lobbyCanvasStrokes: action.payload.lobbyCanvasStrokes ?? state.room.lobbyCanvasStrokes ?? [],
+        },
       }
+    case 'server/roomJoinedApplied': {
+      if (state.room.participants.some((participant) => participant.userId === action.payload.userId)) {
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            participants: state.room.participants.map((participant) =>
+              participant.userId === action.payload.userId
+                ? {
+                    ...participant,
+                    nickname: action.payload.nickname,
+                    isOnline: true,
+                  }
+                : participant,
+            ),
+          },
+        }
+      }
+
+      const maxJoinOrder = state.room.participants.reduce(
+        (max, participant) => Math.max(max, participant.joinOrder),
+        0,
+      )
+
+      const joinedParticipant: Participant = {
+        userId: action.payload.userId,
+        nickname: action.payload.nickname,
+        isHost: false,
+        score: 0,
+        isOnline: true,
+        joinOrder: maxJoinOrder + 1,
+        joinedMidRound: state.room.roomState === 'RUNNING',
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          participants: [...state.room.participants, joinedParticipant],
+        },
+      }
+    }
+    case 'server/roomLeftApplied': {
+      if (!state.room.participants.some((participant) => participant.userId === action.payload.userId)) {
+        return state
+      }
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          participants: state.room.participants.filter(
+            (participant) => participant.userId !== action.payload.userId,
+          ),
+          currentRound: state.room.currentRound
+            ? {
+                ...state.room.currentRound,
+                drawerOrder: state.room.currentRound.drawerOrder.filter(
+                  (userId) => userId !== action.payload.userId,
+                ),
+              }
+            : null,
+          currentTurn: state.room.currentTurn
+            ? {
+                ...state.room.currentTurn,
+                correctUserIds: state.room.currentTurn.correctUserIds.filter(
+                  (userId) => userId !== action.payload.userId,
+                ),
+              }
+            : null,
+        },
+      }
+    }
     case 'server/gameStartedApplied':
       return {
         ...state,
@@ -329,7 +466,13 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       }
     case 'server/canvasStrokeReceived':
       if (!state.room.currentTurn) {
-        return state
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), action.payload],
+          },
+        }
       }
 
       return {
@@ -344,7 +487,13 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       }
     case 'server/canvasCleared':
       if (!state.room.currentTurn) {
-        return state
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            lobbyCanvasStrokes: [],
+          },
+        }
       }
 
       return {
@@ -490,26 +639,40 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   )
 
   const handleServerEnvelope = useCallback(
-    (envelope: Envelope<unknown, ServerEventCode>) => {
+    (envelope: Envelope<unknown, number>) => {
       const payload = envelope.p
 
       switch (envelope.e) {
         case 408:
-        case 301:
           if (payload && typeof payload === 'object') {
             server.applyRoomSnapshot(payload as RoomSnapshot)
           }
           return
-        case 302:
+        case 301: {
+          const roomJoinedPayload = decodeRoomJoinedPayload(payload)
+          if (roomJoinedPayload) {
+            dispatch({ type: 'server/roomJoinedApplied', payload: roomJoinedPayload })
+          }
+          return
+        }
+        case 302: {
+          const roomLeftPayload = decodeRoomLeftPayload(payload)
+          if (roomLeftPayload) {
+            dispatch({ type: 'server/roomLeftApplied', payload: roomLeftPayload })
+            return
+          }
+
           if (payload && typeof payload === 'object') {
             server.applyGameStarted(payload as ServerGameStartedPayload)
           }
           return
+        }
         case 310:
           if (payload && typeof payload === 'object') {
             server.applyWordChoice(payload as ServerWordChoicePayload)
           }
           return
+        case 201:
         case 401:
           {
             const stroke = decodeCompactStroke(payload)
@@ -573,7 +736,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        handleServerEnvelope(parsed as Envelope<unknown, ServerEventCode>)
+        handleServerEnvelope(parsed)
       } catch (error) {
         console.error('[ws:in] invalid payload', error)
         return
@@ -618,7 +781,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         submitGuess: (text) => {
           sendClientEvent('GUESS_SUBMIT', {
             t: text,
-            tid: stateRef.current.room.currentTurn?.turnId ?? null,
+            // tid: stateRef.current.room.currentTurn?.turnId ?? null,
           })
         },
         sendCanvasStroke: (stroke) => {

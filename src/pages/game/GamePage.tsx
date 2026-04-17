@@ -1,13 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, TransitionEvent as ReactTransitionEvent } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
-import type {
-  CanvasStroke,
-  ChatMessage,
-  DrawingTool,
-  Participant,
-  TurnPhase,
-} from '../../app/store/mockAppState'
+import { defaultSettings } from '../../app/store/mockAppState'
+import type { CanvasStroke, ChatMessage, DrawingTool, Participant, TurnPhase } from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
 import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
 import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
@@ -192,7 +187,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
   const { state, actions, server, devTools } = useAppState()
 
-  const { participants, currentRound, currentTurn, chat, settings, roomState, hostUserId } = state.room
+  const { currentRound, currentTurn, roomState, hostUserId } = state.room
+  const participants = Array.isArray(state.room.participants) ? state.room.participants : []
+  const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes) ? state.room.lobbyCanvasStrokes : []
+  const chat = Array.isArray(state.room.chat) ? state.room.chat : []
+  const settings = state.room.settings ?? defaultSettings
   const isHost = hostUserId === state.session.userId
   const drawer = participants.find((participant) => participant.userId === currentTurn?.drawerUserId)
   const isDrawer = state.session.userId === currentTurn?.drawerUserId
@@ -227,7 +226,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
       : roomState === 'RUNNING'
         ? viewerRole === 'drawer' && currentTurn?.phase === 'DRAWING'
         : false
-  const boardStrokes = roomState === 'LOBBY' ? lobbyStrokes : currentTurn?.canvasStrokes ?? []
+  const boardStrokes =
+    roomState === 'LOBBY'
+      ? [...lobbyCanvasStrokes, ...lobbyStrokes]
+      : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const visibleChat = mergedChat.filter((message) => {
     if (message.tone === 'system') {
       return false
@@ -428,6 +430,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const handleClearCanvas = () => {
     if (roomState === 'LOBBY') {
       setLobbyStrokes([])
+      server.applyCanvasClear()
       return
     }
 

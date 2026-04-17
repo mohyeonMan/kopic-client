@@ -12,8 +12,8 @@ const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
 const WS_MAX_RECONNECT_ATTEMPTS = 3
-const WS_ROOM_ID = 'room-01'
-const WS_GE_ID = 'ge-01'
+const WS_ROOM_CODE = 'KOPIC7'
+const WS_GE_ID = 'ge-local'
 
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
@@ -21,9 +21,32 @@ let closeGraceTimer: number | null = null
 let heartbeatTimer: number | null = null
 let reconnectAttempt = 0
 let currentStatus: ConnectionStatus = 'idle'
+let currentNickname: string | null = null
 
 const owners = new Set<string>()
 const subscribers = new Set<SessionSubscriber>()
+
+function normalizeNickname(nickname: string | null | undefined) {
+  const trimmed = nickname?.trim()
+  return trimmed ? trimmed : null
+}
+
+function resolveNickname() {
+  if (currentNickname) {
+    return currentNickname
+  }
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const queryNickname = new URLSearchParams(window.location.search).get('nickname')
+  const storageNickname =
+    window.localStorage.getItem('nickname') ??
+    window.sessionStorage.getItem('nickname')
+
+  return normalizeNickname(queryNickname ?? storageNickname)
+}
 
 function resolveWsUrl() {
   if (typeof window === 'undefined') {
@@ -43,8 +66,12 @@ function resolveWsUrl() {
   if (token) {
     url.searchParams.set('token', token)
   }
-  url.searchParams.set('roomId', WS_ROOM_ID)
+  url.searchParams.set('roomCode', WS_ROOM_CODE)
   url.searchParams.set('geId', WS_GE_ID)
+  const nickname = resolveNickname()
+  if (nickname) {
+    url.searchParams.set('nickname', nickname)
+  }
 
   return url.toString()
 }
@@ -237,7 +264,10 @@ export const wsSessionOwner = {
 } as const
 
 export const wsSessionManager = {
-  acquire(owner: string) {
+  acquire(owner: string, nickname?: string) {
+    if (typeof nickname === 'string') {
+      currentNickname = normalizeNickname(nickname)
+    }
     owners.add(owner)
     clearCloseGraceTimer()
     connectIfNeeded()
