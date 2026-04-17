@@ -1956,13 +1956,18 @@
   border-bottom: 1px solid var(--panel-border);
 }
 
-.game-chat-list li strong {
+.game-chat-list li .chat-nickname {
   flex: 0 0 auto;
   font-size: 12px;
   line-height: 1.15;
+  font-weight: 400;
 }
 
-.game-chat-list li strong::after {
+.game-chat-list li .chat-nickname-mine {
+  font-weight: 700;
+}
+
+.game-chat-list li .chat-nickname::after {
   content: " :";
   margin-left: 2px;
   font-weight: 700;

@@ -106,7 +106,7 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
 
         <ul className="participant-list">
           {state.room.participants.map((participant) => (
-            <li key={participant.userId}>
+            <li key={participant.sessionId}>
               <div>
                 <strong>{participant.nickname}</strong>
                 <p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isAppRoute, routes, type AppRoute } from './routes'
 import { wsSessionManager, wsSessionOwner } from '../../ws/client/wsSessionManager'
 import { useAppState } from '../store/useAppState'
@@ -9,7 +9,8 @@ function getCurrentRoute(): AppRoute {
 
 export function useAppRouter() {
   const [route, setRoute] = useState<AppRoute>(getCurrentRoute)
-  const { state } = useAppState()
+  const { state, actions } = useAppState()
+  const previousRouteRef = useRef<AppRoute>(route)
 
   useEffect(() => {
     if (route !== routes.game) {
@@ -24,7 +25,15 @@ export function useAppRouter() {
       return
     }
 
+    if (previousRouteRef.current === routes.game) {
+      actions.clearRoomCache()
+    }
+
     wsSessionManager.release(wsSessionOwner.game)
+  }, [route])
+
+  useEffect(() => {
+    previousRouteRef.current = route
   }, [route])
 
   useEffect(() => {

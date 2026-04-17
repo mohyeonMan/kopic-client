@@ -6,7 +6,7 @@ type ResultPageProps = {
 }
 
 export function ResultPage({ onNavigate }: ResultPageProps) {
-  const { state, connection, devTools } = useAppState()
+  const { state, connection, devTools, actions } = useAppState()
   const ranking = state.room.participants.slice().sort((left, right) => right.score - left.score)
   const winner = ranking[0]
 
@@ -36,7 +36,14 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
           >
             Back to lobby
           </button>
-          <button type="button" className="secondary-button" onClick={() => onNavigate(routes.main)}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              actions.clearRoomCache()
+              onNavigate(routes.main)
+            }}
+          >
             Exit room
           </button>
         </div>
@@ -52,7 +59,7 @@ export function ResultPage({ onNavigate }: ResultPageProps) {
 
         <ul className="score-list">
           {ranking.map((participant, index) => (
-            <li key={participant.userId}>
+            <li key={participant.sessionId}>
               <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
             </li>
           ))}

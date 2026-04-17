@@ -2,18 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, TransitionEvent as ReactTransitionEvent } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import { defaultSettings } from '../../app/store/mockAppState'
-import type { CanvasStroke, ChatMessage, DrawingTool, Participant, TurnPhase } from '../../app/store/mockAppState'
+import type { CanvasStroke, DrawingTool, Participant, TurnPhase } from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
 import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
-import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
 
 type GamePageProps = {
   onNavigate: (route: AppRoute) => void
-}
-
-type LocalMessage = ChatMessage & {
-  createdAt: number
-  visibility: 'global' | 'correct-only'
 }
 
 type OverlayPreview =
@@ -77,32 +71,34 @@ type EarnedScore = {
 }
 
 type ParticipantBubblePosition = {
-  userId: string
+  sessionId: string
   text: string
   createdAt: number
   top: number
   left: number
 }
 
-function participantTone(participant: Participant, drawerUserId?: string, correctUserIds?: string[]) {
-  if (participant.userId === drawerUserId) {
+const EMPTY_SESSION_IDS: string[] = []
+
+function participantTone(participant: Participant, drawerSessionId?: string, correctSessionIds?: string[]) {
+  if (participant.sessionId === drawerSessionId) {
     return 'participant-card participant-card-drawer'
   }
 
-  if (correctUserIds?.includes(participant.userId)) {
+  if (correctSessionIds?.includes(participant.sessionId)) {
     return 'participant-card participant-card-correct'
   }
 
   return 'participant-card'
 }
 
-function buildEarnedScores(participants: Participant[], correctUserIds: string[], drawerUserId?: string) {
+function buildEarnedScores(participants: Participant[], correctSessionIds: string[], drawerSessionId?: string) {
   const rows: EarnedScore[] = participants.map((participant) => {
-    if (participant.userId === drawerUserId) {
+    if (participant.sessionId === drawerSessionId) {
       return { nickname: participant.nickname, score: 40, isCorrect: false, role: 'drawer' }
     }
 
-    if (correctUserIds.includes(participant.userId)) {
+    if (correctSessionIds.includes(participant.sessionId)) {
       return { nickname: participant.nickname, score: 80, isCorrect: true, role: 'correct' }
     }
 
@@ -122,7 +118,7 @@ function getVisibleOrder(participants: Participant[], drawerOrder: string[] | un
 
   return drawerOrder
     .slice(turnCursor ?? 0)
-    .map((userId) => participants.find((participant) => participant.userId === userId)?.nickname)
+    .map((sessionId) => participants.find((participant) => participant.sessionId === sessionId)?.nickname)
     .filter((nickname): nickname is string => Boolean(nickname))
 }
 
@@ -173,10 +169,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [pendingStageOverlay, setPendingStageOverlay] = useState<StageOverlayPhase | null>(null)
   const [stageOverlayOpen, setStageOverlayOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(true)
-  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([])
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
   const [showChatScrollButton, setShowChatScrollButton] = useState(false)
   const stageOverlayOpenRafRef = useRef<number | null>(null)
+  const chatSeenAtByIdRef = useRef(new Map<string, number>())
   const chatListRef = useRef<HTMLUListElement | null>(null)
   const chatStickToBottomRef = useRef(true)
   const stageRef = useRef<HTMLElement | null>(null)
@@ -186,14 +182,14 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
   const { state, actions, server, devTools } = useAppState()
 
-  const { currentRound, currentTurn, roomState, hostUserId } = state.room
+  const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
   const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes) ? state.room.lobbyCanvasStrokes : []
   const chat = Array.isArray(state.room.chat) ? state.room.chat : []
   const settings = state.room.settings ?? defaultSettings
-  const isHost = hostUserId === state.session.userId
-  const drawer = participants.find((participant) => participant.userId === currentTurn?.drawerUserId)
-  const isDrawer = state.session.userId === currentTurn?.drawerUserId
+  const isHost = hostSessionId === state.session.sessionId
+  const drawer = participants.find((participant) => participant.sessionId === currentTurn?.drawerSessionId)
+  const isDrawer = state.session.sessionId === currentTurn?.drawerSessionId
   const viewerRole =
     overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
   const orderNames = getVisibleOrder(participants, currentRound?.drawerOrder, currentRound?.turnCursor)
@@ -201,13 +197,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
     currentRound && currentRound.drawerOrder.length > 0
       ? participants.find(
           (participant) =>
-            participant.userId ===
+            participant.sessionId ===
             currentRound.drawerOrder[(currentRound.turnCursor + 1) % currentRound.drawerOrder.length],
         )?.nickname
       : undefined
   const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
-  const mergedChat = [...chat, ...localMessages]
-  const currentCorrectIds = currentTurn?.correctUserIds ?? []
+  const currentCorrectIds = currentTurn?.correctSessionIds ?? EMPTY_SESSION_IDS
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
       return 0
@@ -218,7 +213,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
     const elapsedSec = Math.max(0, settings.drawSec - currentTurn.remainingSec)
     return Math.floor(elapsedSec / interval) * lettersPerReveal
   })()
-  const earnedScores = buildEarnedScores(participants, currentCorrectIds, currentTurn?.drawerUserId)
+  const earnedScores = buildEarnedScores(participants, currentCorrectIds, currentTurn?.drawerSessionId)
   const canDraw =
     roomState === 'LOBBY'
       ? !settingsOpen
@@ -229,40 +224,65 @@ export function GamePage({ onNavigate }: GamePageProps) {
     roomState === 'LOBBY'
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
-  const visibleChat = mergedChat.filter((message) => {
-    if (message.tone === 'system') {
-      return false
-    }
+  const visibleChat = useMemo(
+    () =>
+      chat.filter((message) => {
+        if (message.tone === 'system') {
+          return false
+        }
 
-    if ('visibility' in message) {
-      if (message.visibility === 'global') {
         return true
-      }
-
-      return viewerRole === 'drawer' || currentCorrectIds.includes(state.session.userId)
-    }
-
-    return true
-  })
+      }),
+    [chat],
+  )
 
   const participantBubbleById = useMemo(() => {
     const map = new Map<string, { text: string; createdAt: number }>()
     const now = Date.now()
+    const seenAtById = chatSeenAtByIdRef.current
+    const visibleIds = new Set<string>()
 
-    for (const message of localMessages.slice(-3)) {
-      if (now - message.createdAt > 3000) {
+    for (const message of visibleChat) {
+      visibleIds.add(message.id)
+      if (seenAtById.has(message.id)) {
         continue
       }
 
-      const author = participants.find((participant) => participant.nickname === message.nickname)
+      const createdAt =
+        'createdAt' in message && typeof message.createdAt === 'number'
+          ? message.createdAt
+          : now
+
+      seenAtById.set(message.id, createdAt)
+    }
+
+    for (const [id, createdAt] of seenAtById.entries()) {
+      if (visibleIds.has(id)) {
+        continue
+      }
+
+      if (now - createdAt > 60000) {
+        seenAtById.delete(id)
+      }
+    }
+
+    for (const message of visibleChat.slice(-8)) {
+      const createdAt = seenAtById.get(message.id)
+      if (!createdAt || now - createdAt > 3000) {
+        continue
+      }
+
+      const author = message.senderSessionId
+        ? participants.find((participant) => participant.sessionId === message.senderSessionId)
+        : undefined
 
       if (author) {
-        map.set(author.userId, { text: message.text, createdAt: message.createdAt })
+        map.set(author.sessionId, { text: message.text, createdAt })
       }
     }
 
     return map
-  }, [localMessages, participants])
+  }, [participants, visibleChat])
 
   useEffect(() => {
     if (roomState !== 'LOBBY') {
@@ -309,8 +329,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
       const stageRect = stageElement.getBoundingClientRect()
       const nextBubbles: ParticipantBubblePosition[] = []
 
-      for (const [userId, bubble] of participantBubbleById.entries()) {
-        const item = participantItemRefs.current.get(userId)
+      for (const [sessionId, bubble] of participantBubbleById.entries()) {
+        const item = participantItemRefs.current.get(sessionId)
 
         if (!item) {
           continue
@@ -318,7 +338,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
         const itemRect = item.getBoundingClientRect()
         nextBubbles.push({
-          userId,
+          sessionId,
           text: getBubbleText(bubble.text),
           createdAt: bubble.createdAt,
           top: itemRect.top - stageRect.top + itemRect.height / 2,
@@ -326,7 +346,24 @@ export function GamePage({ onNavigate }: GamePageProps) {
         })
       }
 
-      setParticipantBubbles(nextBubbles)
+      setParticipantBubbles((current) => {
+        if (current.length !== nextBubbles.length) {
+          return nextBubbles
+        }
+
+        const isSame = current.every((bubble, index) => {
+          const next = nextBubbles[index]
+          return (
+            bubble.sessionId === next.sessionId &&
+            bubble.text === next.text &&
+            bubble.createdAt === next.createdAt &&
+            bubble.top === next.top &&
+            bubble.left === next.left
+          )
+        })
+
+        return isSame ? current : nextBubbles
+      })
     }
 
     updateBubblePositions()
@@ -379,37 +416,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
     }
 
     actions.submitGuess(nextText)
-
-    const visibility = currentCorrectIds.includes(state.session.userId) || viewerRole === 'drawer' ? 'correct-only' : 'global'
-
-    setLocalMessages((messages) => [
-      ...messages,
-      {
-        id: crypto.randomUUID(),
-        nickname: state.session.nickname,
-        text: nextText,
-        tone: visibility === 'global' ? 'guess' : 'correct',
-        createdAt: Date.now(),
-        visibility,
-      },
-    ])
     setGuessInput('')
   }
 
   const handleSendStrokeChunk = (stroke: CanvasStroke) => {
-    if (roomState === 'LOBBY') {
-      logOutgoingClientEvent(
-        'DRAW_STROKE',
-        {
-          stroke,
-          turnId: null,
-          roomState,
-          localOnly: true,
-        },
-        { transport: 'mock' },
-      )
-    }
-
     if (roomState !== 'RUNNING' && roomState !== 'LOBBY') {
       return
     }
@@ -422,6 +432,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
   }
 
   const handleClearCanvas = () => {
+    if (!canDraw) {
+      return
+    }
+
     actions.requestCanvasClear()
   }
 
@@ -600,11 +614,11 @@ export function GamePage({ onNavigate }: GamePageProps) {
 	              <ul className="participant-cards">
 	                {participants.map((participant) => (
 	                <li
-                  key={participant.userId}
+                  key={participant.sessionId}
                   ref={(element) => {
-                    participantItemRefs.current.set(participant.userId, element)
+                    participantItemRefs.current.set(participant.sessionId, element)
                   }}
-                  className={participantTone(participant, currentTurn?.drawerUserId, currentCorrectIds)}
+                  className={participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)}
                 >
                     <div className="participant-main">
                       <div className="participant-heading">
@@ -898,7 +912,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {previewMode === 'gameResult' ? (
                 <div className="canvas-result-screen">
                   {ranking.map((participant, index) => (
-                    <div key={participant.userId} className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}>
+                    <div key={participant.sessionId} className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}>
                       <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
                     </div>
                   ))}
@@ -929,7 +943,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 >
                   채우기
                 </button>
-                <button type="button" className="secondary-button" onClick={handleClearCanvas}>
+                <button type="button" className="secondary-button" onClick={handleClearCanvas} disabled={!canDraw}>
                   전체 지우기
                 </button>
               </div>
@@ -982,7 +996,15 @@ export function GamePage({ onNavigate }: GamePageProps) {
             >
               {visibleChat.map((message) => (
                 <li key={message.id} className={`chat-${message.tone}`}>
-                  <strong>{message.nickname}</strong>
+                  <strong
+                    className={
+                      message.mine === true
+                        ? 'chat-nickname chat-nickname-mine'
+                        : 'chat-nickname'
+                    }
+                  >
+                    {message.nickname}
+                  </strong>
                   <span>{message.text}</span>
                 </li>
               ))}
@@ -1023,7 +1045,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
         <div className="participant-bubble-layer" aria-hidden="true">
           {participantBubbles.map((bubble) => (
             <div
-              key={`${bubble.userId}-${bubble.createdAt}`}
+              key={`${bubble.sessionId}-${bubble.createdAt}`}
               className="participant-bubble-floating"
               style={{ top: `${bubble.top}px`, left: `${bubble.left}px` }}
             >
@@ -1147,7 +1169,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
           <button
             type="button"
             className="secondary-button"
-            onClick={() => onNavigate(routes.main)}
+            onClick={() => {
+              actions.clearRoomCache()
+              onNavigate(routes.main)
+            }}
           >
             첫 화면
           </button>

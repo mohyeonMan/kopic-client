@@ -9,7 +9,7 @@ type AppLayoutProps = {
 }
 
 export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps) {
-  const { state } = useAppState()
+  const { state, actions } = useAppState()
   const [copied, setCopied] = useState(false)
   const isGameRoute = currentRoute === routes.game
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
@@ -34,7 +34,14 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
             <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
               {copied ? '\uBCF5\uC0AC\uB428' : '\uB9C1\uD06C \uBCF5\uC0AC'}
             </button>
-            <button type="button" className="route-tab topbar-exit-button" onClick={() => onNavigate(routes.main)}>
+            <button
+              type="button"
+              className="route-tab topbar-exit-button"
+              onClick={() => {
+                actions.clearRoomCache()
+                onNavigate(routes.main)
+              }}
+            >
               {'\uB098\uAC00\uAE30'}
             </button>
           </div>

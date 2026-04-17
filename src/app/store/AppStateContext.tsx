@@ -25,18 +25,20 @@ import {
   type ClientEventCode,
   type Envelope,
 } from '../../ws/protocol/events'
-import { logOutgoingClientEvent } from '../../ws/protocol/outgoingLogger'
 import { wsSessionManager } from '../../ws/client/wsSessionManager'
 
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
+  | { type: 'local/roomCacheCleared' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
+  | { type: 'local/guessSubmitted'; payload: string }
   | { type: 'connection/statusChanged'; payload: ConnectionStatus }
   | { type: 'server/roomSnapshotApplied'; payload: RoomSnapshot }
   | { type: 'server/roomJoinedApplied'; payload: ServerRoomJoinedPayload }
   | { type: 'server/roomLeftApplied'; payload: ServerRoomLeftPayload }
   | { type: 'server/gameStartedApplied'; payload: ServerGameStartedPayload }
   | { type: 'server/wordChoiceApplied'; payload: ServerWordChoicePayload }
+  | { type: 'server/chatReceived'; payload: ChatMessage }
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
   | { type: 'server/canvasStrokesReceived'; payload: CanvasStroke[] }
   | { type: 'server/canvasCleared' }
@@ -50,11 +52,12 @@ type ClientEventName = (typeof clientEventMeta)[number]['name']
 type CompactPoint = [number, number]
 type CompactStrokePayload = [number, number, number, CompactPoint[]]
 type ServerRoomJoinedPayload = {
-  userId: string
+  sessionId: string
   nickname: string
 }
 type ServerRoomLeftPayload = {
-  userId: string
+  sessionId: string
+  nickname?: string
 }
 
 const WS_COLOR_PALETTE = [
@@ -156,11 +159,89 @@ function createSystemMessage(text: string): ChatMessage {
   }
 }
 
+function createPresenceMessage(nickname: string, joined: boolean): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    nickname: '알림',
+    text: `${nickname} 님이 ${joined ? '입장' : '퇴장'} 하셨습니다`,
+    tone: 'guess',
+    createdAt: Date.now(),
+  }
+}
+
+function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const { sid, sessionId, t, text } = payload as {
+    sid?: unknown
+    sessionId?: unknown
+    t?: unknown
+    text?: unknown
+  }
+  const rawText =
+    typeof t === 'string'
+      ? t
+      : typeof text === 'string'
+        ? text
+        : null
+
+  if (!rawText || rawText.trim().length === 0) {
+    return null
+  }
+
+  const senderSessionId =
+    typeof sid === 'string' && sid.trim().length > 0
+      ? sid.trim()
+      : typeof sessionId === 'string' && sessionId.trim().length > 0
+        ? sessionId.trim()
+        : undefined
+
+  return {
+    id: crypto.randomUUID(),
+    nickname: '알수없음',
+    text: rawText.slice(0, 50),
+    tone: 'guess',
+    senderSessionId,
+    mine: false,
+    createdAt: Date.now(),
+  }
+}
+
+function decodeInboundEnvelope(raw: unknown): Envelope<unknown, number> | null {
+  if (typeof raw !== 'string') {
+    return null
+  }
+
+  const tryParse = (source: string): Envelope<unknown, number> | null => {
+    try {
+      const parsed = JSON.parse(source) as Envelope<unknown, number>
+      return typeof parsed?.e === 'number' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  const trimmed = raw.trim()
+  const parsed = tryParse(trimmed)
+  if (parsed) {
+    return parsed
+  }
+
+  const lastBraceIndex = trimmed.lastIndexOf('}')
+  if (lastBraceIndex < 0) {
+    return null
+  }
+
+  return tryParse(trimmed.slice(0, lastBraceIndex + 1))
+}
+
 function getDrawerOrder(participants: Participant[]) {
   return participants
     .filter((participant) => !participant.joinedMidRound)
     .sort((left, right) => left.joinOrder - right.joinOrder)
-    .map((participant) => participant.userId)
+    .map((participant) => participant.sessionId)
 }
 
 function getWordChoices(count: number) {
@@ -171,12 +252,12 @@ function getWordChoices(count: number) {
 function createMockTurn(
   roundNo: number,
   turnNo: number,
-  drawerUserId: string,
+  drawerSessionId: string,
   phase: TurnPhase,
   settings: GameSettings,
 ): TurnSummary {
   const wordChoices = getWordChoices(settings.wordChoiceCount)
-  const turnEndCorrectUserIds =
+  const turnEndCorrectSessionIds =
     settings.endMode === 'FIRST_CORRECT'
       ? ['u-200']
       : ['u-200', 'u-300', 'u-400', 'u-500', 'u-600', 'u-700', 'u-800', 'u-900', 'u-1000']
@@ -185,10 +266,10 @@ function createMockTurn(
     roundNo,
     turnNo,
     turnId: `turn-r${roundNo}-${turnNo}`,
-    drawerUserId,
+    drawerSessionId,
     phase,
     remainingSec: phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0,
-    correctUserIds: phase === 'TURN_END' ? turnEndCorrectUserIds : [],
+    correctSessionIds: phase === 'TURN_END' ? turnEndCorrectSessionIds : [],
     wordChoices,
     selectedWord: phase === 'WORD_CHOICE' ? null : wordChoices[0],
     canvasStrokes: [],
@@ -197,7 +278,7 @@ function createMockTurn(
 
 function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload {
   const drawerOrder = getDrawerOrder(state.room.participants)
-  const firstDrawerUserId = drawerOrder[0] ?? state.session.userId
+  const firstDrawerSessionId = drawerOrder[0] ?? state.session.sessionId
   const currentRound: RoundSummary = {
     roundNo: 1,
     totalRounds: state.room.settings.roundCount,
@@ -208,7 +289,7 @@ function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload
   return {
     gameId: 'game-20260323-01',
     currentRound,
-    currentTurn: createMockTurn(1, 1, firstDrawerUserId, 'WORD_CHOICE', state.room.settings),
+    currentTurn: createMockTurn(1, 1, firstDrawerSessionId, 'WORD_CHOICE', state.room.settings),
     chatMessages: [
       createSystemMessage('GAME_STARTED'),
       createSystemMessage('303 ROUND_STARTED with drawerOrder snapshot'),
@@ -257,7 +338,7 @@ function createForcedTurn(currentTurn: TurnSummary, phase: TurnPhase, settings: 
   const nextTurn = createMockTurn(
     currentTurn.roundNo,
     currentTurn.turnNo,
-    currentTurn.drawerUserId,
+    currentTurn.drawerSessionId,
     phase,
     settings,
   )
@@ -288,28 +369,35 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
     return null
   }
 
-  const { userId, sessionId, nickname } = payload as {
-    userId?: unknown
+  const { sid, sessionId, nickname, n } = payload as {
+    sid?: unknown
     sessionId?: unknown
     nickname?: unknown
+    n?: unknown
   }
-  const participantId =
-    typeof userId === 'string' && userId.trim().length > 0
-      ? userId
+  const participantSessionId =
+    typeof sid === 'string' && sid.trim().length > 0
+      ? sid
       : typeof sessionId === 'string' && sessionId.trim().length > 0
         ? sessionId
         : null
 
-  if (!participantId) {
+  if (!participantSessionId) {
     return null
   }
-  if (typeof nickname !== 'string' || nickname.trim().length === 0) {
+  const participantNickname =
+    typeof n === 'string' && n.trim().length > 0
+      ? n.trim()
+      : typeof nickname === 'string' && nickname.trim().length > 0
+        ? nickname.trim()
+        : null
+  if (!participantNickname) {
     return null
   }
 
   return {
-    userId: participantId.trim(),
-    nickname: nickname.trim(),
+    sessionId: participantSessionId.trim(),
+    nickname: participantNickname,
   }
 }
 
@@ -318,20 +406,31 @@ function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload | null {
     return null
   }
 
-  const { userId, sessionId } = payload as { userId?: unknown; sessionId?: unknown }
-  const participantId =
-    typeof userId === 'string' && userId.trim().length > 0
-      ? userId
+  const { sid, sessionId, nickname, n } = payload as {
+    sid?: unknown
+    sessionId?: unknown
+    nickname?: unknown
+    n?: unknown
+  }
+  const participantSessionId =
+    typeof sid === 'string' && sid.trim().length > 0
+      ? sid
       : typeof sessionId === 'string' && sessionId.trim().length > 0
         ? sessionId
         : null
 
-  if (!participantId) {
+  if (!participantSessionId) {
     return null
   }
 
   return {
-    userId: participantId.trim(),
+    sessionId: participantSessionId.trim(),
+    nickname:
+      typeof nickname === 'string' && nickname.trim().length > 0
+        ? nickname.trim()
+        : typeof n === 'string' && n.trim().length > 0
+          ? n.trim()
+          : undefined,
   }
 }
 
@@ -347,10 +446,26 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         room: {
           ...state.room,
           participants: state.room.participants.map((participant) =>
-            participant.userId === state.session.userId
+            participant.sessionId === state.session.sessionId
               ? { ...participant, nickname: action.payload }
               : participant,
           ),
+        },
+      }
+    case 'local/roomCacheCleared':
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          hostSessionId: state.session.sessionId,
+          participants: [],
+          lobbyCanvasStrokes: [],
+          settings: { ...defaultSettings },
+          roomState: 'LOBBY',
+          gameId: null,
+          currentRound: null,
+          currentTurn: null,
+          chat: [],
         },
       }
     case 'local/lobbySettingsPatched':
@@ -364,6 +479,25 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           },
         },
       }
+    case 'local/guessSubmitted':
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          chat: [
+            ...state.room.chat,
+            {
+              id: crypto.randomUUID(),
+              nickname: state.session.nickname,
+              text: action.payload,
+              tone: 'guess',
+              senderSessionId: state.session.sessionId,
+              mine: true,
+              createdAt: Date.now(),
+            },
+          ],
+        },
+      }
     case 'connection/statusChanged':
       return {
         ...state,
@@ -374,17 +508,17 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         ...state,
         room: {
           ...action.payload,
-          lobbyCanvasStrokes: action.payload.lobbyCanvasStrokes ?? state.room.lobbyCanvasStrokes ?? [],
+          lobbyCanvasStrokes: action.payload.lobbyCanvasStrokes ?? [],
         },
       }
     case 'server/roomJoinedApplied': {
-      if (state.room.participants.some((participant) => participant.userId === action.payload.userId)) {
+      if (state.room.participants.some((participant) => participant.sessionId === action.payload.sessionId)) {
         return {
           ...state,
           room: {
             ...state.room,
             participants: state.room.participants.map((participant) =>
-              participant.userId === action.payload.userId
+              participant.sessionId === action.payload.sessionId
                 ? {
                     ...participant,
                     nickname: action.payload.nickname,
@@ -392,6 +526,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
                   }
                 : participant,
             ),
+            chat: [...state.room.chat, createPresenceMessage(action.payload.nickname, true)],
           },
         }
       }
@@ -402,7 +537,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       )
 
       const joinedParticipant: Participant = {
-        userId: action.payload.userId,
+        sessionId: action.payload.sessionId,
         nickname: action.payload.nickname,
         isHost: false,
         score: 0,
@@ -416,37 +551,42 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         room: {
           ...state.room,
           participants: [...state.room.participants, joinedParticipant],
+          chat: [...state.room.chat, createPresenceMessage(action.payload.nickname, true)],
         },
       }
     }
     case 'server/roomLeftApplied': {
-      if (!state.room.participants.some((participant) => participant.userId === action.payload.userId)) {
-        return state
-      }
+      const leftParticipant = state.room.participants.find(
+        (participant) => participant.sessionId === action.payload.sessionId,
+      )
+      const leftNickname = leftParticipant?.nickname ?? action.payload.nickname
 
       return {
         ...state,
         room: {
           ...state.room,
           participants: state.room.participants.filter(
-            (participant) => participant.userId !== action.payload.userId,
+            (participant) => participant.sessionId !== action.payload.sessionId,
           ),
           currentRound: state.room.currentRound
             ? {
                 ...state.room.currentRound,
                 drawerOrder: state.room.currentRound.drawerOrder.filter(
-                  (userId) => userId !== action.payload.userId,
+                  (sessionId) => sessionId !== action.payload.sessionId,
                 ),
               }
             : null,
           currentTurn: state.room.currentTurn
             ? {
                 ...state.room.currentTurn,
-                correctUserIds: state.room.currentTurn.correctUserIds.filter(
-                  (userId) => userId !== action.payload.userId,
+                correctSessionIds: state.room.currentTurn.correctSessionIds.filter(
+                  (sessionId) => sessionId !== action.payload.sessionId,
                 ),
               }
             : null,
+          chat: leftNickname
+            ? [...state.room.chat, createPresenceMessage(leftNickname, false)]
+            : state.room.chat,
         },
       }
     }
@@ -482,6 +622,30 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             ? [...state.room.chat, action.payload.chatMessage]
             : state.room.chat,
         },
+      }
+    case 'server/chatReceived':
+      {
+        const senderSessionId = action.payload.senderSessionId
+        const senderNickname = senderSessionId
+          ? state.room.participants.find((participant) => participant.sessionId === senderSessionId)?.nickname
+          : undefined
+        const resolvedNickname = senderNickname ?? '알수없음'
+        const isMine = senderSessionId === state.session.sessionId
+
+        return {
+          ...state,
+          room: {
+            ...state.room,
+            chat: [
+              ...state.room.chat,
+              {
+                ...action.payload,
+                nickname: resolvedNickname,
+                mine: isMine,
+              },
+            ],
+          },
+        }
       }
     case 'server/canvasStrokeReceived':
       if (!state.room.currentTurn) {
@@ -597,7 +761,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
 
       if (hasNextTurn) {
         const nextTurnNo = state.room.currentTurn.turnNo + 1
-        const nextDrawerUserId = currentRound.drawerOrder[nextCursor]
+        const nextDrawerSessionId = currentRound.drawerOrder[nextCursor]
 
         return {
           ...state,
@@ -610,7 +774,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             currentTurn: createMockTurn(
               currentRound.roundNo,
               nextTurnNo,
-              nextDrawerUserId,
+              nextDrawerSessionId,
               'WORD_CHOICE',
               state.room.settings,
             ),
@@ -750,8 +914,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             server.applyWordChoice(payload as ServerWordChoicePayload)
           }
           return
+        case 204: {
+          const guessMessage = decodeGuessSubmittedMessage(payload)
+          if (guessMessage) {
+            dispatch({ type: 'server/chatReceived', payload: guessMessage })
+          }
+          return
+        }
         case 201:
-        case 401:
           {
             if (isCanvasClearPayload(payload)) {
               clearInboundStrokeQueue()
@@ -787,7 +957,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const sendClientEvent = useCallback(
     <TPayload,>(eventName: ClientEventName, payload: TPayload, fallback?: () => void) => {
-      logOutgoingClientEvent(eventName, payload)
       const code = clientEventCodeByName.get(eventName)
 
       if (!code) {
@@ -822,8 +991,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const parsed = JSON.parse(event.data) as Envelope<unknown, number>
-        if (typeof parsed?.e !== 'number') {
+        const parsed = decodeInboundEnvelope(event.data)
+        if (!parsed) {
           return
         }
 
@@ -845,6 +1014,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       actions: {
         updateNickname: (nickname) =>
           dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname.trim() || 'Guest' }),
+        clearRoomCache: () => {
+          clearInboundStrokeQueue()
+          dispatch({ type: 'local/roomCacheCleared' })
+        },
         patchLobbySettings: (settings) => {
           sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', settings, () =>
             dispatch({ type: 'local/lobbySettingsPatched', payload: settings }),
@@ -870,6 +1043,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           )
         },
         submitGuess: (text) => {
+          dispatch({ type: 'local/guessSubmitted', payload: text })
           sendClientEvent('GUESS_SUBMIT', {
             t: text,
             // tid: stateRef.current.room.currentTurn?.turnId ?? null,

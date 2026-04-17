@@ -4,7 +4,7 @@ export type TurnPhase = 'WORD_CHOICE' | 'DRAWING' | 'TURN_END'
 export type DrawingTool = 'PEN' | 'ERASER' | 'FILL'
 
 export type Participant = {
-  userId: string
+  sessionId: string
   nickname: string
   isHost: boolean
   score: number
@@ -48,10 +48,10 @@ export type TurnSummary = {
   roundNo: number
   turnNo: number
   turnId: string
-  drawerUserId: string
+  drawerSessionId: string
   phase: TurnPhase
   remainingSec: number
-  correctUserIds: string[]
+  correctSessionIds: string[]
   wordChoices: string[]
   selectedWord: string | null
   canvasStrokes: CanvasStroke[]
@@ -62,13 +62,17 @@ export type ChatMessage = {
   nickname: string
   text: string
   tone: 'system' | 'guess' | 'correct'
+  displayInChat?: boolean
+  senderSessionId?: string
+  mine?: boolean
+  createdAt?: number
 }
 
 export type RoomSnapshot = {
   roomId: string
   roomCode: string
   roomType: 'PRIVATE'
-  hostUserId: string
+  hostSessionId: string
   participants: Participant[]
   lobbyCanvasStrokes?: CanvasStroke[]
   settings: GameSettings
@@ -80,7 +84,7 @@ export type RoomSnapshot = {
 }
 
 export type SessionState = {
-  userId: string
+  sessionId: string
   nickname: string
 }
 
@@ -103,7 +107,7 @@ export const defaultSettings: GameSettings = {
 
 export const initialAppState: AppState = {
   session: {
-    userId: 'u-100',
+    sessionId: 's-100',
     nickname: 'Jihoon',
   },
   connectionStatus: 'synced',
@@ -111,7 +115,7 @@ export const initialAppState: AppState = {
     roomId: 'room-01',
     roomCode: 'KOPIC7',
     roomType: 'PRIVATE',
-    hostUserId: 'u-100',
+    hostSessionId: 's-100',
     participants: [],
     lobbyCanvasStrokes: [],
     settings: defaultSettings,

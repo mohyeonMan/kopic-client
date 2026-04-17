@@ -28,6 +28,7 @@ export type AppStateContextValue = {
   state: AppState
   actions: {
     updateNickname: (nickname: string) => void
+    clearRoomCache: () => void
     patchLobbySettings: (settings: Partial<GameSettings>) => void
     requestGameStart: () => void
     requestWordChoice: (word: string) => void
