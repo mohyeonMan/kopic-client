@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import { useAppState } from '../../app/store/useAppState'
 
@@ -6,8 +7,16 @@ type EntryPageProps = {
 }
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
-  const { state, actions, connection } = useAppState()
+  const { state, actions } = useAppState()
   const nicknameValid = state.session.nickname.trim().length >= 2
+
+  useEffect(() => {
+    if (!state.session.joinAccepted) {
+      return
+    }
+
+    onNavigate(routes.game)
+  }, [onNavigate, state.session.joinAccepted])
 
   return (
     <div className="page-grid entry-grid">
@@ -39,21 +48,19 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
           <button
             type="button"
             className="primary-button"
-            disabled={!nicknameValid}
+            disabled={!nicknameValid || state.session.joinPending}
             onClick={() => {
-              connection.setStatus('connecting')
-              onNavigate(routes.game)
+              actions.requestJoin()
             }}
           >
-            {'\uBE60\uB978 \uC785\uC7A5'}
+            {state.session.joinPending ? '\uC785\uC7A5 \uC911...' : '\uBE60\uB978 \uC785\uC7A5'}
           </button>
           <button
             type="button"
             className="secondary-button"
-            disabled={!nicknameValid}
+            disabled={!nicknameValid || state.session.joinPending}
             onClick={() => {
-              connection.setStatus('synced')
-              onNavigate(routes.game)
+              actions.requestJoin()
             }}
           >
             {'\uBC29 \uB9CC\uB4E4\uAE30'}

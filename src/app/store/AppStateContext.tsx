@@ -31,6 +31,8 @@ import { wsSessionManager } from '../../ws/client/wsSessionManager'
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
   | { type: 'local/sessionIdSynced'; payload: string }
+  | { type: 'local/joinRequested' }
+  | { type: 'local/joinAccepted' }
   | { type: 'local/roomCacheCleared' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'local/guessSubmitted'; payload: string }
@@ -866,6 +868,21 @@ function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload | null {
   }
 }
 
+function createClearedRoomState(state: AppState): RoomSnapshot {
+  return {
+    ...state.room,
+    hostSessionId: state.session.sessionId,
+    participants: [],
+    lobbyCanvasStrokes: [],
+    settings: { ...defaultSettings },
+    roomState: 'LOBBY',
+    gameId: null,
+    currentRound: null,
+    currentTurn: null,
+    chat: [],
+  }
+}
+
 function appStateReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'local/sessionNicknameUpdated':
@@ -896,21 +913,34 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           sessionId: action.payload,
         },
       }
+    case 'local/joinRequested':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          joinPending: true,
+          joinAccepted: false,
+        },
+        room: createClearedRoomState(state),
+      }
+    case 'local/joinAccepted':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          joinPending: false,
+          joinAccepted: true,
+        },
+      }
     case 'local/roomCacheCleared':
       return {
         ...state,
-        room: {
-          ...state.room,
-          hostSessionId: state.session.sessionId,
-          participants: [],
-          lobbyCanvasStrokes: [],
-          settings: { ...defaultSettings },
-          roomState: 'LOBBY',
-          gameId: null,
-          currentRound: null,
-          currentTurn: null,
-          chat: [],
+        session: {
+          ...state.session,
+          joinPending: false,
+          joinAccepted: false,
         },
+        room: createClearedRoomState(state),
       }
     case 'local/lobbySettingsPatched':
       return {
@@ -943,6 +973,19 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         },
       }
     case 'connection/statusChanged':
+      if (action.payload === 'idle' || action.payload === 'reconnecting') {
+        return {
+          ...state,
+          connectionStatus: action.payload,
+          session: {
+            ...state.session,
+            joinPending: false,
+            joinAccepted: false,
+          },
+          room: createClearedRoomState(state),
+        }
+      }
+
       return {
         ...state,
         connectionStatus: action.payload,
@@ -1285,6 +1328,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state)
   const inboundStrokeQueueRef = useRef<CanvasStroke[]>([])
   const inboundStrokeFlushRafRef = useRef<number | null>(null)
+  const pendingJoinPublishRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -1354,6 +1398,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
                   payload: normalizedRoomSnapshot.ownSessionId,
                 })
               }
+              dispatch({ type: 'local/joinAccepted' })
               server.applyRoomSnapshot(normalizedRoomSnapshot.roomSnapshot)
             }
           }
@@ -1450,6 +1495,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const unsubscribe = wsSessionManager.subscribe((event) => {
       if (event.type === 'status') {
         dispatch({ type: 'connection/statusChanged', payload: event.status })
+
+        if (event.status === 'synced' && pendingJoinPublishRef.current && stateRef.current.session.joinPending) {
+          pendingJoinPublishRef.current = false
+          sendClientEvent('JOIN', {
+            rid: stateRef.current.room.roomId,
+            roomCode: stateRef.current.room.roomCode,
+            nickname: stateRef.current.session.nickname,
+          })
+        }
+
+        if (event.status === 'idle' || event.status === 'reconnecting') {
+          pendingJoinPublishRef.current = false
+        }
         return
       }
 
@@ -1474,7 +1532,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribe()
     }
-  }, [handleServerEnvelope])
+  }, [handleServerEnvelope, sendClientEvent])
 
   const value = useMemo<AppStateContextValue>(() => {
     return {
@@ -1482,7 +1540,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       actions: {
         updateNickname: (nickname) =>
           dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname.trim() || 'Guest' }),
+        requestJoin: () => {
+          pendingJoinPublishRef.current = true
+          dispatch({ type: 'local/joinRequested' })
+        },
         clearRoomCache: () => {
+          pendingJoinPublishRef.current = false
           clearInboundStrokeQueue()
           dispatch({ type: 'local/roomCacheCleared' })
         },

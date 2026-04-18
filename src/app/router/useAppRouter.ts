@@ -7,58 +7,52 @@ function getCurrentRoute(): AppRoute {
   return isAppRoute(window.location.pathname) ? window.location.pathname : routes.main
 }
 
-function isReloadNavigation() {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  const navigationEntries = window.performance.getEntriesByType('navigation')
-  if (navigationEntries.length > 0) {
-    const firstEntry = navigationEntries[0] as PerformanceNavigationTiming
-    return firstEntry.type === 'reload'
-  }
-
-  return false
-}
-
 export function useAppRouter() {
-  const currentRoute = getCurrentRoute()
-  const blockGameRouteOnReload = currentRoute === routes.game && isReloadNavigation()
-  const [route, setRoute] = useState<AppRoute>(() =>
-    blockGameRouteOnReload ? routes.main : currentRoute,
-  )
+  const [route, setRoute] = useState<AppRoute>(getCurrentRoute)
   const { state, actions } = useAppState()
   const previousRouteRef = useRef<AppRoute>(route)
+  const shouldKeepGameSession = state.session.joinPending || state.session.joinAccepted
 
   useEffect(() => {
-    if (!blockGameRouteOnReload) {
-      return
-    }
-
-    actions.clearRoomCache()
-    wsSessionManager.release(wsSessionOwner.game)
-    window.history.replaceState({}, '', routes.main)
-  }, [actions, blockGameRouteOnReload])
-
-  useEffect(() => {
-    if (route !== routes.game) {
+    if (!shouldKeepGameSession) {
       return
     }
 
     wsSessionManager.acquire(wsSessionOwner.game, state.session.nickname)
-  }, [route, state.session.nickname])
+  }, [shouldKeepGameSession, state.session.nickname])
 
   useEffect(() => {
     if (route === routes.game) {
       return
     }
 
-    if (previousRouteRef.current === routes.game) {
-      actions.clearRoomCache()
+    if (previousRouteRef.current !== routes.game) {
+      return
+    }
+
+    actions.clearRoomCache()
+  }, [actions, route])
+
+  useEffect(() => {
+    if (shouldKeepGameSession) {
+      return
     }
 
     wsSessionManager.release(wsSessionOwner.game)
-  }, [route])
+  }, [shouldKeepGameSession])
+
+  useEffect(() => {
+    if (route !== routes.game) {
+      return
+    }
+
+    if (state.session.joinAccepted) {
+      return
+    }
+
+    window.history.replaceState({}, '', routes.main)
+    setRoute(routes.main)
+  }, [route, state.session.joinAccepted])
 
   useEffect(() => {
     previousRouteRef.current = route

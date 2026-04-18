@@ -86,6 +86,8 @@ export type RoomSnapshot = {
 export type SessionState = {
   sessionId: string
   nickname: string
+  joinPending: boolean
+  joinAccepted: boolean
 }
 
 export type AppState = {
@@ -109,8 +111,10 @@ export const initialAppState: AppState = {
   session: {
     sessionId: 's-100',
     nickname: 'Jihoon',
+    joinPending: false,
+    joinAccepted: false,
   },
-  connectionStatus: 'synced',
+  connectionStatus: 'idle',
   room: {
     roomId: 'room-01',
     roomCode: 'KOPIC7',
