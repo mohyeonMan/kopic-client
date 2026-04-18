@@ -7,10 +7,38 @@ function getCurrentRoute(): AppRoute {
   return isAppRoute(window.location.pathname) ? window.location.pathname : routes.main
 }
 
+function isReloadNavigation() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const navigationEntries = window.performance.getEntriesByType('navigation')
+  if (navigationEntries.length > 0) {
+    const firstEntry = navigationEntries[0] as PerformanceNavigationTiming
+    return firstEntry.type === 'reload'
+  }
+
+  return false
+}
+
 export function useAppRouter() {
-  const [route, setRoute] = useState<AppRoute>(getCurrentRoute)
+  const currentRoute = getCurrentRoute()
+  const blockGameRouteOnReload = currentRoute === routes.game && isReloadNavigation()
+  const [route, setRoute] = useState<AppRoute>(() =>
+    blockGameRouteOnReload ? routes.main : currentRoute,
+  )
   const { state, actions } = useAppState()
   const previousRouteRef = useRef<AppRoute>(route)
+
+  useEffect(() => {
+    if (!blockGameRouteOnReload) {
+      return
+    }
+
+    actions.clearRoomCache()
+    wsSessionManager.release(wsSessionOwner.game)
+    window.history.replaceState({}, '', routes.main)
+  }, [actions, blockGameRouteOnReload])
 
   useEffect(() => {
     if (route !== routes.game) {

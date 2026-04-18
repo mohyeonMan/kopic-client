@@ -64,10 +64,16 @@ const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['roundStart', 'turnS
 type NumericSettingKey = keyof typeof SETTING_OPTIONS
 
 type EarnedScore = {
+  sessionId: string
   nickname: string
   score: number
   isCorrect: boolean
   role: 'drawer' | 'correct' | 'miss'
+}
+
+type VisibleOrderEntry = {
+  sessionId: string
+  nickname: string
 }
 
 type ParticipantBubblePosition = {
@@ -95,14 +101,14 @@ function participantTone(participant: Participant, drawerSessionId?: string, cor
 function buildEarnedScores(participants: Participant[], correctSessionIds: string[], drawerSessionId?: string) {
   const rows: EarnedScore[] = participants.map((participant) => {
     if (participant.sessionId === drawerSessionId) {
-      return { nickname: participant.nickname, score: 40, isCorrect: false, role: 'drawer' }
+      return { sessionId: participant.sessionId, nickname: participant.nickname, score: 40, isCorrect: false, role: 'drawer' }
     }
 
     if (correctSessionIds.includes(participant.sessionId)) {
-      return { nickname: participant.nickname, score: 80, isCorrect: true, role: 'correct' }
+      return { sessionId: participant.sessionId, nickname: participant.nickname, score: 80, isCorrect: true, role: 'correct' }
     }
 
-    return { nickname: participant.nickname, score: 0, isCorrect: false, role: 'miss' }
+    return { sessionId: participant.sessionId, nickname: participant.nickname, score: 0, isCorrect: false, role: 'miss' }
   })
 
   return rows.sort((left, right) => right.score - left.score)
@@ -113,13 +119,26 @@ function getVisibleOrder(participants: Participant[], drawerOrder: string[] | un
     return participants
       .slice()
       .sort((left, right) => left.joinOrder - right.joinOrder)
-      .map((participant) => participant.nickname)
+      .map((participant) => ({
+        sessionId: participant.sessionId,
+        nickname: participant.nickname,
+      }))
   }
 
   return drawerOrder
     .slice(turnCursor ?? 0)
-    .map((sessionId) => participants.find((participant) => participant.sessionId === sessionId)?.nickname)
-    .filter((nickname): nickname is string => Boolean(nickname))
+    .map((sessionId) => {
+      const participant = participants.find((item) => item.sessionId === sessionId)
+      if (!participant) {
+        return null
+      }
+
+      return {
+        sessionId: participant.sessionId,
+        nickname: participant.nickname,
+      }
+    })
+    .filter((entry): entry is VisibleOrderEntry => entry !== null)
 }
 
 function getMaskedWord(word: string | null, revealedCount: number) {
@@ -192,7 +211,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const isDrawer = state.session.sessionId === currentTurn?.drawerSessionId
   const viewerRole =
     overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
-  const orderNames = getVisibleOrder(participants, currentRound?.drawerOrder, currentRound?.turnCursor)
+  const visibleOrderEntries = getVisibleOrder(participants, currentRound?.drawerOrder, currentRound?.turnCursor)
   const nextDrawerName =
     currentRound && currentRound.drawerOrder.length > 0
       ? participants.find(
@@ -592,9 +611,9 @@ export function GamePage({ onNavigate }: GamePageProps) {
           <div className="order-strip-box">
             <span className="order-strip-label">이번 라운드 그림 순서</span>
             <div className="order-strip" role="list">
-              {orderNames.map((nickname) => (
-                <span key={nickname} className="order-pill" role="listitem">
-                  {nickname}
+              {visibleOrderEntries.map((entry) => (
+                <span key={entry.sessionId} className="order-pill" role="listitem">
+                  {entry.nickname}
                 </span>
               ))}
             </div>
@@ -885,7 +904,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                         </div>
                         <div className="earned-score-table-body">
                           {earnedScores.map((row, index) => (
-                            <div key={row.nickname} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                            <div key={row.sessionId} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
                               <span className="earned-score-rank score-col-rank">{index + 1}</span>
                               <span className="earned-score-name score-col-name">{row.nickname}</span>
                               <span

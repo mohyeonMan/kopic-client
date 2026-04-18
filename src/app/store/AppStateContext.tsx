@@ -9,6 +9,7 @@ import {
   initialAppState,
   type GameSettings,
   type Participant,
+  type RoomState,
   type RoomSnapshot,
   type RoundSummary,
   type TurnPhase,
@@ -29,6 +30,7 @@ import { wsSessionManager } from '../../ws/client/wsSessionManager'
 
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
+  | { type: 'local/sessionIdSynced'; payload: string }
   | { type: 'local/roomCacheCleared' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'local/guessSubmitted'; payload: string }
@@ -235,6 +237,436 @@ function decodeInboundEnvelope(raw: unknown): Envelope<unknown, number> | null {
   }
 
   return tryParse(trimmed.slice(0, lastBraceIndex + 1))
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function readNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function readFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function isRoomState(value: unknown): value is RoomState {
+  return value === 'LOBBY' || value === 'RUNNING' || value === 'RESULT'
+}
+
+function isTurnPhase(value: unknown): value is TurnPhase {
+  return value === 'WORD_CHOICE' || value === 'DRAWING' || value === 'TURN_END'
+}
+
+function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettings {
+  if (!isRecord(raw)) {
+    return fallback
+  }
+
+  const readInt = (value: unknown, current: number, min = 1) => {
+    const next = readFiniteNumber(value)
+    if (next === undefined) {
+      return current
+    }
+
+    return Math.max(min, Math.round(next))
+  }
+
+  const drawerOrderMode =
+    raw.drawerOrderMode === 'JOIN_ORDER' || raw.drawerOrderMode === 'RANDOM'
+      ? raw.drawerOrderMode
+      : fallback.drawerOrderMode
+
+  const endMode =
+    raw.endMode === 'FIRST_CORRECT' || raw.endMode === 'TIME_OR_ALL_CORRECT'
+      ? raw.endMode
+      : fallback.endMode
+
+  return {
+    roundCount: readInt(raw.roundCount, fallback.roundCount),
+    drawSec: readInt(raw.drawSec, fallback.drawSec),
+    wordChoiceSec: readInt(raw.wordChoiceSec, fallback.wordChoiceSec),
+    wordChoiceCount: readInt(raw.wordChoiceCount, fallback.wordChoiceCount),
+    hintRevealSec: readInt(raw.hintRevealSec, fallback.hintRevealSec),
+    hintLetterCount: readInt(raw.hintLetterCount, fallback.hintLetterCount),
+    drawerOrderMode,
+    endMode,
+  }
+}
+
+function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
+  if (!isRecord(raw)) {
+    return null
+  }
+
+  const tool: DrawingTool =
+    raw.tool === 'PEN' || raw.tool === 'ERASER' || raw.tool === 'FILL'
+      ? raw.tool
+      : 'PEN'
+  const size = readFiniteNumber(raw.size) ?? 5
+  const points = Array.isArray(raw.points)
+    ? raw.points
+        .filter((point): point is Record<string, unknown> => isRecord(point))
+        .map((point) => {
+          const x = readFiniteNumber(point.x)
+          const y = readFiniteNumber(point.y)
+          if (x === undefined || y === undefined) {
+            return null
+          }
+
+          return { x, y }
+        })
+        .filter((point): point is { x: number; y: number } => point !== null)
+    : []
+
+  return {
+    id: readNonEmptyString(raw.id) ?? crypto.randomUUID(),
+    tool,
+    color: readNonEmptyString(raw.color) ?? '#203247',
+    size,
+    points,
+  }
+}
+
+function normalizeParticipants(
+  raw: unknown,
+  hostSessionId: string,
+  roomState: RoomState,
+): Participant[] {
+  const rawParticipants = Array.isArray(raw)
+    ? raw
+    : isRecord(raw)
+      ? Object.entries(raw).map(([sessionId, participant]) =>
+          isRecord(participant)
+            ? { ...participant, sessionId: readNonEmptyString((participant as Record<string, unknown>).sessionId) ?? sessionId }
+            : { sessionId },
+        )
+      : []
+
+  const nextParticipants: Participant[] = []
+  const knownSessionIds = new Set<string>()
+
+  for (let index = 0; index < rawParticipants.length; index += 1) {
+    const participant = rawParticipants[index]
+    if (!isRecord(participant)) {
+      continue
+    }
+
+    const sessionId =
+      readNonEmptyString(participant.sessionId) ??
+      readNonEmptyString(participant.sid) ??
+      readNonEmptyString(participant.userId)
+    if (!sessionId || knownSessionIds.has(sessionId)) {
+      continue
+    }
+
+    knownSessionIds.add(sessionId)
+
+    nextParticipants.push({
+      sessionId,
+      nickname:
+        readNonEmptyString(participant.nickname) ??
+        readNonEmptyString(participant.n) ??
+        `Guest${index + 1}`,
+      isHost:
+        typeof participant.isHost === 'boolean'
+          ? participant.isHost
+          : sessionId === hostSessionId,
+      score: readFiniteNumber(participant.score) ?? 0,
+      isOnline:
+        typeof participant.isOnline === 'boolean'
+          ? participant.isOnline
+          : true,
+      joinOrder: readFiniteNumber(participant.joinOrder) ?? index + 1,
+      joinedMidRound:
+        typeof participant.joinedMidRound === 'boolean'
+          ? participant.joinedMidRound
+          : roomState === 'RUNNING',
+    })
+  }
+
+  return nextParticipants
+}
+
+function normalizeCurrentRound(
+  raw: unknown,
+  participants: Participant[],
+  settings: GameSettings,
+  fallback: RoundSummary | null,
+): RoundSummary | null {
+  if (raw === null) {
+    return null
+  }
+
+  if (!isRecord(raw)) {
+    return fallback
+  }
+
+  const defaultDrawerOrder = participants
+    .slice()
+    .sort((left, right) => left.joinOrder - right.joinOrder)
+    .map((participant) => participant.sessionId)
+  const parsedDrawerOrder = Array.isArray(raw.drawerOrder)
+    ? raw.drawerOrder
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    : []
+  const drawerOrder = parsedDrawerOrder.length > 0 ? parsedDrawerOrder : defaultDrawerOrder
+
+  return {
+    roundNo: readFiniteNumber(raw.roundNo) ?? fallback?.roundNo ?? 1,
+    totalRounds: readFiniteNumber(raw.totalRounds) ?? settings.roundCount,
+    turnCursor: readFiniteNumber(raw.turnCursor) ?? fallback?.turnCursor ?? 0,
+    drawerOrder,
+  }
+}
+
+function normalizeCurrentTurn(
+  raw: unknown,
+  settings: GameSettings,
+  fallback: TurnSummary | null,
+  participants: Participant[],
+): TurnSummary | null {
+  if (raw === null) {
+    return null
+  }
+
+  if (!isRecord(raw)) {
+    return fallback
+  }
+
+  const fallbackDrawerSessionId =
+    fallback?.drawerSessionId ??
+    participants.slice().sort((left, right) => left.joinOrder - right.joinOrder)[0]?.sessionId ??
+    'unknown'
+  const drawerSessionId =
+    readNonEmptyString(raw.drawerSessionId) ??
+    readNonEmptyString(raw.drawerUserId) ??
+    fallbackDrawerSessionId
+  const phase = isTurnPhase(raw.phase) ? raw.phase : fallback?.phase ?? 'WORD_CHOICE'
+  const correctSessionIdsSource = Array.isArray(raw.correctSessionIds)
+    ? raw.correctSessionIds
+    : Array.isArray(raw.correctUserIds)
+      ? raw.correctUserIds
+      : []
+  const wordChoices = Array.isArray(raw.wordChoices)
+    ? raw.wordChoices
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    : fallback?.wordChoices ?? getWordChoices(settings.wordChoiceCount)
+  const canvasStrokes = Array.isArray(raw.canvasStrokes)
+    ? raw.canvasStrokes
+        .map(normalizeCanvasStroke)
+        .filter((stroke): stroke is CanvasStroke => stroke !== null)
+    : fallback?.canvasStrokes ?? []
+
+  return {
+    roundNo: readFiniteNumber(raw.roundNo) ?? fallback?.roundNo ?? 1,
+    turnNo: readFiniteNumber(raw.turnNo) ?? fallback?.turnNo ?? 1,
+    turnId:
+      readNonEmptyString(raw.turnId) ??
+      fallback?.turnId ??
+      `turn-r${readFiniteNumber(raw.roundNo) ?? 1}-${readFiniteNumber(raw.turnNo) ?? 1}`,
+    drawerSessionId,
+    phase,
+    remainingSec:
+      readFiniteNumber(raw.remainingSec) ??
+      (phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0),
+    correctSessionIds: correctSessionIdsSource
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+    wordChoices,
+    selectedWord:
+      raw.selectedWord === null
+        ? null
+        : readNonEmptyString(raw.selectedWord) ?? fallback?.selectedWord ?? null,
+    canvasStrokes,
+  }
+}
+
+function normalizeChatMessages(
+  raw: unknown,
+  ownSessionId: string,
+  fallback: ChatMessage[],
+): ChatMessage[] {
+  if (!Array.isArray(raw)) {
+    return fallback
+  }
+
+  const nextMessages: ChatMessage[] = []
+  for (const item of raw) {
+    if (!isRecord(item)) {
+      continue
+    }
+
+    const senderSessionId =
+      readNonEmptyString(item.senderSessionId) ??
+      readNonEmptyString(item.sid) ??
+      readNonEmptyString(item.sessionId)
+    const text = readNonEmptyString(item.text)
+    if (!text) {
+      continue
+    }
+
+    const tone =
+      item.tone === 'system' || item.tone === 'guess' || item.tone === 'correct'
+        ? item.tone
+        : 'guess'
+    const message: ChatMessage = {
+      id: readNonEmptyString(item.id) ?? crypto.randomUUID(),
+      nickname: readNonEmptyString(item.nickname) ?? '알수없음',
+      text,
+      tone,
+      mine:
+        typeof item.mine === 'boolean'
+          ? item.mine
+          : senderSessionId === ownSessionId,
+      createdAt: readFiniteNumber(item.createdAt) ?? Date.now(),
+      displayInChat:
+        typeof item.displayInChat === 'boolean'
+          ? item.displayInChat
+          : undefined,
+    }
+
+    if (senderSessionId) {
+      message.senderSessionId = senderSessionId
+    }
+
+    nextMessages.push(message)
+  }
+
+  return nextMessages
+}
+
+function resolveOwnSessionIdFromSnapshotPayload(
+  payload: Record<string, unknown>,
+  participants: Participant[],
+  state: AppState,
+): string {
+  const explicitSessionId =
+    readNonEmptyString(payload.mySessionId) ??
+    readNonEmptyString(payload.mySid) ??
+    readNonEmptyString(payload.sid) ??
+    readNonEmptyString(payload.sessionId)
+
+  if (explicitSessionId) {
+    return explicitSessionId
+  }
+
+  if (participants.some((participant) => participant.sessionId === state.session.sessionId)) {
+    return state.session.sessionId
+  }
+
+  const sameNicknameParticipants = participants.filter(
+    (participant) => participant.nickname === state.session.nickname,
+  )
+  if (sameNicknameParticipants.length === 1) {
+    return sameNicknameParticipants[0].sessionId
+  }
+
+  return state.session.sessionId
+}
+
+function normalizeRoomSnapshotPayload(
+  payload: unknown,
+  state: AppState,
+): { roomSnapshot: RoomSnapshot; ownSessionId: string } | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const currentRoom = state.room
+  const hostSessionId =
+    readNonEmptyString(payload.hostSessionId) ??
+    readNonEmptyString(payload.hostUserId) ??
+    currentRoom.hostSessionId
+  const roomState = isRoomState(payload.roomState) ? payload.roomState : currentRoom.roomState
+  const hasParticipants = Object.prototype.hasOwnProperty.call(payload, 'participants')
+  const participants = hasParticipants
+    ? normalizeParticipants(payload.participants, hostSessionId, roomState)
+    : currentRoom.participants
+  const ownSessionId = resolveOwnSessionIdFromSnapshotPayload(payload, participants, state)
+  const settings = normalizeGameSettings(payload.settings, currentRoom.settings)
+  const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
+  const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
+  const currentRound = hasCurrentRound
+    ? normalizeCurrentRound(payload.currentRound, participants, settings, currentRoom.currentRound)
+    : currentRoom.currentRound
+  const currentTurn = hasCurrentTurn
+    ? normalizeCurrentTurn(payload.currentTurn, settings, currentRoom.currentTurn, participants)
+    : currentRoom.currentTurn
+  const lobbyCanvasStrokes = Array.isArray(payload.lobbyCanvasStrokes)
+    ? payload.lobbyCanvasStrokes
+        .map(normalizeCanvasStroke)
+        .filter((stroke): stroke is CanvasStroke => stroke !== null)
+    : currentRoom.lobbyCanvasStrokes ?? []
+  const chat = normalizeChatMessages(payload.chat, ownSessionId, currentRoom.chat)
+
+  return {
+    ownSessionId,
+    roomSnapshot: {
+      ...currentRoom,
+      roomId: readNonEmptyString(payload.roomId) ?? currentRoom.roomId,
+      roomCode: readNonEmptyString(payload.roomCode) ?? currentRoom.roomCode,
+      roomType: payload.roomType === 'PRIVATE' ? 'PRIVATE' : currentRoom.roomType,
+      hostSessionId,
+      participants,
+      lobbyCanvasStrokes,
+      settings,
+      roomState,
+      gameId:
+        payload.gameId === null
+          ? null
+          : readNonEmptyString(payload.gameId) ?? currentRoom.gameId,
+      currentRound,
+      currentTurn,
+      chat,
+    },
+  }
+}
+
+function decodeSnapshotEnvelopePayload(
+  payload: unknown,
+  state: AppState,
+  envelopeRoomIdHint?: string,
+): { roomSnapshot: RoomSnapshot; ownSessionId: string } | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const explicitSessionId =
+    readNonEmptyString(payload.sid) ??
+    readNonEmptyString(payload.sessionId) ??
+    readNonEmptyString(payload.mySid) ??
+    readNonEmptyString(payload.mySessionId)
+  const explicitRoomId =
+    readNonEmptyString(payload.rid) ??
+    readNonEmptyString(payload.roomId) ??
+    envelopeRoomIdHint
+  const snapshotPayload = isRecord(payload.snap) ? payload.snap : payload
+  const normalizedSnapshotPayload =
+    explicitRoomId && readNonEmptyString(snapshotPayload.roomId) === undefined
+      ? { ...snapshotPayload, roomId: explicitRoomId }
+      : snapshotPayload
+  const normalized = normalizeRoomSnapshotPayload(normalizedSnapshotPayload, state)
+
+  if (!normalized) {
+    return null
+  }
+
+  return {
+    roomSnapshot: normalized.roomSnapshot,
+    ownSessionId: explicitSessionId ?? normalized.ownSessionId,
+  }
 }
 
 function getDrawerOrder(participants: Participant[]) {
@@ -452,6 +884,18 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ),
         },
       }
+    case 'local/sessionIdSynced':
+      if (!action.payload || action.payload === state.session.sessionId) {
+        return state
+      }
+
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          sessionId: action.payload,
+        },
+      }
     case 'local/roomCacheCleared':
       return {
         ...state,
@@ -507,8 +951,18 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         room: {
+          ...state.room,
           ...action.payload,
-          lobbyCanvasStrokes: action.payload.lobbyCanvasStrokes ?? [],
+          participants: Array.isArray(action.payload.participants)
+            ? action.payload.participants
+            : state.room.participants,
+          lobbyCanvasStrokes: Array.isArray(action.payload.lobbyCanvasStrokes)
+            ? action.payload.lobbyCanvasStrokes
+            : [],
+          chat: Array.isArray(action.payload.chat)
+            ? action.payload.chat
+            : state.room.chat,
+          settings: action.payload.settings ?? state.room.settings,
         },
       }
     case 'server/roomJoinedApplied': {
@@ -885,9 +1339,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       const payload = envelope.p
 
       switch (envelope.e) {
+        case 300:
         case 408:
           if (payload && typeof payload === 'object') {
-            server.applyRoomSnapshot(payload as RoomSnapshot)
+            const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(
+              payload,
+              stateRef.current,
+              typeof envelope.rid === 'string' ? envelope.rid : undefined,
+            )
+            if (normalizedRoomSnapshot) {
+              if (normalizedRoomSnapshot.ownSessionId !== stateRef.current.session.sessionId) {
+                dispatch({
+                  type: 'local/sessionIdSynced',
+                  payload: normalizedRoomSnapshot.ownSessionId,
+                })
+              }
+              server.applyRoomSnapshot(normalizedRoomSnapshot.roomSnapshot)
+            }
           }
           return
         case 301: {

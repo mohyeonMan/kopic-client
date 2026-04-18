@@ -9,6 +9,7 @@ export const clientEventMeta = [
 ] as const
 
 export const serverEventMeta = [
+  { code: 300, name: 'JOIN_ACCEPTED' },
   { code: 301, name: 'ROOM_JOINED' },
   { code: 302, name: 'ROOM_LEFT' },
   { code: 303, name: 'ROUND_STARTED' },

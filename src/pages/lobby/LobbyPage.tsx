@@ -11,7 +11,10 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
   const nextRoundDrawerOrder = state.room.participants
     .slice()
     .sort((left, right) => left.joinOrder - right.joinOrder)
-    .map((participant) => participant.nickname)
+    .map((participant) => ({
+      sessionId: participant.sessionId,
+      nickname: participant.nickname,
+    }))
 
   const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
     actions.patchLobbySettings({ [key]: Number(value) })
@@ -88,8 +91,8 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
             라운드에서는 guess만 가능하고 다음 라운드부터 drawer 후보가 된다.
           </p>
           <ol className="turn-order-list">
-            {nextRoundDrawerOrder.map((nickname) => (
-              <li key={nickname}>{nickname}</li>
+            {nextRoundDrawerOrder.map((participant) => (
+              <li key={participant.sessionId}>{participant.nickname}</li>
             ))}
           </ol>
         </div>
