@@ -12,7 +12,7 @@ const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
 const WS_MAX_RECONNECT_ATTEMPTS = 3
-const WS_ROOM_CODE = 'KOPIC7'
+// const WS_ROOM_CODE = 'KOPIC7'
 const WS_GE_ID = 'ge-local'
 
 let ws: WebSocket | null = null
@@ -66,7 +66,7 @@ function resolveWsUrl() {
   if (token) {
     url.searchParams.set('token', token)
   }
-  url.searchParams.set('roomCode', WS_ROOM_CODE)
+  // url.searchParams.set('roomCode', WS_ROOM_CODE)
   url.searchParams.set('geId', WS_GE_ID)
   const nickname = resolveNickname()
   if (nickname) {

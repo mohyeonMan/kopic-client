@@ -6,6 +6,7 @@ export type DrawingTool = 'PEN' | 'ERASER' | 'FILL'
 export type Participant = {
   sessionId: string
   nickname: string
+  joinedAt: number
   isHost: boolean
   score: number
   isOnline: boolean

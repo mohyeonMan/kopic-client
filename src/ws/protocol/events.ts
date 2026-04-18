@@ -1,5 +1,4 @@
 export const clientEventMeta = [
-  { code: 101, name: 'JOIN' },
   { code: 105, name: 'GAME_START_REQUEST' },
   { code: 106, name: 'GAME_SNAPSHOT_REQUEST' },
   { code: 107, name: 'GAME_SETTINGS_UPDATE_REQUEST' },

@@ -58,6 +58,7 @@ type CompactStrokePayload = [number, number, number, CompactPoint[]]
 type ServerRoomJoinedPayload = {
   sessionId: string
   nickname: string
+  joinedAt?: number
 }
 type ServerRoomLeftPayload = {
   sessionId: string
@@ -258,6 +259,48 @@ function readFiniteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+function readJoinedAt(value: unknown): number | undefined {
+  const numeric = readFiniteNumber(value)
+  if (numeric !== undefined) {
+    return numeric
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return undefined
+    }
+
+    const asNumber = Number(trimmed)
+    if (Number.isFinite(asNumber)) {
+      return asNumber
+    }
+
+    const asDate = Date.parse(trimmed)
+    if (Number.isFinite(asDate)) {
+      return asDate
+    }
+  }
+
+  return undefined
+}
+
+function sortParticipantsByJoinedAt(participants: Participant[]): Participant[] {
+  return participants
+    .slice()
+    .sort((left, right) => {
+      if (left.joinedAt !== right.joinedAt) {
+        return left.joinedAt - right.joinedAt
+      }
+
+      if (left.joinOrder !== right.joinOrder) {
+        return left.joinOrder - right.joinOrder
+      }
+
+      return left.sessionId.localeCompare(right.sessionId)
+    })
+}
+
 function isRoomState(value: unknown): value is RoomState {
   return value === 'LOBBY' || value === 'RUNNING' || value === 'RESULT'
 }
@@ -336,6 +379,28 @@ function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
   }
 }
 
+function normalizeSnapshotCanvasStrokes(raw: unknown): CanvasStroke[] | null {
+  if (!Array.isArray(raw)) {
+    return null
+  }
+
+  const strokes: CanvasStroke[] = []
+  for (const item of raw) {
+    const compactStroke = decodeCompactStroke(item)
+    if (compactStroke) {
+      strokes.push(compactStroke)
+      continue
+    }
+
+    const fullStroke = normalizeCanvasStroke(item)
+    if (fullStroke) {
+      strokes.push(fullStroke)
+    }
+  }
+
+  return strokes
+}
+
 function normalizeParticipants(
   raw: unknown,
   hostSessionId: string,
@@ -376,6 +441,10 @@ function normalizeParticipants(
         readNonEmptyString(participant.nickname) ??
         readNonEmptyString(participant.n) ??
         `Guest${index + 1}`,
+      joinedAt:
+        readJoinedAt(participant.joinedAt) ??
+        readFiniteNumber(participant.joinOrder) ??
+        index + 1,
       isHost:
         typeof participant.isHost === 'boolean'
           ? participant.isHost
@@ -393,7 +462,7 @@ function normalizeParticipants(
     })
   }
 
-  return nextParticipants
+  return sortParticipantsByJoinedAt(nextParticipants)
 }
 
 function normalizeCurrentRound(
@@ -412,7 +481,7 @@ function normalizeCurrentRound(
 
   const defaultDrawerOrder = participants
     .slice()
-    .sort((left, right) => left.joinOrder - right.joinOrder)
+    .sort((left, right) => left.joinedAt - right.joinedAt)
     .map((participant) => participant.sessionId)
   const parsedDrawerOrder = Array.isArray(raw.drawerOrder)
     ? raw.drawerOrder
@@ -446,7 +515,7 @@ function normalizeCurrentTurn(
 
   const fallbackDrawerSessionId =
     fallback?.drawerSessionId ??
-    participants.slice().sort((left, right) => left.joinOrder - right.joinOrder)[0]?.sessionId ??
+    participants.slice().sort((left, right) => left.joinedAt - right.joinedAt)[0]?.sessionId ??
     'unknown'
   const drawerSessionId =
     readNonEmptyString(raw.drawerSessionId) ??
@@ -600,16 +669,29 @@ function normalizeRoomSnapshotPayload(
   const settings = normalizeGameSettings(payload.settings, currentRoom.settings)
   const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
   const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
+  const hasCurrentCanvas = Object.prototype.hasOwnProperty.call(payload, 'currentCanvas')
+  const currentCanvasStrokes = hasCurrentCanvas
+    ? normalizeSnapshotCanvasStrokes(payload.currentCanvas)
+    : null
   const currentRound = hasCurrentRound
     ? normalizeCurrentRound(payload.currentRound, participants, settings, currentRoom.currentRound)
     : currentRoom.currentRound
   const currentTurn = hasCurrentTurn
     ? normalizeCurrentTurn(payload.currentTurn, settings, currentRoom.currentTurn, participants)
     : currentRoom.currentTurn
+  const normalizedCurrentTurn =
+    currentCanvasStrokes && currentTurn
+      ? {
+          ...currentTurn,
+          canvasStrokes: currentCanvasStrokes,
+        }
+      : currentTurn
   const lobbyCanvasStrokes = Array.isArray(payload.lobbyCanvasStrokes)
     ? payload.lobbyCanvasStrokes
         .map(normalizeCanvasStroke)
         .filter((stroke): stroke is CanvasStroke => stroke !== null)
+    : currentCanvasStrokes
+      ? currentCanvasStrokes
     : currentRoom.lobbyCanvasStrokes ?? []
   const chat = normalizeChatMessages(payload.chat, ownSessionId, currentRoom.chat)
 
@@ -630,7 +712,7 @@ function normalizeRoomSnapshotPayload(
           ? null
           : readNonEmptyString(payload.gameId) ?? currentRoom.gameId,
       currentRound,
-      currentTurn,
+      currentTurn: normalizedCurrentTurn,
       chat,
     },
   }
@@ -674,7 +756,7 @@ function decodeSnapshotEnvelopePayload(
 function getDrawerOrder(participants: Participant[]) {
   return participants
     .filter((participant) => !participant.joinedMidRound)
-    .sort((left, right) => left.joinOrder - right.joinOrder)
+    .sort((left, right) => left.joinedAt - right.joinedAt)
     .map((participant) => participant.sessionId)
 }
 
@@ -803,11 +885,12 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
     return null
   }
 
-  const { sid, sessionId, nickname, n } = payload as {
+  const { sid, sessionId, nickname, n, joinedAt } = payload as {
     sid?: unknown
     sessionId?: unknown
     nickname?: unknown
     n?: unknown
+    joinedAt?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
@@ -832,6 +915,7 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
   return {
     sessionId: participantSessionId.trim(),
     nickname: participantNickname,
+    joinedAt: readJoinedAt(joinedAt),
   }
 }
 
@@ -997,7 +1081,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.room,
           ...action.payload,
           participants: Array.isArray(action.payload.participants)
-            ? action.payload.participants
+            ? sortParticipantsByJoinedAt(action.payload.participants)
             : state.room.participants,
           lobbyCanvasStrokes: Array.isArray(action.payload.lobbyCanvasStrokes)
             ? action.payload.lobbyCanvasStrokes
@@ -1010,19 +1094,23 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       }
     case 'server/roomJoinedApplied': {
       if (state.room.participants.some((participant) => participant.sessionId === action.payload.sessionId)) {
+        const updatedParticipants = sortParticipantsByJoinedAt(
+          state.room.participants.map((participant) =>
+            participant.sessionId === action.payload.sessionId
+              ? {
+                  ...participant,
+                  nickname: action.payload.nickname,
+                  joinedAt: action.payload.joinedAt ?? participant.joinedAt,
+                  isOnline: true,
+                }
+              : participant,
+          ),
+        )
         return {
           ...state,
           room: {
             ...state.room,
-            participants: state.room.participants.map((participant) =>
-              participant.sessionId === action.payload.sessionId
-                ? {
-                    ...participant,
-                    nickname: action.payload.nickname,
-                    isOnline: true,
-                  }
-                : participant,
-            ),
+            participants: updatedParticipants,
             chat: [...state.room.chat, createPresenceMessage(action.payload.nickname, true)],
           },
         }
@@ -1032,10 +1120,15 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         (max, participant) => Math.max(max, participant.joinOrder),
         0,
       )
+      const maxJoinedAt = state.room.participants.reduce(
+        (max, participant) => Math.max(max, participant.joinedAt),
+        0,
+      )
 
       const joinedParticipant: Participant = {
         sessionId: action.payload.sessionId,
         nickname: action.payload.nickname,
+        joinedAt: action.payload.joinedAt ?? maxJoinedAt + 1,
         isHost: false,
         score: 0,
         isOnline: true,
@@ -1047,7 +1140,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         ...state,
         room: {
           ...state.room,
-          participants: [...state.room.participants, joinedParticipant],
+          participants: sortParticipantsByJoinedAt([...state.room.participants, joinedParticipant]),
           chat: [...state.room.chat, createPresenceMessage(action.payload.nickname, true)],
         },
       }
@@ -1328,7 +1421,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state)
   const inboundStrokeQueueRef = useRef<CanvasStroke[]>([])
   const inboundStrokeFlushRafRef = useRef<number | null>(null)
-  const pendingJoinPublishRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -1422,6 +1514,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           }
           return
         }
+        case 308:
+          if (payload && typeof payload === 'object') {
+            const normalizedRoomSnapshot = normalizeRoomSnapshotPayload(payload, stateRef.current)
+            if (normalizedRoomSnapshot) {
+              server.applyRoomSnapshot(normalizedRoomSnapshot.roomSnapshot)
+            }
+          }
+          return
         case 310:
           if (payload && typeof payload === 'object') {
             server.applyWordChoice(payload as ServerWordChoicePayload)
@@ -1495,19 +1595,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const unsubscribe = wsSessionManager.subscribe((event) => {
       if (event.type === 'status') {
         dispatch({ type: 'connection/statusChanged', payload: event.status })
-
-        if (event.status === 'synced' && pendingJoinPublishRef.current && stateRef.current.session.joinPending) {
-          pendingJoinPublishRef.current = false
-          sendClientEvent('JOIN', {
-            rid: stateRef.current.room.roomId,
-            roomCode: stateRef.current.room.roomCode,
-            nickname: stateRef.current.session.nickname,
-          })
-        }
-
-        if (event.status === 'idle' || event.status === 'reconnecting') {
-          pendingJoinPublishRef.current = false
-        }
         return
       }
 
@@ -1532,7 +1619,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribe()
     }
-  }, [handleServerEnvelope, sendClientEvent])
+  }, [handleServerEnvelope])
 
   const value = useMemo<AppStateContextValue>(() => {
     return {
@@ -1541,11 +1628,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         updateNickname: (nickname) =>
           dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname.trim() || 'Guest' }),
         requestJoin: () => {
-          pendingJoinPublishRef.current = true
+          if (stateRef.current.session.joinPending || stateRef.current.session.joinAccepted) {
+            return
+          }
           dispatch({ type: 'local/joinRequested' })
         },
         clearRoomCache: () => {
-          pendingJoinPublishRef.current = false
           clearInboundStrokeQueue()
           dispatch({ type: 'local/roomCacheCleared' })
         },
@@ -1557,7 +1645,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         requestGameStart: () => {
           sendClientEvent(
             'GAME_START_REQUEST',
-            { roomCode: stateRef.current.room.roomCode },
+            {
+              // roomCode: stateRef.current.room.roomCode,
+            },
             () => server.applyGameStarted(createMockGameStartedPayload(stateRef.current)),
           )
         },

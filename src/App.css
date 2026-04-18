@@ -441,6 +441,21 @@
   color: var(--ink-muted);
 }
 
+.participant-list-self {
+  border: 1px solid rgba(225, 122, 46, 0.34);
+  box-shadow: none;
+  border-radius: 10px;
+  padding: 12px 10px;
+  background: rgba(225, 122, 46, 0.06);
+}
+
+.participant-list li {
+  border: 1px solid rgba(32, 50, 71, 0.16);
+  border-radius: 10px;
+  padding: 12px 10px;
+  margin-top: 8px;
+}
+
 .info-copy {
   margin: 0 0 14px;
   color: var(--ink-soft);
@@ -848,8 +863,14 @@
   padding: 9px 12px;
   border-radius: 14px;
   background: rgba(29, 53, 87, 0.05);
-  border: 1px solid transparent;
+  border: 1px solid rgba(32, 50, 71, 0.18);
   overflow: visible;
+}
+
+.participant-card-self {
+  border-color: rgba(225, 122, 46, 0.45);
+  box-shadow: none;
+  background: rgba(225, 122, 46, 0.08);
 }
 
 .participant-card-drawer {

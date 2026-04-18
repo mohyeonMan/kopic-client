@@ -10,7 +10,7 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
   const { settings } = state.room
   const nextRoundDrawerOrder = state.room.participants
     .slice()
-    .sort((left, right) => left.joinOrder - right.joinOrder)
+    .sort((left, right) => left.joinedAt - right.joinedAt)
     .map((participant) => ({
       sessionId: participant.sessionId,
       nickname: participant.nickname,
@@ -109,7 +109,10 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
 
         <ul className="participant-list">
           {state.room.participants.map((participant) => (
-            <li key={participant.sessionId}>
+            <li
+              key={participant.sessionId}
+              className={participant.sessionId === state.session.sessionId ? 'participant-list-self' : undefined}
+            >
               <div>
                 <strong>{participant.nickname}</strong>
                 <p>

@@ -118,7 +118,7 @@ function getVisibleOrder(participants: Participant[], drawerOrder: string[] | un
   if (!drawerOrder || drawerOrder.length === 0) {
     return participants
       .slice()
-      .sort((left, right) => left.joinOrder - right.joinOrder)
+      .sort((left, right) => left.joinedAt - right.joinedAt)
       .map((participant) => ({
         sessionId: participant.sessionId,
         nickname: participant.nickname,
@@ -632,12 +632,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
 	            <div className="side-panel-scroll-inner">
 	              <ul className="participant-cards">
 	                {participants.map((participant) => (
-	                <li
+                <li
                   key={participant.sessionId}
                   ref={(element) => {
                     participantItemRefs.current.set(participant.sessionId, element)
                   }}
-                  className={participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)}
+                  className={
+                    participant.sessionId === state.session.sessionId
+                      ? `${participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)} participant-card-self`
+                      : participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)
+                  }
                 >
                     <div className="participant-main">
                       <div className="participant-heading">
