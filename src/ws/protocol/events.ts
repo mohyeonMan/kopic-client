@@ -34,5 +34,4 @@ export type ServerEventCode = (typeof serverEventMeta)[number]['code']
 export type Envelope<TPayload, TCode extends number> = {
   e: TCode
   p: TPayload
-  rid?: string
 }

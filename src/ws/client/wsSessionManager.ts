@@ -12,7 +12,6 @@ const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
 const WS_MAX_RECONNECT_ATTEMPTS = 3
-// const WS_ROOM_CODE = 'KOPIC7'
 const WS_GE_ID = 'ge-local'
 
 let ws: WebSocket | null = null
@@ -22,6 +21,8 @@ let heartbeatTimer: number | null = null
 let reconnectAttempt = 0
 let currentStatus: ConnectionStatus = 'idle'
 let currentNickname: string | null = null
+let currentRoomCode: string | null = null
+let currentAction: 0 | 1 | null = null
 
 const owners = new Set<string>()
 const subscribers = new Set<SessionSubscriber>()
@@ -31,21 +32,25 @@ function normalizeNickname(nickname: string | null | undefined) {
   return trimmed ? trimmed : null
 }
 
+function normalizeRoomCode(roomCode: string | null | undefined) {
+  const trimmed = roomCode?.trim()
+  return trimmed ? trimmed : null
+}
+
+function normalizeJoinAction(action: 0 | 1 | null | undefined): 0 | 1 | null {
+  if (action === null || action === undefined) {
+    return null
+  }
+
+  return action === 1 ? 1 : 0
+}
+
 function resolveNickname() {
   if (currentNickname) {
     return currentNickname
   }
 
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const queryNickname = new URLSearchParams(window.location.search).get('nickname')
-  const storageNickname =
-    window.localStorage.getItem('nickname') ??
-    window.sessionStorage.getItem('nickname')
-
-  return normalizeNickname(queryNickname ?? storageNickname)
+  return null
 }
 
 function resolveWsUrl() {
@@ -66,7 +71,12 @@ function resolveWsUrl() {
   if (token) {
     url.searchParams.set('token', token)
   }
-  // url.searchParams.set('roomCode', WS_ROOM_CODE)
+  if (currentRoomCode) {
+    url.searchParams.set('roomCode', currentRoomCode)
+  }
+  if (currentAction !== null) {
+    url.searchParams.set('action', String(currentAction))
+  }
   url.searchParams.set('geId', WS_GE_ID)
   const nickname = resolveNickname()
   if (nickname) {
@@ -149,7 +159,42 @@ function handleReconnectFailure() {
     return
   }
 
-  window.alert('서버와 연결에 실패했습니다.')
+  publish({
+    type: 'error',
+    error: {
+      reason: 'CONNECTION_FAILED',
+      message: '서버와 연결할 수 없습니다.',
+    },
+  })
+
+  if (window.location.pathname === routes.main) {
+    return
+  }
+
+  window.history.pushState({}, '', routes.main)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+function handleSessionDisconnected() {
+  clearReconnectTimer()
+  clearHeartbeatTimer()
+
+  ws = null
+  owners.clear()
+  reconnectAttempt = 0
+  setStatus('idle')
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  publish({
+    type: 'error',
+    error: {
+      reason: 'SESSION_DISCONNECTED',
+      message: '세션이 끊겼습니다.',
+    },
+  })
 
   if (window.location.pathname === routes.main) {
     return
@@ -217,12 +262,14 @@ function connectIfNeeded() {
   }
 
   ws = next
+  let opened = false
 
   next.onopen = () => {
     if (ws !== next) {
       return
     }
 
+    opened = true
     reconnectAttempt = 0
     setStatus('synced')
     startHeartbeat(next)
@@ -250,10 +297,17 @@ function connectIfNeeded() {
   }
 
   next.onclose = () => {
-    if (ws === next) {
-      ws = null
+    if (ws !== next) {
+      return
     }
+
+    ws = null
     clearHeartbeatTimer()
+
+    if (opened) {
+      handleSessionDisconnected()
+      return
+    }
 
     scheduleReconnect()
   }
@@ -264,12 +318,33 @@ export const wsSessionOwner = {
 } as const
 
 export const wsSessionManager = {
-  acquire(owner: string, nickname?: string) {
+  acquire(owner: string, nickname?: string, roomCode?: string | null, action?: 0 | 1 | null) {
+    const prevNickname = currentNickname
+    const prevRoomCode = currentRoomCode
+    const prevAction = currentAction
+
     if (typeof nickname === 'string') {
       currentNickname = normalizeNickname(nickname)
     }
+    if (roomCode !== undefined) {
+      currentRoomCode = normalizeRoomCode(roomCode)
+    }
+    if (action !== undefined) {
+      currentAction = normalizeJoinAction(action)
+    }
+
+    const queryChanged =
+      prevNickname !== currentNickname ||
+      prevRoomCode !== currentRoomCode ||
+      prevAction !== currentAction
+
     owners.add(owner)
     clearCloseGraceTimer()
+
+    if (queryChanged && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      closeNow()
+    }
+
     connectIfNeeded()
   },
   release(owner: string) {
@@ -302,5 +377,9 @@ export const wsSessionManager = {
     return () => {
       subscribers.delete(subscriber)
     }
+  },
+  clearJoinConnectParams() {
+    currentRoomCode = null
+    currentAction = null
   },
 }

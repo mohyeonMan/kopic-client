@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, TransitionEvent as ReactTransitionEvent } from 'react'
+import type {
+  AnimationEvent as ReactAnimationEvent,
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  TransitionEvent as ReactTransitionEvent,
+} from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import { defaultSettings } from '../../app/store/mockAppState'
 import type { CanvasStroke, DrawingTool, Participant, TurnPhase } from '../../app/store/mockAppState'
@@ -82,6 +87,11 @@ type ParticipantBubblePosition = {
   createdAt: number
   top: number
   left: number
+}
+
+type AnimatedParticipantItem = {
+  participant: Participant
+  phase: 'stable' | 'enter' | 'exit'
 }
 
 const EMPTY_SESSION_IDS: string[] = []
@@ -203,6 +213,12 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
+  const [animatedParticipants, setAnimatedParticipants] = useState<AnimatedParticipantItem[]>(() =>
+    participants.map((participant) => ({
+      participant,
+      phase: 'stable',
+    })),
+  )
   const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes) ? state.room.lobbyCanvasStrokes : []
   const chat = Array.isArray(state.room.chat) ? state.room.chat : []
   const settings = state.room.settings ?? defaultSettings
@@ -308,6 +324,103 @@ export function GamePage({ onNavigate }: GamePageProps) {
       setSettingsOpen(false)
     }
   }, [roomState])
+
+  useEffect(() => {
+    setAnimatedParticipants((current) => {
+      const nextMap = new Map(
+        participants.map((participant) => [participant.sessionId, participant]),
+      )
+      const seenSessionIds = new Set<string>()
+      const merged: AnimatedParticipantItem[] = []
+
+      for (const currentItem of current) {
+        const sessionId = currentItem.participant.sessionId
+        const nextParticipant = nextMap.get(sessionId)
+        if (nextParticipant) {
+          merged.push({
+            participant: nextParticipant,
+            phase: currentItem.phase === 'exit' ? 'enter' : currentItem.phase,
+          })
+          seenSessionIds.add(sessionId)
+          continue
+        }
+
+        merged.push({
+          participant: currentItem.participant,
+          phase: 'exit',
+        })
+      }
+
+      const getActiveOrderIndex = (sessionId: string) =>
+        participants.findIndex((participant) => participant.sessionId === sessionId)
+
+      for (const nextParticipant of participants) {
+        if (seenSessionIds.has(nextParticipant.sessionId)) {
+          continue
+        }
+
+        const targetIndex = getActiveOrderIndex(nextParticipant.sessionId)
+        let insertAt = merged.findIndex((item) => {
+          const itemIndex = getActiveOrderIndex(item.participant.sessionId)
+          return itemIndex !== -1 && itemIndex > targetIndex
+        })
+        if (insertAt < 0) {
+          insertAt = merged.length
+        }
+
+        merged.splice(insertAt, 0, {
+          participant: nextParticipant,
+          phase: 'enter',
+        })
+      }
+
+      return merged
+    })
+  }, [participants])
+
+  const handleParticipantCardAnimationEnd = (
+    event: ReactAnimationEvent<HTMLLIElement>,
+    sessionId: string,
+    phase: AnimatedParticipantItem['phase'],
+  ) => {
+    if (event.target !== event.currentTarget) {
+      return
+    }
+
+    if (phase === 'stable') {
+      return
+    }
+
+    setAnimatedParticipants((current) => {
+      let didChange = false
+      const next: AnimatedParticipantItem[] = []
+
+      for (const item of current) {
+        if (item.participant.sessionId !== sessionId) {
+          next.push(item)
+          continue
+        }
+
+        if (phase === 'exit') {
+          didChange = true
+          continue
+        }
+
+        if (item.phase !== 'stable') {
+          didChange = true
+          next.push({
+            ...item,
+            phase: 'stable',
+          })
+          continue
+        }
+
+        next.push(item)
+      }
+
+      return didChange ? next : current
+    })
+  }
 
   useLayoutEffect(() => {
     const list = chatListRef.current
@@ -631,24 +744,37 @@ export function GamePage({ onNavigate }: GamePageProps) {
 	          <div ref={sidePanelScrollRef} className="side-panel-scroll">
 	            <div className="side-panel-scroll-inner">
 	              <ul className="participant-cards">
-	                {participants.map((participant) => (
+	                {animatedParticipants.map(({ participant, phase }) => (
                 <li
                   key={participant.sessionId}
                   ref={(element) => {
                     participantItemRefs.current.set(participant.sessionId, element)
                   }}
                   className={
-                    participant.sessionId === state.session.sessionId
-                      ? `${participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)} participant-card-self`
-                      : participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)
+                    `${
+                      participant.sessionId === state.session.sessionId
+                        ? `${participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)} participant-card-self`
+                        : participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)
+                    }${
+                      phase === 'enter'
+                        ? ' participant-card-enter'
+                        : phase === 'exit'
+                          ? ' participant-card-exit'
+                          : ''
+                    }`
+                  }
+                  onAnimationEnd={(event) =>
+                    handleParticipantCardAnimationEnd(event, participant.sessionId, phase)
                   }
                 >
                     <div className="participant-main">
-                      <div className="participant-heading">
+                      <div className="participant-heading participant-heading-top">
                         <strong>{participant.nickname}</strong>
-                        {participant.isHost ? <span className="host-badge">Host</span> : null}
                       </div>
-                      <p className="participant-score">{participant.score} pts</p>
+                      <div className="participant-meta-row">
+                        {participant.isHost ? <span className="host-badge">Host</span> : <span className="host-badge-placeholder" aria-hidden="true" />}
+                        <p className="participant-score">{participant.score} pts</p>
+                      </div>
                     </div>
                 </li>
               ))}

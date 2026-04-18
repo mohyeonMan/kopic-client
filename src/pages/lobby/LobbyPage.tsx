@@ -8,13 +8,6 @@ type LobbyPageProps = {
 export function LobbyPage({ onNavigate }: LobbyPageProps) {
   const { state, actions, connection } = useAppState()
   const { settings } = state.room
-  const nextRoundDrawerOrder = state.room.participants
-    .slice()
-    .sort((left, right) => left.joinedAt - right.joinedAt)
-    .map((participant) => ({
-      sessionId: participant.sessionId,
-      nickname: participant.nickname,
-    }))
 
   const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
     actions.patchLobbySettings({ [key]: Number(value) })
@@ -84,18 +77,6 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
           </button>
         </div>
 
-        <div className="status-card">
-          <p className="panel-label">Next round drawer order snapshot</p>
-          <p className="info-copy">
-            라운드가 시작되면 현재 participant 목록으로 `drawerOrder`가 한 번 고정된다. 중간 입장자는 현재
-            라운드에서는 guess만 가능하고 다음 라운드부터 drawer 후보가 된다.
-          </p>
-          <ol className="turn-order-list">
-            {nextRoundDrawerOrder.map((participant) => (
-              <li key={participant.sessionId}>{participant.nickname}</li>
-            ))}
-          </ol>
-        </div>
       </section>
 
       <section className="panel">

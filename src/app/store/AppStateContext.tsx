@@ -31,8 +31,12 @@ import { wsSessionManager } from '../../ws/client/wsSessionManager'
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
   | { type: 'local/sessionIdSynced'; payload: string }
-  | { type: 'local/joinRequested' }
+  | { type: 'local/joinRequested'; payload?: { roomCode?: string; action?: 0 | 1 } }
   | { type: 'local/joinAccepted' }
+  | { type: 'local/joinFailed'; payload: { reason: string; message: string } }
+  | { type: 'local/joinErrorDismissed' }
+  | { type: 'local/connectionErrorReported'; payload: { reason: string; message: string } }
+  | { type: 'local/connectionErrorDismissed' }
   | { type: 'local/roomCacheCleared' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'local/guessSubmitted'; payload: string }
@@ -61,8 +65,8 @@ type ServerRoomJoinedPayload = {
   joinedAt?: number
 }
 type ServerRoomLeftPayload = {
-  sessionId: string
-  nickname?: string
+  sid: string
+  nextHostSid?: string
 }
 
 const WS_COLOR_PALETTE = [
@@ -169,6 +173,16 @@ function createPresenceMessage(nickname: string, joined: boolean): ChatMessage {
     id: crypto.randomUUID(),
     nickname: '알림',
     text: `${nickname} 님이 ${joined ? '입장' : '퇴장'} 하셨습니다`,
+    tone: 'guess',
+    createdAt: Date.now(),
+  }
+}
+
+function createHostChangedMessage(nickname: string): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    nickname: '알림',
+    text: `${nickname}님이 새로운 방장이 되셨습니다.`,
     tone: 'guess',
     createdAt: Date.now(),
   }
@@ -445,10 +459,7 @@ function normalizeParticipants(
         readJoinedAt(participant.joinedAt) ??
         readFiniteNumber(participant.joinOrder) ??
         index + 1,
-      isHost:
-        typeof participant.isHost === 'boolean'
-          ? participant.isHost
-          : sessionId === hostSessionId,
+      isHost: sessionId === hostSessionId,
       score: readFiniteNumber(participant.score) ?? 0,
       isOnline:
         typeof participant.isOnline === 'boolean'
@@ -469,14 +480,13 @@ function normalizeCurrentRound(
   raw: unknown,
   participants: Participant[],
   settings: GameSettings,
-  fallback: RoundSummary | null,
 ): RoundSummary | null {
   if (raw === null) {
     return null
   }
 
   if (!isRecord(raw)) {
-    return fallback
+    return null
   }
 
   const defaultDrawerOrder = participants
@@ -492,9 +502,9 @@ function normalizeCurrentRound(
   const drawerOrder = parsedDrawerOrder.length > 0 ? parsedDrawerOrder : defaultDrawerOrder
 
   return {
-    roundNo: readFiniteNumber(raw.roundNo) ?? fallback?.roundNo ?? 1,
+    roundNo: readFiniteNumber(raw.roundNo) ?? 1,
     totalRounds: readFiniteNumber(raw.totalRounds) ?? settings.roundCount,
-    turnCursor: readFiniteNumber(raw.turnCursor) ?? fallback?.turnCursor ?? 0,
+    turnCursor: readFiniteNumber(raw.turnCursor) ?? 0,
     drawerOrder,
   }
 }
@@ -502,7 +512,6 @@ function normalizeCurrentRound(
 function normalizeCurrentTurn(
   raw: unknown,
   settings: GameSettings,
-  fallback: TurnSummary | null,
   participants: Participant[],
 ): TurnSummary | null {
   if (raw === null) {
@@ -510,18 +519,17 @@ function normalizeCurrentTurn(
   }
 
   if (!isRecord(raw)) {
-    return fallback
+    return null
   }
 
   const fallbackDrawerSessionId =
-    fallback?.drawerSessionId ??
     participants.slice().sort((left, right) => left.joinedAt - right.joinedAt)[0]?.sessionId ??
     'unknown'
   const drawerSessionId =
     readNonEmptyString(raw.drawerSessionId) ??
     readNonEmptyString(raw.drawerUserId) ??
     fallbackDrawerSessionId
-  const phase = isTurnPhase(raw.phase) ? raw.phase : fallback?.phase ?? 'WORD_CHOICE'
+  const phase = isTurnPhase(raw.phase) ? raw.phase : 'WORD_CHOICE'
   const correctSessionIdsSource = Array.isArray(raw.correctSessionIds)
     ? raw.correctSessionIds
     : Array.isArray(raw.correctUserIds)
@@ -532,19 +540,18 @@ function normalizeCurrentTurn(
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
-    : fallback?.wordChoices ?? getWordChoices(settings.wordChoiceCount)
+    : getWordChoices(settings.wordChoiceCount)
   const canvasStrokes = Array.isArray(raw.canvasStrokes)
     ? raw.canvasStrokes
         .map(normalizeCanvasStroke)
         .filter((stroke): stroke is CanvasStroke => stroke !== null)
-    : fallback?.canvasStrokes ?? []
+    : []
 
   return {
-    roundNo: readFiniteNumber(raw.roundNo) ?? fallback?.roundNo ?? 1,
-    turnNo: readFiniteNumber(raw.turnNo) ?? fallback?.turnNo ?? 1,
+    roundNo: readFiniteNumber(raw.roundNo) ?? 1,
+    turnNo: readFiniteNumber(raw.turnNo) ?? 1,
     turnId:
       readNonEmptyString(raw.turnId) ??
-      fallback?.turnId ??
       `turn-r${readFiniteNumber(raw.roundNo) ?? 1}-${readFiniteNumber(raw.turnNo) ?? 1}`,
     drawerSessionId,
     phase,
@@ -559,7 +566,7 @@ function normalizeCurrentTurn(
     selectedWord:
       raw.selectedWord === null
         ? null
-        : readNonEmptyString(raw.selectedWord) ?? fallback?.selectedWord ?? null,
+        : readNonEmptyString(raw.selectedWord) ?? null,
     canvasStrokes,
   }
 }
@@ -655,18 +662,17 @@ function normalizeRoomSnapshotPayload(
     return null
   }
 
-  const currentRoom = state.room
   const hostSessionId =
     readNonEmptyString(payload.hostSessionId) ??
     readNonEmptyString(payload.hostUserId) ??
-    currentRoom.hostSessionId
-  const roomState = isRoomState(payload.roomState) ? payload.roomState : currentRoom.roomState
+    ''
+  const roomState = isRoomState(payload.roomState) ? payload.roomState : 'LOBBY'
   const hasParticipants = Object.prototype.hasOwnProperty.call(payload, 'participants')
   const participants = hasParticipants
     ? normalizeParticipants(payload.participants, hostSessionId, roomState)
-    : currentRoom.participants
+    : []
   const ownSessionId = resolveOwnSessionIdFromSnapshotPayload(payload, participants, state)
-  const settings = normalizeGameSettings(payload.settings, currentRoom.settings)
+  const settings = normalizeGameSettings(payload.settings, defaultSettings)
   const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
   const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
   const hasCurrentCanvas = Object.prototype.hasOwnProperty.call(payload, 'currentCanvas')
@@ -674,34 +680,44 @@ function normalizeRoomSnapshotPayload(
     ? normalizeSnapshotCanvasStrokes(payload.currentCanvas)
     : null
   const currentRound = hasCurrentRound
-    ? normalizeCurrentRound(payload.currentRound, participants, settings, currentRoom.currentRound)
-    : currentRoom.currentRound
+    ? normalizeCurrentRound(payload.currentRound, participants, settings)
+    : null
   const currentTurn = hasCurrentTurn
-    ? normalizeCurrentTurn(payload.currentTurn, settings, currentRoom.currentTurn, participants)
-    : currentRoom.currentTurn
-  const normalizedCurrentTurn =
-    currentCanvasStrokes && currentTurn
-      ? {
-          ...currentTurn,
-          canvasStrokes: currentCanvasStrokes,
-        }
-      : currentTurn
+    ? normalizeCurrentTurn(payload.currentTurn, settings, participants)
+    : null
+  const payloadCurrentTurn = isRecord(payload.currentTurn) ? payload.currentTurn : null
+  const hasTurnCanvasStrokes =
+    payloadCurrentTurn &&
+    Object.prototype.hasOwnProperty.call(payloadCurrentTurn, 'canvasStrokes')
+  const preservedTurnCanvasStrokes =
+    currentTurn &&
+    !hasTurnCanvasStrokes &&
+    !currentCanvasStrokes &&
+    state.room.currentTurn?.turnId === currentTurn.turnId
+      ? state.room.currentTurn.canvasStrokes
+      : undefined
+  const normalizedCurrentTurn = currentTurn
+    ? {
+        ...currentTurn,
+        canvasStrokes: currentCanvasStrokes ?? preservedTurnCanvasStrokes ?? currentTurn.canvasStrokes,
+      }
+    : null
   const lobbyCanvasStrokes = Array.isArray(payload.lobbyCanvasStrokes)
     ? payload.lobbyCanvasStrokes
         .map(normalizeCanvasStroke)
         .filter((stroke): stroke is CanvasStroke => stroke !== null)
     : currentCanvasStrokes
       ? currentCanvasStrokes
-    : currentRoom.lobbyCanvasStrokes ?? []
-  const chat = normalizeChatMessages(payload.chat, ownSessionId, currentRoom.chat)
+    : state.room.lobbyCanvasStrokes ?? []
+  const chat = normalizeChatMessages(payload.chat, ownSessionId, state.room.chat)
 
   return {
     ownSessionId,
     roomSnapshot: {
-      ...currentRoom,
-      roomId: readNonEmptyString(payload.roomId) ?? currentRoom.roomId,
-      roomCode: readNonEmptyString(payload.roomCode) ?? currentRoom.roomCode,
-      roomType: payload.roomType === 'PRIVATE' ? 'PRIVATE' : currentRoom.roomType,
+      ...state.room,
+      roomId: state.room.roomId,
+      roomCode: readNonEmptyString(payload.roomCode) ?? '',
+      roomType: payload.roomType === 'PRIVATE' ? 'PRIVATE' : 'PRIVATE',
       hostSessionId,
       participants,
       lobbyCanvasStrokes,
@@ -710,7 +726,7 @@ function normalizeRoomSnapshotPayload(
       gameId:
         payload.gameId === null
           ? null
-          : readNonEmptyString(payload.gameId) ?? currentRoom.gameId,
+          : readNonEmptyString(payload.gameId) ?? null,
       currentRound,
       currentTurn: normalizedCurrentTurn,
       chat,
@@ -721,7 +737,6 @@ function normalizeRoomSnapshotPayload(
 function decodeSnapshotEnvelopePayload(
   payload: unknown,
   state: AppState,
-  envelopeRoomIdHint?: string,
 ): { roomSnapshot: RoomSnapshot; ownSessionId: string } | null {
   if (!isRecord(payload)) {
     return null
@@ -732,15 +747,20 @@ function decodeSnapshotEnvelopePayload(
     readNonEmptyString(payload.sessionId) ??
     readNonEmptyString(payload.mySid) ??
     readNonEmptyString(payload.mySessionId)
-  const explicitRoomId =
-    readNonEmptyString(payload.rid) ??
-    readNonEmptyString(payload.roomId) ??
-    envelopeRoomIdHint
+  const explicitRoomCode = readNonEmptyString(payload.roomCode)
+  const explicitHostSessionId =
+    readNonEmptyString(payload.hostSessionId) ??
+    readNonEmptyString(payload.hostUserId)
   const snapshotPayload = isRecord(payload.snap) ? payload.snap : payload
-  const normalizedSnapshotPayload =
-    explicitRoomId && readNonEmptyString(snapshotPayload.roomId) === undefined
-      ? { ...snapshotPayload, roomId: explicitRoomId }
-      : snapshotPayload
+  const normalizedSnapshotPayload = {
+    ...snapshotPayload,
+    ...(explicitRoomCode && readNonEmptyString(snapshotPayload.roomCode) === undefined
+      ? { roomCode: explicitRoomCode }
+      : {}),
+    ...(explicitHostSessionId && readNonEmptyString(snapshotPayload.hostSessionId) === undefined
+      ? { hostSessionId: explicitHostSessionId }
+      : {}),
+  }
   const normalized = normalizeRoomSnapshotPayload(normalizedSnapshotPayload, state)
 
   if (!normalized) {
@@ -924,11 +944,12 @@ function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload | null {
     return null
   }
 
-  const { sid, sessionId, nickname, n } = payload as {
+  const { sid, sessionId, nextHost, nextHostSid, nextHostSessionId } = payload as {
     sid?: unknown
     sessionId?: unknown
-    nickname?: unknown
-    n?: unknown
+    nextHost?: unknown
+    nextHostSid?: unknown
+    nextHostSessionId?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
@@ -941,21 +962,75 @@ function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload | null {
     return null
   }
 
+  const decodedNextHostSid =
+    readNonEmptyString(nextHostSid) ??
+    readNonEmptyString(nextHostSessionId) ??
+    (typeof nextHost === 'string'
+      ? readNonEmptyString(nextHost)
+      : isRecord(nextHost)
+        ? readNonEmptyString(nextHost.sid) ??
+          readNonEmptyString(nextHost.sessionId) ??
+          readNonEmptyString(nextHost.userId)
+        : undefined)
+
   return {
-    sessionId: participantSessionId.trim(),
-    nickname:
-      typeof nickname === 'string' && nickname.trim().length > 0
-        ? nickname.trim()
-        : typeof n === 'string' && n.trim().length > 0
-          ? n.trim()
-          : undefined,
+    sid: participantSessionId.trim(),
+    nextHostSid: decodedNextHostSid,
+  }
+}
+
+function decodeJoinFailedPayload(payload: unknown): { reason: string; message: string } {
+  if (!isRecord(payload)) {
+    return {
+      reason: 'JOIN_FAILED',
+      message: '방 입장에 실패했습니다.',
+    }
+  }
+
+  const reason = readNonEmptyString(payload.reason) ?? 'JOIN_FAILED'
+  const rawMessage = readNonEmptyString(payload.message)
+  if (rawMessage) {
+    return {
+      reason,
+      message: rawMessage,
+    }
+  }
+
+  if (reason === 'ROOM_NOT_FOUND') {
+    return {
+      reason,
+      message: '입력한 방 코드를 찾을 수 없습니다.',
+    }
+  }
+
+  return {
+    reason,
+    message: '방 입장에 실패했습니다.',
+  }
+}
+
+function decodeConnectionErrorPayload(payload: unknown): { reason: string; message: string } | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const reason = readNonEmptyString(payload.reason)
+  const message = readNonEmptyString(payload.message)
+  if (!reason || !message) {
+    return null
+  }
+
+  return {
+    reason,
+    message,
   }
 }
 
 function createClearedRoomState(state: AppState): RoomSnapshot {
   return {
     ...state.room,
-    hostSessionId: state.session.sessionId,
+    roomCode: '',
+    hostSessionId: '',
     participants: [],
     lobbyCanvasStrokes: [],
     settings: { ...defaultSettings },
@@ -1004,6 +1079,10 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.session,
           joinPending: true,
           joinAccepted: false,
+          joinRoomCode: action.payload?.roomCode,
+          joinAction: action.payload?.action ?? 0,
+          joinError: undefined,
+          connectionError: undefined,
         },
         room: createClearedRoomState(state),
       }
@@ -1014,6 +1093,53 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.session,
           joinPending: false,
           joinAccepted: true,
+          joinRoomCode: undefined,
+          joinAction: undefined,
+          joinError: undefined,
+          connectionError: undefined,
+        },
+      }
+    case 'local/joinFailed':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          joinPending: false,
+          joinAccepted: false,
+          joinRoomCode: undefined,
+          joinAction: undefined,
+          joinError: action.payload,
+          connectionError: state.session.connectionError,
+        },
+        room: createClearedRoomState(state),
+      }
+    case 'local/joinErrorDismissed':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          joinError: undefined,
+        },
+      }
+    case 'local/connectionErrorReported':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          joinPending: false,
+          joinAccepted: false,
+          joinRoomCode: undefined,
+          joinAction: undefined,
+          connectionError: action.payload,
+        },
+        room: createClearedRoomState(state),
+      }
+    case 'local/connectionErrorDismissed':
+      return {
+        ...state,
+        session: {
+          ...state.session,
+          connectionError: undefined,
         },
       }
     case 'local/roomCacheCleared':
@@ -1023,6 +1149,10 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.session,
           joinPending: false,
           joinAccepted: false,
+          joinRoomCode: undefined,
+          joinAction: undefined,
+          joinError: undefined,
+          connectionError: state.session.connectionError,
         },
         room: createClearedRoomState(state),
       }
@@ -1057,7 +1187,14 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         },
       }
     case 'connection/statusChanged':
-      if (action.payload === 'idle' || action.payload === 'reconnecting') {
+      if (action.payload === 'reconnecting') {
+        return {
+          ...state,
+          connectionStatus: action.payload,
+        }
+      }
+
+      if (action.payload === 'idle') {
         return {
           ...state,
           connectionStatus: action.payload,
@@ -1065,6 +1202,10 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             ...state.session,
             joinPending: false,
             joinAccepted: false,
+            joinRoomCode: undefined,
+            joinAction: undefined,
+            joinError: state.session.joinError,
+            connectionError: state.session.connectionError,
           },
           room: createClearedRoomState(state),
         }
@@ -1101,6 +1242,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
                   ...participant,
                   nickname: action.payload.nickname,
                   joinedAt: action.payload.joinedAt ?? participant.joinedAt,
+                  isHost: participant.sessionId === state.room.hostSessionId,
                   isOnline: true,
                 }
               : participant,
@@ -1129,7 +1271,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         sessionId: action.payload.sessionId,
         nickname: action.payload.nickname,
         joinedAt: action.payload.joinedAt ?? maxJoinedAt + 1,
-        isHost: false,
+        isHost: action.payload.sessionId === state.room.hostSessionId,
         score: 0,
         isOnline: true,
         joinOrder: maxJoinOrder + 1,
@@ -1147,22 +1289,47 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
     }
     case 'server/roomLeftApplied': {
       const leftParticipant = state.room.participants.find(
-        (participant) => participant.sessionId === action.payload.sessionId,
+        (participant) => participant.sessionId === action.payload.sid,
       )
-      const leftNickname = leftParticipant?.nickname ?? action.payload.nickname
+      const leftNickname = leftParticipant?.nickname ?? action.payload.sid
+      const remainingParticipants = state.room.participants.filter(
+        (participant) => participant.sessionId !== action.payload.sid,
+      )
+      const nextHostSessionId =
+        action.payload.nextHostSid ??
+        (state.room.hostSessionId === action.payload.sid
+          ? remainingParticipants[0]?.sessionId
+          : state.room.hostSessionId)
+      const normalizedRemainingParticipants = remainingParticipants.map((participant) => ({
+        ...participant,
+        isHost: participant.sessionId === nextHostSessionId,
+      }))
+      const nextChat = leftNickname
+        ? [...state.room.chat, createPresenceMessage(leftNickname, false)]
+        : state.room.chat
+      const finalChat =
+        action.payload.nextHostSid
+          ? [
+              ...nextChat,
+              createHostChangedMessage(
+                normalizedRemainingParticipants.find(
+                  (participant) => participant.sessionId === action.payload.nextHostSid,
+                )?.nickname ?? action.payload.nextHostSid,
+              ),
+            ]
+          : nextChat
 
       return {
         ...state,
         room: {
           ...state.room,
-          participants: state.room.participants.filter(
-            (participant) => participant.sessionId !== action.payload.sessionId,
-          ),
+          hostSessionId: nextHostSessionId ?? state.room.hostSessionId,
+          participants: normalizedRemainingParticipants,
           currentRound: state.room.currentRound
             ? {
                 ...state.room.currentRound,
                 drawerOrder: state.room.currentRound.drawerOrder.filter(
-                  (sessionId) => sessionId !== action.payload.sessionId,
+                  (sessionId) => sessionId !== action.payload.sid,
                 ),
               }
             : null,
@@ -1170,13 +1337,11 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             ? {
                 ...state.room.currentTurn,
                 correctSessionIds: state.room.currentTurn.correctSessionIds.filter(
-                  (sessionId) => sessionId !== action.payload.sessionId,
+                  (sessionId) => sessionId !== action.payload.sid,
                 ),
               }
             : null,
-          chat: leftNickname
-            ? [...state.room.chat, createPresenceMessage(leftNickname, false)]
-            : state.room.chat,
+          chat: finalChat,
         },
       }
     }
@@ -1478,11 +1643,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         case 300:
         case 408:
           if (payload && typeof payload === 'object') {
-            const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(
-              payload,
-              stateRef.current,
-              typeof envelope.rid === 'string' ? envelope.rid : undefined,
-            )
+            const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(payload, stateRef.current)
             if (normalizedRoomSnapshot) {
               if (normalizedRoomSnapshot.ownSessionId !== stateRef.current.session.sessionId) {
                 dispatch({
@@ -1526,6 +1687,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           if (payload && typeof payload === 'object') {
             server.applyWordChoice(payload as ServerWordChoicePayload)
           }
+          return
+        case 1999:
+          clearInboundStrokeQueue()
+          dispatch({ type: 'local/joinFailed', payload: decodeJoinFailedPayload(payload) })
           return
         case 204: {
           const guessMessage = decodeGuessSubmittedMessage(payload)
@@ -1599,7 +1764,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
 
       if (event.type === 'error') {
-        console.error('[ws] transport error', event.error)
+        const connectionError = decodeConnectionErrorPayload(event.error)
+        if (connectionError) {
+          clearInboundStrokeQueue()
+          dispatch({ type: 'local/connectionErrorReported', payload: connectionError })
+        }
         return
       }
 
@@ -1626,12 +1795,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       state,
       actions: {
         updateNickname: (nickname) =>
-          dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname.trim() || 'Guest' }),
-        requestJoin: () => {
+          dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname }),
+        requestJoin: (options) => {
           if (stateRef.current.session.joinPending || stateRef.current.session.joinAccepted) {
             return
           }
-          dispatch({ type: 'local/joinRequested' })
+          const normalizedRoomCode = options?.roomCode?.trim()
+          dispatch({
+            type: 'local/joinRequested',
+            payload: {
+              roomCode: normalizedRoomCode && normalizedRoomCode.length > 0 ? normalizedRoomCode : undefined,
+              action: options?.action === 1 ? 1 : 0,
+            },
+          })
+        },
+        dismissJoinError: () => {
+          dispatch({ type: 'local/joinErrorDismissed' })
+        },
+        dismissConnectionError: () => {
+          dispatch({ type: 'local/connectionErrorDismissed' })
         },
         clearRoomCache: () => {
           clearInboundStrokeQueue()

@@ -12,14 +12,24 @@ export function useAppRouter() {
   const { state, actions } = useAppState()
   const previousRouteRef = useRef<AppRoute>(route)
   const shouldKeepGameSession = state.session.joinPending || state.session.joinAccepted
+  const joinRoomCode = state.session.joinPending ? state.session.joinRoomCode ?? null : undefined
+  const joinAction = state.session.joinPending ? state.session.joinAction ?? 0 : undefined
 
   useEffect(() => {
     if (!shouldKeepGameSession) {
       return
     }
 
-    wsSessionManager.acquire(wsSessionOwner.game, state.session.nickname)
-  }, [shouldKeepGameSession, state.session.nickname])
+    wsSessionManager.acquire(wsSessionOwner.game, state.session.nickname, joinRoomCode, joinAction)
+  }, [joinAction, joinRoomCode, shouldKeepGameSession, state.session.nickname])
+
+  useEffect(() => {
+    if (!state.session.joinAccepted) {
+      return
+    }
+
+    wsSessionManager.clearJoinConnectParams()
+  }, [state.session.joinAccepted])
 
   useEffect(() => {
     if (route === routes.game) {
@@ -38,6 +48,7 @@ export function useAppRouter() {
       return
     }
 
+    wsSessionManager.clearJoinConnectParams()
     wsSessionManager.release(wsSessionOwner.game)
   }, [shouldKeepGameSession])
 

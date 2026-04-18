@@ -89,6 +89,16 @@ export type SessionState = {
   nickname: string
   joinPending: boolean
   joinAccepted: boolean
+  joinRoomCode?: string
+  joinAction?: 0 | 1
+  joinError?: {
+    reason: string
+    message: string
+  }
+  connectionError?: {
+    reason: string
+    message: string
+  }
 }
 
 export type AppState = {
@@ -111,9 +121,13 @@ export const defaultSettings: GameSettings = {
 export const initialAppState: AppState = {
   session: {
     sessionId: 's-100',
-    nickname: 'Jihoon',
+    nickname: '',
     joinPending: false,
     joinAccepted: false,
+    joinRoomCode: undefined,
+    joinAction: undefined,
+    joinError: undefined,
+    connectionError: undefined,
   },
   connectionStatus: 'idle',
   room: {

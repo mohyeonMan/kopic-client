@@ -28,7 +28,9 @@ export type AppStateContextValue = {
   state: AppState
   actions: {
     updateNickname: (nickname: string) => void
-    requestJoin: () => void
+    requestJoin: (options?: { roomCode?: string; action?: 0 | 1 }) => void
+    dismissJoinError: () => void
+    dismissConnectionError: () => void
     clearRoomCache: () => void
     patchLobbySettings: (settings: Partial<GameSettings>) => void
     requestGameStart: () => void

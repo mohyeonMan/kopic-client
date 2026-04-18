@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { routes, type AppRoute } from '../../app/router/routes'
 import { useAppState } from '../../app/store/useAppState'
 
@@ -8,7 +8,46 @@ type EntryPageProps = {
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const { state, actions } = useAppState()
-  const nicknameValid = state.session.nickname.trim().length >= 2
+  const nicknameLength = state.session.nickname.trim().length
+  const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
+  const joinError = state.session.joinError
+  const connectionError = state.session.connectionError
+  const [joinModalOpen, setJoinModalOpen] = useState(false)
+  const [joinModalNickname, setJoinModalNickname] = useState(state.session.nickname)
+  const [joinModalRoomCode, setJoinModalRoomCode] = useState('')
+  const joinModalNicknameLength = joinModalNickname.trim().length
+  const joinModalNicknameValid = joinModalNicknameLength >= 1 && joinModalNicknameLength <= 10
+  const joinModalRoomCodeValid = joinModalRoomCode.trim().length > 0
+
+  const openJoinModal = () => {
+    setJoinModalNickname(state.session.nickname)
+    setJoinModalRoomCode('')
+    setJoinModalOpen(true)
+  }
+
+  const closeJoinModal = () => {
+    setJoinModalOpen(false)
+  }
+
+  const submitJoinByRoomCode = () => {
+    const nextNickname = joinModalNickname.trim()
+    const nextRoomCode = joinModalRoomCode.trim()
+    if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || state.session.joinPending) {
+      return
+    }
+
+    actions.updateNickname(nextNickname)
+    actions.requestJoin({ roomCode: nextRoomCode, action: 0 })
+    setJoinModalOpen(false)
+  }
+
+  const handleMainNicknameChange = (value: string) => {
+    actions.updateNickname(value.slice(0, 10))
+  }
+
+  const handleJoinModalNicknameChange = (value: string) => {
+    setJoinModalNickname(value.slice(0, 10))
+  }
 
   useEffect(() => {
     if (!state.session.joinAccepted) {
@@ -17,6 +56,14 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
 
     onNavigate(routes.game)
   }, [onNavigate, state.session.joinAccepted])
+
+  useEffect(() => {
+    if (!joinError && !connectionError) {
+      return
+    }
+
+    setJoinModalOpen(false)
+  }, [connectionError, joinError])
 
   return (
     <div className="page-grid entry-grid">
@@ -39,35 +86,155 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
           <span>{'\uB2C9\uB124\uC784'}</span>
           <input
             value={state.session.nickname}
-            onChange={(event) => actions.updateNickname(event.target.value)}
-            placeholder={'\uB2C9\uB124\uC784 \uC785\uB825'}
+            onChange={(event) => handleMainNicknameChange(event.target.value)}
+            placeholder={'\uB2C9\uB124\uC784\uC740 10\uC790 \uC774\uB0B4\uB85C \uC785\uB825\uD574\uC8FC\uC138\uC694.'}
+            maxLength={10}
           />
         </label>
 
         <div className="button-row entry-actions">
           <button
             type="button"
-            className="primary-button"
+            className="primary-button entry-action-quick"
             disabled={!nicknameValid || state.session.joinPending}
             onClick={() => {
-              actions.requestJoin()
+              actions.requestJoin({ action: 0 })
             }}
           >
             {state.session.joinPending ? '\uC785\uC7A5 \uC911...' : '\uBE60\uB978 \uC785\uC7A5'}
           </button>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={!nicknameValid || state.session.joinPending}
-            onClick={() => {
-              actions.requestJoin()
-            }}
-          >
-            {'\uBC29 \uB9CC\uB4E4\uAE30'}
-          </button>
+          <div className="entry-actions-secondary">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={!nicknameValid || state.session.joinPending}
+              onClick={() => {
+                actions.requestJoin({ action: 1 })
+              }}
+            >
+              {'\uBC29 \uB9CC\uB4E4\uAE30'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={state.session.joinPending}
+              onClick={openJoinModal}
+            >
+              {'\uBC29 \uCC38\uC5EC'}
+            </button>
+          </div>
         </div>
       </section>
 
+      {joinModalOpen ? (
+        <div
+          className="entry-join-modal-backdrop"
+          role="presentation"
+          onClick={closeJoinModal}
+        >
+          <div
+            className="entry-join-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="\uBC29 \uCC38\uC5EC"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>{'\uBC29 \uCC38\uC5EC'}</h3>
+            <label className="field">
+              <span>{'\uB2C9\uB124\uC784'}</span>
+              <input
+                value={joinModalNickname}
+                onChange={(event) => handleJoinModalNicknameChange(event.target.value)}
+                placeholder={'\uB2C9\uB124\uC784\uC740 10\uC790 \uC774\uB0B4\uB85C \uC785\uB825\uD574\uC8FC\uC138\uC694.'}
+                maxLength={10}
+              />
+            </label>
+            <label className="field">
+              <span>{'\uBC29 \uCF54\uB4DC'}</span>
+              <input
+                value={joinModalRoomCode}
+                onChange={(event) => setJoinModalRoomCode(event.target.value)}
+                placeholder={'\uBC29 \uCF54\uB4DC'}
+              />
+            </label>
+            <div className="entry-join-modal-actions entry-join-modal-actions-single">
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!joinModalNicknameValid || !joinModalRoomCodeValid || state.session.joinPending}
+                onClick={submitJoinByRoomCode}
+              >
+                {'\uCC38\uAC00'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={closeJoinModal}
+              >
+                {'\uB2EB\uAE30'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {joinError ? (
+        <div
+          className="entry-join-modal-backdrop"
+          role="presentation"
+          onClick={() => actions.dismissJoinError()}
+        >
+          <div
+            className="entry-join-modal entry-error-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="입장 실패"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>{'입장 실패'}</h3>
+            <p className="entry-error-message">{joinError.message}</p>
+            <p className="entry-error-reason">{`사유: ${joinError.reason}`}</p>
+            <div className="entry-join-modal-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => actions.dismissJoinError()}
+              >
+                {'확인'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {!joinError && connectionError ? (
+        <div
+          className="entry-join-modal-backdrop"
+          role="presentation"
+          onClick={() => actions.dismissConnectionError()}
+        >
+          <div
+            className="entry-join-modal entry-error-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="연결 실패"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>{'연결 실패'}</h3>
+            <p className="entry-error-message">{connectionError.message}</p>
+            <p className="entry-error-reason">{`사유: ${connectionError.reason}`}</p>
+            <div className="entry-join-modal-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => actions.dismissConnectionError()}
+              >
+                {'확인'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
