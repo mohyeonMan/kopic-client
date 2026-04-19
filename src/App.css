@@ -1166,6 +1166,7 @@
 
 .board-frame {
   position: relative;
+  --settings-panel-scale: 1;
   container-type: inline-size;
   width: 100%;
   max-width: 1240px;
@@ -1190,7 +1191,7 @@
 }
 
 .board-frame .canvas-overlay-card {
-  width: min(clamp(300px, 78cqw, 560px), calc(100% - clamp(20px, 5cqw, 48px)));
+  width: min(clamp(240px, 72cqw, 520px), calc(100% - clamp(12px, 3.2cqw, 32px)));
 }
 
 .board-frame .canvas-overlay-card-settings {
@@ -1198,6 +1199,8 @@
   height: auto;
   align-content: normal;
   max-height: calc(100% - clamp(10px, 3cqw, 36px));
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .board-frame .canvas-overlay-card-settings .overlay-heading {
@@ -1215,6 +1218,7 @@
 }
 
 .board-frame .canvas-overlay-card-settings .lobby-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(6px, 1.2cqw, 12px);
 }
 
@@ -1235,6 +1239,11 @@
   line-height: 1.2;
 }
 
+.board-frame .canvas-overlay-card-settings .field select.select-no-caret {
+  background-image: none;
+  padding-right: clamp(9px, 1.45cqw, 12px);
+}
+
 .board-frame .canvas-overlay-card-settings .overlay-actions {
   gap: clamp(6px, 1cqw, 10px);
 }
@@ -1243,6 +1252,28 @@
 .board-frame .canvas-overlay-card-settings .secondary-button {
   padding: clamp(6px, 0.95cqw, 8px) clamp(9px, 1.35cqw, 12px);
   font-size: clamp(0.82rem, 1.3cqw, 0.92rem);
+}
+
+@container (max-width: 1024px) {
+  .board-frame {
+    --settings-panel-scale: 0.94;
+  }
+}
+
+@container (max-width: 860px) {
+  .board-frame {
+    --settings-panel-scale: 0.88;
+  }
+
+  .board-frame .canvas-overlay-card-settings .lobby-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 720px) {
+  .board-frame {
+    --settings-panel-scale: 0.82;
+  }
 }
 
 .board-frame .canvas-overlay-card-word-choice {
@@ -1413,19 +1444,19 @@
     transform 240ms ease,
     opacity 240ms ease;
   max-height: calc(100% - 40px);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .canvas-overlay-card-settings-open {
   opacity: 1;
   pointer-events: auto;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--settings-panel-scale, 1));
 }
 
 .canvas-overlay-card-settings-closed {
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, calc(-50% - 24px));
+  transform: translate(-50%, calc(-50% - 24px)) scale(var(--settings-panel-scale, 1));
 }
 
 .canvas-overlay-card .info-copy,
@@ -2568,21 +2599,21 @@
 
   .board-frame .canvas-overlay-card-settings {
     top: 6px;
-    transform: translate(-50%, 0);
+    transform: translate(-50%, 0) scale(var(--settings-panel-scale, 1));
     max-height: calc(100% - 12px);
-    overflow: hidden;
+    overflow: auto;
   }
 
   .board-frame .canvas-overlay-card-settings-open {
-    transform: translate(-50%, 0);
+    transform: translate(-50%, 0) scale(var(--settings-panel-scale, 1));
   }
 
   .board-frame .canvas-overlay-card-settings-closed {
-    transform: translate(-50%, calc(-100% - 16px));
+    transform: translate(-50%, calc(-100% - 16px)) scale(var(--settings-panel-scale, 1));
   }
 
   .board-frame .canvas-overlay-card-settings .lobby-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -2605,6 +2636,11 @@
     background-position:
       calc(100% - 14px) calc(50% - 2px),
       calc(100% - 10px) calc(50% - 2px);
+  }
+
+  .board-frame .canvas-overlay-card-settings .field select.select-no-caret {
+    background-image: none;
+    padding-right: 6px;
   }
 
   .board-frame .canvas-overlay-card-settings .overlay-actions {

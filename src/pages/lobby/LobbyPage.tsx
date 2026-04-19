@@ -5,11 +5,22 @@ type LobbyPageProps = {
   onNavigate: (route: AppRoute) => void
 }
 
+const SETTING_OPTIONS = {
+  roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
+  drawSec: [20, 30, 40, 50, 60],
+  wordChoiceSec: [5, 7, 10, 12, 15],
+} as const
+
 export function LobbyPage({ onNavigate }: LobbyPageProps) {
   const { state, actions, connection } = useAppState()
   const { settings } = state.room
+  const isHost = state.room.hostSessionId === state.session.sessionId
 
   const applySetting = (key: 'roundCount' | 'drawSec' | 'wordChoiceSec', value: string) => {
+    if (!isHost) {
+      return
+    }
+
     actions.patchLobbySettings({ [key]: Number(value) })
   }
 
@@ -27,33 +38,54 @@ export function LobbyPage({ onNavigate }: LobbyPageProps) {
         <div className="lobby-grid">
           <label className="field">
             <span>Round Count</span>
-            <input
-              type="number"
-              min={3}
-              max={10}
-              value={settings.roundCount}
-              onChange={(event) => applySetting('roundCount', event.target.value)}
-            />
+            {isHost ? (
+              <select
+                value={settings.roundCount}
+                onChange={(event) => applySetting('roundCount', event.target.value)}
+              >
+                {SETTING_OPTIONS.roundCount.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <strong>{settings.roundCount}</strong>
+            )}
           </label>
           <label className="field">
             <span>Draw Sec</span>
-            <input
-              type="number"
-              min={20}
-              max={60}
-              value={settings.drawSec}
-              onChange={(event) => applySetting('drawSec', event.target.value)}
-            />
+            {isHost ? (
+              <select
+                value={settings.drawSec}
+                onChange={(event) => applySetting('drawSec', event.target.value)}
+              >
+                {SETTING_OPTIONS.drawSec.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <strong>{settings.drawSec}</strong>
+            )}
           </label>
           <label className="field">
             <span>Choice Sec</span>
-            <input
-              type="number"
-              min={5}
-              max={15}
-              value={settings.wordChoiceSec}
-              onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
-            />
+            {isHost ? (
+              <select
+                value={settings.wordChoiceSec}
+                onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
+              >
+                {SETTING_OPTIONS.wordChoiceSec.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <strong>{settings.wordChoiceSec}</strong>
+            )}
           </label>
         </div>
 

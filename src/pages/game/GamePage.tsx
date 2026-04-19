@@ -533,10 +533,18 @@ export function GamePage({ onNavigate }: GamePageProps) {
   }, [])
 
   const applySetting = (key: NumericSettingKey, value: string) => {
+    if (!isHost) {
+      return
+    }
+
     actions.patchLobbySettings({ [key]: Number(value) })
   }
 
   const applyEndMode = (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => {
+    if (!isHost) {
+      return
+    }
+
     actions.patchLobbySettings({ endMode: value })
   }
 
@@ -797,13 +805,13 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 onCommitStroke={handleCommitStroke}
               />
 
-              {isHost && roomState === 'LOBBY' ? (
+              {roomState === 'LOBBY' ? (
                 <button
                   type="button"
                   className={settingsOpen ? 'board-settings-toggle secondary-button board-settings-toggle-hidden' : 'board-settings-toggle secondary-button'}
                   onClick={() => setSettingsOpen((open) => !open)}
                 >
-                  설정 열기
+                  {isHost ? '설정 열기' : '설정 보기'}
                 </button>
               ) : null}
 
@@ -820,7 +828,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </div>
               ) : null}
 
-              {roomState === 'LOBBY' && isHost ? (
+              {roomState === 'LOBBY' ? (
                 <div
                   className={
                     settingsOpen
@@ -836,6 +844,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>라운드 수</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.roundCount}
                         onChange={(event) => applySetting('roundCount', event.target.value)}
                       >
@@ -849,6 +859,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>그리기 시간</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.drawSec}
                         onChange={(event) => applySetting('drawSec', event.target.value)}
                       >
@@ -862,6 +874,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>단어 선택 시간</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.wordChoiceSec}
                         onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
                       >
@@ -875,6 +889,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>선택 단어 수</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.wordChoiceCount}
                         onChange={(event) => applySetting('wordChoiceCount', event.target.value)}
                       >
@@ -888,6 +904,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>종료 정답자 수</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.endMode}
                         onChange={(event) => applyEndMode(event.target.value as 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT')}
                       >
@@ -901,6 +919,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>힌트 공개 주기</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.hintRevealSec}
                         onChange={(event) => applySetting('hintRevealSec', event.target.value)}
                       >
@@ -914,6 +934,8 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     <label className="field">
                       <span>힌트 공개 글자 수</span>
                       <select
+                        className={!isHost ? 'select-no-caret' : undefined}
+                        disabled={!isHost}
                         value={settings.hintLetterCount}
                         onChange={(event) => applySetting('hintLetterCount', event.target.value)}
                       >
@@ -926,16 +948,18 @@ export function GamePage({ onNavigate }: GamePageProps) {
                     </label>
                   </div>
                   <div className="button-row overlay-actions">
-                    <button
-                      type="button"
-                      className="primary-button"
-                      onClick={() => {
-                        setSettingsOpen(false)
-                        actions.requestGameStart()
-                      }}
-                    >
-                      게임 시작
-                    </button>
+                    {isHost ? (
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => {
+                          setSettingsOpen(false)
+                          actions.requestGameStart()
+                        }}
+                      >
+                        게임 시작
+                      </button>
+                    ) : null}
                     <button type="button" className="secondary-button settings-close-button" onClick={() => setSettingsOpen(false)}>
                       닫기
                     </button>
@@ -1222,17 +1246,19 @@ export function GamePage({ onNavigate }: GamePageProps) {
           className={shortcutsOpen ? 'preview-shortcuts-grid' : 'preview-shortcuts-grid preview-shortcuts-grid-closed'}
           aria-hidden={!shortcutsOpen}
         >
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              devTools.resetToLobby()
-              setOverlayPreview('actual')
-              setSettingsOpen(true)
-            }}
-          >
-            게임 설정
-          </button>
+          {isHost ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                devTools.resetToLobby()
+                setOverlayPreview('actual')
+                setSettingsOpen(true)
+              }}
+            >
+              게임 설정
+            </button>
+          ) : null}
           <button
             type="button"
             className="secondary-button"

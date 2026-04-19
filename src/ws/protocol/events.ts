@@ -1,7 +1,7 @@
 export const clientEventMeta = [
+  { code: 107, name: 'GAME_SETTINGS_UPDATE_REQUEST' },
   { code: 105, name: 'GAME_START_REQUEST' },
   { code: 106, name: 'GAME_SNAPSHOT_REQUEST' },
-  { code: 107, name: 'GAME_SETTINGS_UPDATE_REQUEST' },
   { code: 201, name: 'DRAW_STROKE' },
   { code: 202, name: 'DRAW_CLEAR' },
   { code: 204, name: 'GUESS_SUBMIT' },

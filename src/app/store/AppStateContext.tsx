@@ -5,7 +5,6 @@ import {
   type DrawingTool,
   type ChatMessage,
   type ConnectionStatus,
-  defaultSettings,
   initialAppState,
   type GameSettings,
   type Participant,
@@ -59,6 +58,16 @@ const mockWordPool = ['사과', '기차', '고양이', '우주선', '피아노']
 type ClientEventName = (typeof clientEventMeta)[number]['name']
 type CompactPoint = [number, number]
 type CompactStrokePayload = [number, number, number, CompactPoint[]]
+type CompactGameSettingsPayload = [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+]
 type ServerRoomJoinedPayload = {
   sessionId: string
   nickname: string
@@ -121,6 +130,22 @@ function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload {
     colorIndex,
     roundTo(stroke.size, 1),
     stroke.points.map((point) => [roundTo(point.x, 3), roundTo(point.y, 3)]),
+  ]
+}
+
+function encodeCompactGameSettings(settings: GameSettings): CompactGameSettingsPayload {
+  const drawerOrderMode = settings.drawerOrderMode === 'RANDOM' ? 1 : 0
+  const endMode = settings.endMode === 'TIME_OR_ALL_CORRECT' ? 1 : 0
+
+  return [
+    settings.roundCount,
+    settings.drawSec,
+    settings.wordChoiceSec,
+    settings.wordChoiceCount,
+    settings.hintRevealSec,
+    settings.hintLetterCount,
+    drawerOrderMode,
+    endMode,
   ]
 }
 
@@ -324,12 +349,12 @@ function isTurnPhase(value: unknown): value is TurnPhase {
 }
 
 function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettings {
-  if (!isRecord(raw)) {
-    return fallback
-  }
-
   const readInt = (value: unknown, current: number, min = 1) => {
-    const next = readFiniteNumber(value)
+    const next =
+      readFiniteNumber(value) ??
+      (typeof value === 'string' && value.trim().length > 0
+        ? Number(value)
+        : undefined)
     if (next === undefined) {
       return current
     }
@@ -337,15 +362,55 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
     return Math.max(min, Math.round(next))
   }
 
-  const drawerOrderMode =
-    raw.drawerOrderMode === 'JOIN_ORDER' || raw.drawerOrderMode === 'RANDOM'
-      ? raw.drawerOrderMode
-      : fallback.drawerOrderMode
+  const readDrawerOrderMode = (
+    value: unknown,
+    current: GameSettings['drawerOrderMode'],
+  ): GameSettings['drawerOrderMode'] => {
+    if (value === 'JOIN_ORDER' || value === 0) {
+      return 'JOIN_ORDER'
+    }
 
-  const endMode =
-    raw.endMode === 'FIRST_CORRECT' || raw.endMode === 'TIME_OR_ALL_CORRECT'
-      ? raw.endMode
-      : fallback.endMode
+    if (value === 'RANDOM' || value === 1) {
+      return 'RANDOM'
+    }
+
+    return current
+  }
+
+  const readEndMode = (
+    value: unknown,
+    current: GameSettings['endMode'],
+  ): GameSettings['endMode'] => {
+    if (value === 'FIRST_CORRECT' || value === 0) {
+      return 'FIRST_CORRECT'
+    }
+
+    if (value === 'TIME_OR_ALL_CORRECT' || value === 1) {
+      return 'TIME_OR_ALL_CORRECT'
+    }
+
+    return current
+  }
+
+  if (Array.isArray(raw)) {
+    return {
+      roundCount: readInt(raw[0], fallback.roundCount),
+      drawSec: readInt(raw[1], fallback.drawSec),
+      wordChoiceSec: readInt(raw[2], fallback.wordChoiceSec),
+      wordChoiceCount: readInt(raw[3], fallback.wordChoiceCount),
+      hintRevealSec: readInt(raw[4], fallback.hintRevealSec),
+      hintLetterCount: readInt(raw[5], fallback.hintLetterCount),
+      drawerOrderMode: readDrawerOrderMode(raw[6], fallback.drawerOrderMode),
+      endMode: readEndMode(raw[7], fallback.endMode),
+    }
+  }
+
+  if (!isRecord(raw)) {
+    return fallback
+  }
+
+  const drawerOrderMode = readDrawerOrderMode(raw.drawerOrderMode, fallback.drawerOrderMode)
+  const endMode = readEndMode(raw.endMode, fallback.endMode)
 
   return {
     roundCount: readInt(raw.roundCount, fallback.roundCount),
@@ -357,6 +422,54 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
     drawerOrderMode,
     endMode,
   }
+}
+
+function readRawSettingsPayload(payload: unknown): unknown {
+  if (!isRecord(payload)) {
+    return undefined
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'settings')) {
+    return payload.settings
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'setting')) {
+    return payload.setting
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 's')) {
+    return payload.s
+  }
+
+  return undefined
+}
+
+function decodeSettingsUpdatePayload(payload: unknown, fallback: GameSettings): GameSettings | null {
+  const rawSettings = readRawSettingsPayload(payload) ?? payload
+
+  if (Array.isArray(rawSettings)) {
+    return normalizeGameSettings(rawSettings, fallback)
+  }
+
+  if (!isRecord(rawSettings)) {
+    return null
+  }
+
+  const hasSettingKeys =
+    Object.prototype.hasOwnProperty.call(rawSettings, 'roundCount') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'drawSec') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'wordChoiceSec') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'wordChoiceCount') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'hintRevealSec') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'hintLetterCount') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'drawerOrderMode') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'endMode')
+
+  if (!hasSettingKeys) {
+    return null
+  }
+
+  return normalizeGameSettings(rawSettings, fallback)
 }
 
 function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
@@ -672,7 +785,11 @@ function normalizeRoomSnapshotPayload(
     ? normalizeParticipants(payload.participants, hostSessionId, roomState)
     : []
   const ownSessionId = resolveOwnSessionIdFromSnapshotPayload(payload, participants, state)
-  const settings = normalizeGameSettings(payload.settings, defaultSettings)
+  const rawSettings = readRawSettingsPayload(payload)
+  const settings =
+    rawSettings === undefined
+      ? state.room.settings
+      : normalizeGameSettings(rawSettings, state.room.settings)
   const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
   const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
   const hasCurrentCanvas = Object.prototype.hasOwnProperty.call(payload, 'currentCanvas')
@@ -858,7 +975,7 @@ function createLobbySnapshot(state: AppState): RoomSnapshot {
     gameId: null,
     currentRound: null,
     currentTurn: null,
-    settings: { ...defaultSettings },
+    settings: { ...state.room.settings },
     participants: state.room.participants.map((participant) => ({
       ...participant,
       joinedMidRound: false,
@@ -1033,7 +1150,7 @@ function createClearedRoomState(state: AppState): RoomSnapshot {
     hostSessionId: '',
     participants: [],
     lobbyCanvasStrokes: [],
-    settings: { ...defaultSettings },
+    settings: { ...state.room.settings },
     roomState: 'LOBBY',
     gameId: null,
     currentRound: null,
@@ -1675,7 +1792,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           }
           return
         }
-        case 308:
+        case 107:
+        case 308: {
+          const nextSettings = decodeSettingsUpdatePayload(payload, stateRef.current.room.settings)
+          if (nextSettings) {
+            dispatch({ type: 'local/lobbySettingsPatched', payload: nextSettings })
+            return
+          }
+
           if (payload && typeof payload === 'object') {
             const normalizedRoomSnapshot = normalizeRoomSnapshotPayload(payload, stateRef.current)
             if (normalizedRoomSnapshot) {
@@ -1683,6 +1807,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             }
           }
           return
+        }
         case 310:
           if (payload && typeof payload === 'object') {
             server.applyWordChoice(payload as ServerWordChoicePayload)
@@ -1820,9 +1945,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'local/roomCacheCleared' })
         },
         patchLobbySettings: (settings) => {
-          sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', settings, () =>
-            dispatch({ type: 'local/lobbySettingsPatched', payload: settings }),
-          )
+          if (stateRef.current.room.hostSessionId !== stateRef.current.session.sessionId) {
+            return
+          }
+
+          dispatch({ type: 'local/lobbySettingsPatched', payload: settings })
+
+          const nextSettings: GameSettings = {
+            ...stateRef.current.room.settings,
+            ...settings,
+          }
+
+          sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', encodeCompactGameSettings(nextSettings))
         },
         requestGameStart: () => {
           sendClientEvent(
