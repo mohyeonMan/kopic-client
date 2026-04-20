@@ -50,6 +50,27 @@ const TOOL_COLORS = [
   '#ffffff',
 ] as const
 
+function toGrayscaleHex(hexColor: string) {
+  const hex = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor
+  if (hex.length !== 6) {
+    return hexColor
+  }
+
+  const red = Number.parseInt(hex.slice(0, 2), 16)
+  const green = Number.parseInt(hex.slice(2, 4), 16)
+  const blue = Number.parseInt(hex.slice(4, 6), 16)
+
+  if (Number.isNaN(red) || Number.isNaN(green) || Number.isNaN(blue)) {
+    return hexColor
+  }
+
+  const luminance = Math.round(red * 0.299 + green * 0.587 + blue * 0.114)
+  const channel = luminance.toString(16).padStart(2, '0')
+  return `#${channel}${channel}${channel}`
+}
+
+const TOOL_COLORS_GRAYSCALE = TOOL_COLORS.map((color) => toGrayscaleHex(color))
+
 const SETTING_OPTIONS = {
   roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
   drawSec: [20, 30, 40, 50, 60],
@@ -1099,6 +1120,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   type="button"
                   className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
                   onClick={() => setTool('PEN')}
+                  disabled={!canDraw}
                 >
                   펜
                 </button>
@@ -1106,6 +1128,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   type="button"
                   className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
                   onClick={() => setTool('ERASER')}
+                  disabled={!canDraw}
                 >
                   지우개
                 </button>
@@ -1113,6 +1136,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   type="button"
                   className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
                   onClick={() => setTool('FILL')}
+                  disabled={!canDraw}
                 >
                   채우기
                 </button>
@@ -1129,20 +1153,26 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   step={1}
                   value={size}
                   onChange={(event) => setSize(Number(event.target.value))}
+                  disabled={!canDraw}
                 />
               </label>
               <div className="color-palette">
-                {TOOL_COLORS.map((swatch) => (
+                {TOOL_COLORS.map((swatch, swatchIndex) => (
                   <button
                     key={swatch}
                     type="button"
                     aria-label={`Select ${swatch}`}
                     className={swatch === color ? 'color-swatch color-swatch-active' : 'color-swatch'}
-                    style={{ background: swatch }}
+                    style={
+                      canDraw
+                        ? { background: swatch }
+                        : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
+                    }
                     onClick={() => {
                       setTool((currentTool) => (currentTool === 'ERASER' ? 'PEN' : currentTool))
                       setColor(swatch)
                     }}
+                    disabled={!canDraw}
                   />
                 ))}
               </div>
