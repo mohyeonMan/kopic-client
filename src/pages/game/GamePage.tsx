@@ -28,7 +28,7 @@ type OverlayPreview =
 type StageOverlayPhase = 'roundStart' | 'turnStart' | 'wordChoice' | 'turnEnd'
 
 const TOOL_COLORS = [
-  '#203247',
+  '#000000',
   '#345a74',
   '#56758f',
   '#d14b3f',
