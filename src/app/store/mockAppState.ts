@@ -1,12 +1,11 @@
 export type ConnectionStatus = 'idle' | 'connecting' | 'synced' | 'reconnecting'
 export type RoomState = 'LOBBY' | 'RUNNING' | 'RESULT'
-export type TurnPhase = 'WORD_CHOICE' | 'DRAWING' | 'TURN_END'
+export type TurnPhase = 'READY' | 'WORD_CHOICE' | 'DRAWING' | 'TURN_END'
 export type DrawingTool = 'PEN' | 'ERASER' | 'FILL'
 
 export type Participant = {
   sessionId: string
   nickname: string
-  joinedAt: number
   isHost: boolean
   score: number
   isOnline: boolean
@@ -52,9 +51,12 @@ export type TurnSummary = {
   drawerSessionId: string
   phase: TurnPhase
   remainingSec: number
+  deadlineAtMs?: number
   correctSessionIds: string[]
+  earnedPoints: Record<string, number>
   wordChoices: string[]
   selectedWord: string | null
+  answerLength?: number
   canvasStrokes: CanvasStroke[]
 }
 
@@ -62,7 +64,7 @@ export type ChatMessage = {
   id: string
   nickname: string
   text: string
-  tone: 'system' | 'guess' | 'correct'
+  tone: 'system' | 'guess' | 'correct' | 'sealed' | 'alert' | 'alert-success'
   displayInChat?: boolean
   senderSessionId?: string
   mine?: boolean

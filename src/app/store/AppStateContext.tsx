@@ -17,6 +17,15 @@ import {
 import {
   AppStateContext,
   type AppStateContextValue,
+  type GeDrawingStartedPayload,
+  type GeGameResultPayload,
+  type GeGameStartedPayload,
+  type GeGuessCorrectPayload,
+  type GeRoundStartedPayload,
+  type GeReturnToLobbyPayload,
+  type GeTurnStartedPayload,
+  type GeTurnEndedPayload,
+  type GeWordChoiceOpenedPayload,
   type ServerGameStartedPayload,
   type ServerWordChoicePayload,
 } from './appStateContextValue'
@@ -43,6 +52,15 @@ type AppAction =
   | { type: 'server/roomSnapshotApplied'; payload: RoomSnapshot }
   | { type: 'server/roomJoinedApplied'; payload: ServerRoomJoinedPayload }
   | { type: 'server/roomLeftApplied'; payload: ServerRoomLeftPayload }
+  | { type: 'server/geGameStartedApplied'; payload: GeGameStartedPayload }
+  | { type: 'server/geRoundStartedApplied'; payload: GeRoundStartedPayload }
+  | { type: 'server/geTurnStartedApplied'; payload: GeTurnStartedPayload }
+  | { type: 'server/geGuessCorrectApplied'; payload: GeGuessCorrectPayload }
+  | { type: 'server/geWordChoiceOpenedApplied'; payload: GeWordChoiceOpenedPayload }
+  | { type: 'server/geDrawingStartedApplied'; payload: GeDrawingStartedPayload }
+  | { type: 'server/geTurnEndedApplied'; payload: GeTurnEndedPayload }
+  | { type: 'server/geGameResultApplied'; payload: GeGameResultPayload }
+  | { type: 'server/geReturnToLobbyApplied'; payload: GeReturnToLobbyPayload }
   | { type: 'server/gameStartedApplied'; payload: ServerGameStartedPayload }
   | { type: 'server/wordChoiceApplied'; payload: ServerWordChoicePayload }
   | { type: 'server/chatReceived'; payload: ChatMessage }
@@ -71,7 +89,6 @@ type CompactGameSettingsPayload = [
 type ServerRoomJoinedPayload = {
   sessionId: string
   nickname: string
-  joinedAt?: number
 }
 type ServerRoomLeftPayload = {
   sid: string
@@ -198,7 +215,7 @@ function createPresenceMessage(nickname: string, joined: boolean): ChatMessage {
     id: crypto.randomUUID(),
     nickname: '알림',
     text: `${nickname} 님이 ${joined ? '입장' : '퇴장'} 하셨습니다`,
-    tone: 'guess',
+    tone: 'alert',
     createdAt: Date.now(),
   }
 }
@@ -208,9 +225,37 @@ function createHostChangedMessage(nickname: string): ChatMessage {
     id: crypto.randomUUID(),
     nickname: '알림',
     text: `${nickname}님이 새로운 방장이 되셨습니다.`,
-    tone: 'guess',
+    tone: 'alert',
     createdAt: Date.now(),
   }
+}
+
+function createCorrectAnswerAlertMessage(nickname: string): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    nickname: '알림',
+    text: `${nickname} 님이 정답을 맞혔습니다.`,
+    tone: 'alert-success',
+    createdAt: Date.now(),
+  }
+}
+
+function isSealedChatValue(value: unknown) {
+  return value === true || value === 1 || value === '1' || value === 'true'
+}
+
+function resolveChatTone(rawTone: unknown, sealed: unknown): ChatMessage['tone'] {
+  if (rawTone === 'sealed' || isSealedChatValue(sealed)) {
+    return 'sealed'
+  }
+
+  return rawTone === 'system' ||
+    rawTone === 'guess' ||
+    rawTone === 'correct' ||
+    rawTone === 'alert' ||
+    rawTone === 'alert-success'
+    ? rawTone
+    : 'guess'
 }
 
 function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
@@ -218,11 +263,12 @@ function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
     return null
   }
 
-  const { sid, sessionId, t, text } = payload as {
+  const { sid, sessionId, t, text, sealed } = payload as {
     sid?: unknown
     sessionId?: unknown
     t?: unknown
     text?: unknown
+    sealed?: unknown
   }
   const rawText =
     typeof t === 'string'
@@ -246,7 +292,7 @@ function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
     id: crypto.randomUUID(),
     nickname: '알수없음',
     text: rawText.slice(0, 50),
-    tone: 'guess',
+    tone: resolveChatTone(undefined, sealed),
     senderSessionId,
     mine: false,
     createdAt: Date.now(),
@@ -298,40 +344,10 @@ function readFiniteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-function readJoinedAt(value: unknown): number | undefined {
-  const numeric = readFiniteNumber(value)
-  if (numeric !== undefined) {
-    return numeric
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (trimmed.length === 0) {
-      return undefined
-    }
-
-    const asNumber = Number(trimmed)
-    if (Number.isFinite(asNumber)) {
-      return asNumber
-    }
-
-    const asDate = Date.parse(trimmed)
-    if (Number.isFinite(asDate)) {
-      return asDate
-    }
-  }
-
-  return undefined
-}
-
-function sortParticipantsByJoinedAt(participants: Participant[]): Participant[] {
+function sortParticipantsByJoinOrder(participants: Participant[]): Participant[] {
   return participants
     .slice()
     .sort((left, right) => {
-      if (left.joinedAt !== right.joinedAt) {
-        return left.joinedAt - right.joinedAt
-      }
-
       if (left.joinOrder !== right.joinOrder) {
         return left.joinOrder - right.joinOrder
       }
@@ -345,7 +361,43 @@ function isRoomState(value: unknown): value is RoomState {
 }
 
 function isTurnPhase(value: unknown): value is TurnPhase {
-  return value === 'WORD_CHOICE' || value === 'DRAWING' || value === 'TURN_END'
+  return value === 'READY' || value === 'WORD_CHOICE' || value === 'DRAWING' || value === 'TURN_END'
+}
+
+function normalizeSnapshotRoomState(
+  rawRoomState: unknown,
+  snapshotGame: Record<string, unknown> | null,
+): RoomState {
+  if (isRoomState(rawRoomState)) {
+    return rawRoomState
+  }
+
+  const gamePhase = snapshotGame ? readNonEmptyString(snapshotGame.gamePhase) : undefined
+  if (gamePhase === 'PLAYING') {
+    return 'RUNNING'
+  }
+
+  if (gamePhase === 'GAME_RESULT') {
+    return 'RESULT'
+  }
+
+  return 'LOBBY'
+}
+
+function normalizeSnapshotTurnPhase(value: unknown): TurnPhase | null {
+  if (isTurnPhase(value)) {
+    return value
+  }
+
+  if (value === 'STARTING') {
+    return 'READY'
+  }
+
+  if (value === 'TURN_RESULT') {
+    return 'TURN_END'
+  }
+
+  return null
 }
 
 function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettings {
@@ -568,10 +620,6 @@ function normalizeParticipants(
         readNonEmptyString(participant.nickname) ??
         readNonEmptyString(participant.n) ??
         `Guest${index + 1}`,
-      joinedAt:
-        readJoinedAt(participant.joinedAt) ??
-        readFiniteNumber(participant.joinOrder) ??
-        index + 1,
       isHost: sessionId === hostSessionId,
       score: readFiniteNumber(participant.score) ?? 0,
       isOnline:
@@ -586,12 +634,11 @@ function normalizeParticipants(
     })
   }
 
-  return sortParticipantsByJoinedAt(nextParticipants)
+  return sortParticipantsByJoinOrder(nextParticipants)
 }
 
 function normalizeCurrentRound(
   raw: unknown,
-  participants: Participant[],
   settings: GameSettings,
 ): RoundSummary | null {
   if (raw === null) {
@@ -602,23 +649,33 @@ function normalizeCurrentRound(
     return null
   }
 
-  const defaultDrawerOrder = participants
-    .slice()
-    .sort((left, right) => left.joinedAt - right.joinedAt)
-    .map((participant) => participant.sessionId)
-  const parsedDrawerOrder = Array.isArray(raw.drawerOrder)
-    ? raw.drawerOrder
+  const roundNo = readFiniteNumber(raw.roundNo) ?? readFiniteNumber(raw.round) ?? 1
+  const parsedDrawerOrder = Array.isArray(raw.drawerSids)
+    ? raw.drawerSids
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
-    : []
-  const drawerOrder = parsedDrawerOrder.length > 0 ? parsedDrawerOrder : defaultDrawerOrder
+    : Array.isArray(raw.drawerOrder)
+      ? raw.drawerOrder
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+      : []
+  const drawerSessionId =
+    readNonEmptyString(raw.drawerSid) ??
+    readNonEmptyString(raw.drawerSessionId)
+  const turnCursorFromDrawer =
+    drawerSessionId && parsedDrawerOrder.length > 0
+      ? parsedDrawerOrder.findIndex((sessionId) => sessionId === drawerSessionId)
+      : -1
 
   return {
-    roundNo: readFiniteNumber(raw.roundNo) ?? 1,
+    roundNo,
     totalRounds: readFiniteNumber(raw.totalRounds) ?? settings.roundCount,
-    turnCursor: readFiniteNumber(raw.turnCursor) ?? 0,
-    drawerOrder,
+    turnCursor:
+      readFiniteNumber(raw.turnCursor) ??
+      (turnCursorFromDrawer >= 0 ? turnCursorFromDrawer : 0),
+    drawerOrder: parsedDrawerOrder,
   }
 }
 
@@ -626,6 +683,7 @@ function normalizeCurrentTurn(
   raw: unknown,
   settings: GameSettings,
   participants: Participant[],
+  currentRound?: RoundSummary | null,
 ): TurnSummary | null {
   if (raw === null) {
     return null
@@ -636,50 +694,88 @@ function normalizeCurrentTurn(
   }
 
   const fallbackDrawerSessionId =
-    participants.slice().sort((left, right) => left.joinedAt - right.joinedAt)[0]?.sessionId ??
+    sortParticipantsByJoinOrder(participants)[0]?.sessionId ??
     'unknown'
   const drawerSessionId =
     readNonEmptyString(raw.drawerSessionId) ??
     readNonEmptyString(raw.drawerUserId) ??
+    readNonEmptyString(raw.drawerSid) ??
     fallbackDrawerSessionId
-  const phase = isTurnPhase(raw.phase) ? raw.phase : 'WORD_CHOICE'
+  const phase =
+    normalizeSnapshotTurnPhase(raw.phase) ??
+    normalizeSnapshotTurnPhase(raw.turnPhase) ??
+    'WORD_CHOICE'
   const correctSessionIdsSource = Array.isArray(raw.correctSessionIds)
     ? raw.correctSessionIds
     : Array.isArray(raw.correctUserIds)
       ? raw.correctUserIds
+      : Array.isArray(raw.correctAnswerSids)
+        ? raw.correctAnswerSids
       : []
+  const earnedPoints = readPointsMap(raw.earnedPoints)
   const wordChoices = Array.isArray(raw.wordChoices)
     ? raw.wordChoices
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
-    : getWordChoices(settings.wordChoiceCount)
+    : Array.isArray(raw.words)
+      ? raw.words
+          .filter((value): value is string => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      : []
   const canvasStrokes = Array.isArray(raw.canvasStrokes)
     ? raw.canvasStrokes
         .map(normalizeCanvasStroke)
         .filter((stroke): stroke is CanvasStroke => stroke !== null)
     : []
+  const selectedWord =
+    raw.selectedWord === null || raw.answer === null
+      ? null
+      : readNonEmptyString(raw.selectedWord) ??
+        readNonEmptyString(raw.answer) ??
+        null
+  const roundNo =
+    readFiniteNumber(raw.roundNo) ??
+    readFiniteNumber(raw.round) ??
+    currentRound?.roundNo ??
+    1
+  const turnNo =
+    readFiniteNumber(raw.turnNo) ??
+    (currentRound ? currentRound.turnCursor + 1 : undefined) ??
+    1
+  const correctSessionIds = (
+    correctSessionIdsSource.length > 0
+      ? correctSessionIdsSource
+      : phase === 'TURN_END'
+        ? Object.keys(earnedPoints).filter((sessionId) => sessionId !== drawerSessionId)
+        : []
+  )
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+  const answerLength =
+    readFiniteNumber(raw.answerLength) ??
+    (selectedWord !== null ? Array.from(selectedWord).length : undefined)
 
   return {
-    roundNo: readFiniteNumber(raw.roundNo) ?? 1,
-    turnNo: readFiniteNumber(raw.turnNo) ?? 1,
+    roundNo,
+    turnNo,
     turnId:
       readNonEmptyString(raw.turnId) ??
-      `turn-r${readFiniteNumber(raw.roundNo) ?? 1}-${readFiniteNumber(raw.turnNo) ?? 1}`,
+      readNonEmptyString(raw.turn) ??
+      `turn-r${roundNo}-${turnNo}`,
     drawerSessionId,
     phase,
     remainingSec:
       readFiniteNumber(raw.remainingSec) ??
       (phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0),
-    correctSessionIds: correctSessionIdsSource
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0),
+    deadlineAtMs: readFiniteNumber(raw.deadlineAtMs),
+    correctSessionIds,
+    earnedPoints,
     wordChoices,
-    selectedWord:
-      raw.selectedWord === null
-        ? null
-        : readNonEmptyString(raw.selectedWord) ?? null,
+    selectedWord,
+    answerLength,
     canvasStrokes,
   }
 }
@@ -708,10 +804,7 @@ function normalizeChatMessages(
       continue
     }
 
-    const tone =
-      item.tone === 'system' || item.tone === 'guess' || item.tone === 'correct'
-        ? item.tone
-        : 'guess'
+    const tone = resolveChatTone(item.tone, item.sealed)
     const message: ChatMessage = {
       id: readNonEmptyString(item.id) ?? crypto.randomUUID(),
       nickname: readNonEmptyString(item.nickname) ?? '알수없음',
@@ -779,7 +872,8 @@ function normalizeRoomSnapshotPayload(
     readNonEmptyString(payload.hostSessionId) ??
     readNonEmptyString(payload.hostUserId) ??
     ''
-  const roomState = isRoomState(payload.roomState) ? payload.roomState : 'LOBBY'
+  const snapshotGame = isRecord(payload.game) ? payload.game : null
+  const roomState = normalizeSnapshotRoomState(payload.roomState, snapshotGame)
   const hasParticipants = Object.prototype.hasOwnProperty.call(payload, 'participants')
   const participants = hasParticipants
     ? normalizeParticipants(payload.participants, hostSessionId, roomState)
@@ -793,15 +887,23 @@ function normalizeRoomSnapshotPayload(
   const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
   const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
   const hasCurrentCanvas = Object.prototype.hasOwnProperty.call(payload, 'currentCanvas')
+  const serverNowMs = readFiniteNumber(payload.serverNowMs)
+  const deadlineAtMs = readFiniteNumber(payload.deadlineAtMs)
   const currentCanvasStrokes = hasCurrentCanvas
     ? normalizeSnapshotCanvasStrokes(payload.currentCanvas)
     : null
-  const currentRound = hasCurrentRound
-    ? normalizeCurrentRound(payload.currentRound, participants, settings)
-    : null
-  const currentTurn = hasCurrentTurn
-    ? normalizeCurrentTurn(payload.currentTurn, settings, participants)
-    : null
+  const inferredCurrentRound = hasCurrentRound
+    ? normalizeCurrentRound(payload.currentRound, settings)
+    : snapshotGame
+      ? normalizeCurrentRound(snapshotGame, settings)
+      : null
+  const currentRound = roomState === 'LOBBY' ? null : inferredCurrentRound
+  const inferredCurrentTurn = hasCurrentTurn
+    ? normalizeCurrentTurn(payload.currentTurn, settings, participants, currentRound)
+    : snapshotGame
+      ? normalizeCurrentTurn(snapshotGame, settings, participants, currentRound)
+      : null
+  const currentTurn = roomState === 'LOBBY' ? null : inferredCurrentTurn
   const payloadCurrentTurn = isRecord(payload.currentTurn) ? payload.currentTurn : null
   const hasTurnCanvasStrokes =
     payloadCurrentTurn &&
@@ -816,6 +918,14 @@ function normalizeRoomSnapshotPayload(
   const normalizedCurrentTurn = currentTurn
     ? {
         ...currentTurn,
+        ...(serverNowMs !== undefined &&
+        deadlineAtMs !== undefined &&
+        (currentTurn.phase === 'DRAWING' || currentTurn.phase === 'WORD_CHOICE')
+          ? {
+              deadlineAtMs: Date.now() + Math.max(0, deadlineAtMs - serverNowMs),
+              remainingSec: Math.max(0, Math.ceil((deadlineAtMs - serverNowMs) / 1000)),
+            }
+          : {}),
         canvasStrokes: currentCanvasStrokes ?? preservedTurnCanvasStrokes ?? currentTurn.canvasStrokes,
       }
     : null
@@ -826,6 +936,10 @@ function normalizeRoomSnapshotPayload(
     : currentCanvasStrokes
       ? currentCanvasStrokes
     : state.room.lobbyCanvasStrokes ?? []
+  const snapshotTotalPoints = snapshotGame
+    ? readPointsMap(snapshotGame.totalPoints)
+    : readPointsMap(payload.totalPoints)
+  const normalizedParticipants = applyTotalPointsToParticipants(participants, snapshotTotalPoints)
   const chat = normalizeChatMessages(payload.chat, ownSessionId, state.room.chat)
 
   return {
@@ -836,14 +950,18 @@ function normalizeRoomSnapshotPayload(
       roomCode: readNonEmptyString(payload.roomCode) ?? '',
       roomType: payload.roomType === 'PRIVATE' ? 'PRIVATE' : 'PRIVATE',
       hostSessionId,
-      participants,
+      participants: normalizedParticipants,
       lobbyCanvasStrokes,
       settings,
       roomState,
       gameId:
-        payload.gameId === null
+        roomState === 'LOBBY'
           ? null
-          : readNonEmptyString(payload.gameId) ?? null,
+          : payload.gameId === null
+            ? null
+            : readNonEmptyString(payload.gameId) ??
+              (snapshotGame ? readNonEmptyString(snapshotGame.gid) : undefined) ??
+              null,
       currentRound,
       currentTurn: normalizedCurrentTurn,
       chat,
@@ -893,7 +1011,13 @@ function decodeSnapshotEnvelopePayload(
 function getDrawerOrder(participants: Participant[]) {
   return participants
     .filter((participant) => !participant.joinedMidRound)
-    .sort((left, right) => left.joinedAt - right.joinedAt)
+    .sort((left, right) => {
+      if (left.joinOrder !== right.joinOrder) {
+        return left.joinOrder - right.joinOrder
+      }
+
+      return left.sessionId.localeCompare(right.sessionId)
+    })
     .map((participant) => participant.sessionId)
 }
 
@@ -914,6 +1038,17 @@ function createMockTurn(
     settings.endMode === 'FIRST_CORRECT'
       ? ['u-200']
       : ['u-200', 'u-300', 'u-400', 'u-500', 'u-600', 'u-700', 'u-800', 'u-900', 'u-1000']
+  const remainingSec =
+    phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0
+  const earnedPoints =
+    phase === 'TURN_END'
+      ? Object.fromEntries(
+          [
+            [drawerSessionId, 40],
+            ...turnEndCorrectSessionIds.map((sessionId) => [sessionId, 80] as const),
+          ],
+        )
+      : {}
 
   return {
     roundNo,
@@ -921,10 +1056,12 @@ function createMockTurn(
     turnId: `turn-r${roundNo}-${turnNo}`,
     drawerSessionId,
     phase,
-    remainingSec: phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0,
+    remainingSec,
+    deadlineAtMs: remainingSec > 0 ? Date.now() + remainingSec * 1000 : undefined,
     correctSessionIds: phase === 'TURN_END' ? turnEndCorrectSessionIds : [],
+    earnedPoints,
     wordChoices,
-    selectedWord: phase === 'WORD_CHOICE' ? null : wordChoices[0],
+    selectedWord: phase === 'DRAWING' || phase === 'TURN_END' ? wordChoices[0] : null,
     canvasStrokes: [],
   }
 }
@@ -948,6 +1085,288 @@ function createMockGameStartedPayload(state: AppState): ServerGameStartedPayload
       createSystemMessage('303 ROUND_STARTED with drawerOrder snapshot'),
       createSystemMessage('304 TURN_STARTED'),
     ],
+  }
+}
+
+function createGeTurnId(gameId: string | null, roundNo: number, turnNo: number) {
+  const resolvedGameId = gameId && gameId.trim().length > 0 ? gameId : 'ge-game'
+  return `ge:${resolvedGameId}:r${roundNo}:t${turnNo}`
+}
+
+function createDeadlineAtMs(remainingSec: number) {
+  return remainingSec > 0 ? Date.now() + remainingSec * 1000 : undefined
+}
+
+function resolveDrawerTurnCursor(
+  drawerOrder: string[],
+  drawerSessionId: string,
+  fallbackTurnCursor = 0,
+) {
+  const resolvedIndex = drawerOrder.findIndex((sessionId) => sessionId === drawerSessionId)
+  return resolvedIndex >= 0 ? resolvedIndex : fallbackTurnCursor
+}
+
+function resolveRunningRoundSummary(state: AppState): RoundSummary {
+  if (state.room.currentRound) {
+    return state.room.currentRound
+  }
+
+  return {
+    roundNo: 1,
+    totalRounds: state.room.settings.roundCount,
+    turnCursor: 0,
+    drawerOrder: getDrawerOrder(state.room.participants),
+  }
+}
+
+function applyEarnedPointsToParticipants(
+  participants: Participant[],
+  earnedPoints: Record<string, number>,
+): Participant[] {
+  if (Object.keys(earnedPoints).length === 0) {
+    return participants
+  }
+
+  return participants.map((participant) => ({
+    ...participant,
+    score: participant.score + (earnedPoints[participant.sessionId] ?? 0),
+  }))
+}
+
+function applyTotalPointsToParticipants(
+  participants: Participant[],
+  totalPoints: Record<string, number>,
+): Participant[] {
+  if (Object.keys(totalPoints).length === 0) {
+    return participants
+  }
+
+  return participants.map((participant) => ({
+    ...participant,
+    score: totalPoints[participant.sessionId] ?? participant.score,
+  }))
+}
+
+function resetParticipantsForLobby(participants: Participant[]): Participant[] {
+  return participants.map((participant) => ({
+    ...participant,
+    score: 0,
+    joinedMidRound: false,
+  }))
+}
+
+function decodeGeGameStartedPayload(payload: unknown): GeGameStartedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  if (!gameId) {
+    return null
+  }
+
+  return { gameId }
+}
+
+function decodeGeRoundStartedPayload(payload: unknown): GeRoundStartedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const roundNo = readFiniteNumber(payload.round)
+  const drawerSessionIds = Array.isArray(payload.drawerSids)
+    ? payload.drawerSids
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    : []
+
+  if (!gameId || roundNo === undefined || drawerSessionIds.length === 0) {
+    return null
+  }
+
+  return {
+    gameId,
+    roundNo,
+    drawerSessionIds,
+  }
+}
+
+function decodeGeTurnStartedPayload(payload: unknown): GeTurnStartedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const roundNo = readFiniteNumber(payload.round)
+  const turnId = readNonEmptyString(payload.turn) ?? readNonEmptyString(payload.turnId)
+  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
+  const remainingSec = readFiniteNumber(payload.turnStartSec)
+
+  if (
+    !gameId ||
+    roundNo === undefined ||
+    !turnId ||
+    !drawerSessionId ||
+    remainingSec === undefined
+  ) {
+    return null
+  }
+
+  return {
+    gameId,
+    roundNo,
+    turnId,
+    drawerSessionId,
+    remainingSec,
+  }
+}
+
+function decodeGeGuessCorrectPayload(payload: unknown): GeGuessCorrectPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const sessionId = readNonEmptyString(payload.sid) ?? readNonEmptyString(payload.sessionId)
+  if (!gameId || !sessionId) {
+    return null
+  }
+
+  return {
+    gameId,
+    sessionId,
+  }
+}
+
+function decodeGeWordChoiceOpenedPayload(payload: unknown): GeWordChoiceOpenedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const drawerSessionId = readNonEmptyString(payload.sid) ?? readNonEmptyString(payload.drawerSid)
+  const remainingSec = readFiniteNumber(payload.wordChoiceSec)
+  if (!drawerSessionId || remainingSec === undefined) {
+    return null
+  }
+
+  const wordChoices = Array.isArray(payload.words)
+    ? payload.words
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+    : []
+
+  return {
+    drawerSessionId,
+    remainingSec,
+    wordChoices,
+  }
+}
+
+function decodeGeDrawingStartedPayload(payload: unknown): GeDrawingStartedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
+  const remainingSec = readFiniteNumber(payload.drawSec)
+  if (!gameId || !drawerSessionId || remainingSec === undefined) {
+    return null
+  }
+
+  const selectedWord = payload.answer === null ? null : readNonEmptyString(payload.answer) ?? null
+  const answerLength = readFiniteNumber(payload.answerLength)
+
+  return {
+    gameId,
+    drawerSessionId,
+    remainingSec,
+    selectedWord,
+    answerLength,
+  }
+}
+
+function readPointsMap(value: unknown): Record<string, number> {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  const next: Record<string, number> = {}
+  for (const [sessionId, rawPoint] of Object.entries(value)) {
+    if (!sessionId || sessionId.trim().length === 0) {
+      continue
+    }
+
+    const point = readFiniteNumber(rawPoint)
+    if (point === undefined) {
+      continue
+    }
+
+    next[sessionId] = point
+  }
+
+  return next
+}
+
+function decodeGeTurnEndedPayload(payload: unknown): GeTurnEndedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const turnId = readNonEmptyString(payload.turn) ?? readNonEmptyString(payload.turnId)
+  const reason = readNonEmptyString(payload.reason)
+  if (!gameId || !turnId || !reason) {
+    return null
+  }
+
+  const answer = payload.answer === null ? null : readNonEmptyString(payload.answer) ?? null
+
+  return {
+    gameId,
+    turnId,
+    reason,
+    answer,
+    earnedPoints: readPointsMap(payload.earnedPoints),
+  }
+}
+
+function decodeGeGameResultPayload(payload: unknown): GeGameResultPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const resultSec = readFiniteNumber(payload.resultSec)
+  if (!gameId || resultSec === undefined) {
+    return null
+  }
+
+  return {
+    gameId,
+    resultSec,
+    totalPoints: readPointsMap(payload.totalPoints),
+  }
+}
+
+function decodeGeReturnToLobbyPayload(payload: unknown): GeReturnToLobbyPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const reason = readNonEmptyString(payload.reason)
+  if (!gameId || !reason) {
+    return null
+  }
+
+  return {
+    gameId,
+    reason,
+    restartSec: readFiniteNumber(payload.restartSec),
   }
 }
 
@@ -1001,6 +1420,7 @@ function createForcedTurn(currentTurn: TurnSummary, phase: TurnPhase, settings: 
       ...nextTurn,
       selectedWord: currentTurn.selectedWord ?? currentTurn.wordChoices[0] ?? nextTurn.selectedWord,
       wordChoices: currentTurn.wordChoices,
+      earnedPoints: currentTurn.earnedPoints,
       canvasStrokes: currentTurn.canvasStrokes,
     }
   }
@@ -1010,6 +1430,7 @@ function createForcedTurn(currentTurn: TurnSummary, phase: TurnPhase, settings: 
       ...nextTurn,
       selectedWord: currentTurn.selectedWord ?? currentTurn.wordChoices[0] ?? nextTurn.selectedWord,
       wordChoices: currentTurn.wordChoices,
+      earnedPoints: currentTurn.earnedPoints,
       canvasStrokes: currentTurn.canvasStrokes,
     }
   }
@@ -1022,12 +1443,11 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
     return null
   }
 
-  const { sid, sessionId, nickname, n, joinedAt } = payload as {
+  const { sid, sessionId, nickname, n } = payload as {
     sid?: unknown
     sessionId?: unknown
     nickname?: unknown
     n?: unknown
-    joinedAt?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
@@ -1052,7 +1472,6 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
   return {
     sessionId: participantSessionId.trim(),
     nickname: participantNickname,
-    joinedAt: readJoinedAt(joinedAt),
   }
 }
 
@@ -1339,7 +1758,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.room,
           ...action.payload,
           participants: Array.isArray(action.payload.participants)
-            ? sortParticipantsByJoinedAt(action.payload.participants)
+            ? sortParticipantsByJoinOrder(action.payload.participants)
             : state.room.participants,
           lobbyCanvasStrokes: Array.isArray(action.payload.lobbyCanvasStrokes)
             ? action.payload.lobbyCanvasStrokes
@@ -1352,13 +1771,12 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       }
     case 'server/roomJoinedApplied': {
       if (state.room.participants.some((participant) => participant.sessionId === action.payload.sessionId)) {
-        const updatedParticipants = sortParticipantsByJoinedAt(
+        const updatedParticipants = sortParticipantsByJoinOrder(
           state.room.participants.map((participant) =>
             participant.sessionId === action.payload.sessionId
               ? {
                   ...participant,
                   nickname: action.payload.nickname,
-                  joinedAt: action.payload.joinedAt ?? participant.joinedAt,
                   isHost: participant.sessionId === state.room.hostSessionId,
                   isOnline: true,
                 }
@@ -1379,15 +1797,10 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         (max, participant) => Math.max(max, participant.joinOrder),
         0,
       )
-      const maxJoinedAt = state.room.participants.reduce(
-        (max, participant) => Math.max(max, participant.joinedAt),
-        0,
-      )
 
       const joinedParticipant: Participant = {
         sessionId: action.payload.sessionId,
         nickname: action.payload.nickname,
-        joinedAt: action.payload.joinedAt ?? maxJoinedAt + 1,
         isHost: action.payload.sessionId === state.room.hostSessionId,
         score: 0,
         isOnline: true,
@@ -1399,7 +1812,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         ...state,
         room: {
           ...state.room,
-          participants: sortParticipantsByJoinedAt([...state.room.participants, joinedParticipant]),
+          participants: sortParticipantsByJoinOrder([...state.room.participants, joinedParticipant]),
           chat: [...state.room.chat, createPresenceMessage(action.payload.nickname, true)],
         },
       }
@@ -1475,6 +1888,298 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           chat: [...state.room.chat, ...(action.payload.chatMessages ?? [])],
         },
       }
+    case 'server/geGameStartedApplied':
+      return {
+        ...state,
+        connectionStatus: 'synced',
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          gameId: action.payload.gameId,
+          currentRound: null,
+          currentTurn: null,
+          lobbyCanvasStrokes: [],
+          chat: [...state.room.chat, createSystemMessage(`200 GE_GAME_STARTED ${action.payload.gameId}`)],
+        },
+      }
+    case 'server/geRoundStartedApplied':
+      return {
+        ...state,
+        connectionStatus: 'synced',
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          gameId: action.payload.gameId,
+          currentRound: {
+            roundNo: action.payload.roundNo,
+            totalRounds: state.room.settings.roundCount,
+            turnCursor: 0,
+            drawerOrder: action.payload.drawerSessionIds,
+          },
+          currentTurn: null,
+          lobbyCanvasStrokes: [],
+          chat: [...state.room.chat, createSystemMessage(`202 GE_ROUND_STARTED R${action.payload.roundNo}`)],
+        },
+      }
+    case 'server/geTurnStartedApplied': {
+      const activeRound = resolveRunningRoundSummary(state)
+      const nextTurnCursor =
+        state.room.currentTurn?.phase === 'TURN_END'
+          ? activeRound.turnCursor + 1
+          : resolveDrawerTurnCursor(
+              activeRound.drawerOrder,
+              action.payload.drawerSessionId,
+              activeRound.turnCursor,
+            )
+      const nextRound = {
+        ...activeRound,
+        roundNo: action.payload.roundNo,
+        turnCursor: nextTurnCursor,
+        drawerOrder: activeRound.drawerOrder.filter(
+          (sessionId) => sessionId !== action.payload.drawerSessionId,
+        ),
+      }
+      const turnNo =
+        state.room.currentTurn?.phase === 'TURN_END'
+          ? state.room.currentTurn.turnNo + 1
+          : nextTurnCursor + 1
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          gameId: action.payload.gameId,
+          currentRound: nextRound,
+          currentTurn: {
+            roundNo: action.payload.roundNo,
+            turnNo,
+            turnId: action.payload.turnId,
+            drawerSessionId: action.payload.drawerSessionId,
+            phase: 'READY',
+            remainingSec: action.payload.remainingSec,
+            deadlineAtMs: createDeadlineAtMs(action.payload.remainingSec),
+            correctSessionIds: [],
+            earnedPoints: {},
+            wordChoices: [],
+            selectedWord: null,
+            answerLength: undefined,
+            canvasStrokes: [],
+          },
+          chat: [
+            ...state.room.chat,
+            createSystemMessage(`209 GE_TURN_STARTED ${action.payload.drawerSessionId}`),
+          ],
+        },
+      }
+    }
+    case 'server/geGuessCorrectApplied': {
+      if (!state.room.currentTurn) {
+        return state
+      }
+
+      const alreadyCorrect = state.room.currentTurn.correctSessionIds.includes(action.payload.sessionId)
+      const correctSessionIds = alreadyCorrect
+        ? state.room.currentTurn.correctSessionIds
+        : [...state.room.currentTurn.correctSessionIds, action.payload.sessionId]
+      const correctNickname =
+        state.room.participants.find((participant) => participant.sessionId === action.payload.sessionId)?.nickname ??
+        action.payload.sessionId
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          gameId: action.payload.gameId,
+          currentTurn: {
+            ...state.room.currentTurn,
+            correctSessionIds,
+          },
+          chat: alreadyCorrect
+            ? state.room.chat
+            : [...state.room.chat, createCorrectAnswerAlertMessage(correctNickname)],
+        },
+      }
+    }
+    case 'server/geWordChoiceOpenedApplied': {
+      const activeRound = resolveRunningRoundSummary(state)
+      const nextTurnCursor = resolveDrawerTurnCursor(
+        activeRound.drawerOrder,
+        action.payload.drawerSessionId,
+        activeRound.turnCursor,
+      )
+      const nextRound = {
+        ...activeRound,
+        turnCursor: nextTurnCursor,
+      }
+      const turnNo = nextTurnCursor + 1
+      const turnId =
+        state.room.currentTurn &&
+        state.room.currentTurn.roundNo === nextRound.roundNo &&
+        state.room.currentTurn.turnNo === turnNo
+          ? state.room.currentTurn.turnId
+          : createGeTurnId(state.room.gameId, nextRound.roundNo, turnNo)
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          currentRound: nextRound,
+          currentTurn: {
+            roundNo: nextRound.roundNo,
+            turnNo,
+            turnId,
+            drawerSessionId: action.payload.drawerSessionId,
+            phase: 'WORD_CHOICE',
+            remainingSec: action.payload.remainingSec,
+            deadlineAtMs: createDeadlineAtMs(action.payload.remainingSec),
+            correctSessionIds: [],
+            earnedPoints: {},
+            wordChoices: action.payload.wordChoices,
+            selectedWord: null,
+            answerLength: undefined,
+            canvasStrokes: state.room.currentTurn?.canvasStrokes ?? [],
+          },
+          chat: [
+            ...state.room.chat,
+            createSystemMessage(`203 GE_WORD_CHOICE_OPEN ${action.payload.drawerSessionId}`),
+          ],
+        },
+      }
+    }
+    case 'server/geDrawingStartedApplied': {
+      const activeRound = resolveRunningRoundSummary(state)
+      const previousTurn = state.room.currentTurn
+      const turnNo = previousTurn?.turnNo ?? activeRound.turnCursor + 1
+      const turnId = previousTurn?.turnId ?? createGeTurnId(action.payload.gameId, activeRound.roundNo, turnNo)
+      const selectedWord = action.payload.selectedWord ?? previousTurn?.selectedWord ?? null
+      const answerLength =
+        action.payload.answerLength ??
+        (selectedWord ? Array.from(selectedWord).length : previousTurn?.answerLength)
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          gameId: action.payload.gameId,
+          currentRound: activeRound,
+          currentTurn: {
+            roundNo: activeRound.roundNo,
+            turnNo,
+            turnId,
+            drawerSessionId: action.payload.drawerSessionId,
+            phase: 'DRAWING',
+            remainingSec: action.payload.remainingSec,
+            deadlineAtMs: createDeadlineAtMs(action.payload.remainingSec),
+            correctSessionIds: previousTurn?.correctSessionIds ?? [],
+            earnedPoints: previousTurn?.earnedPoints ?? {},
+            wordChoices: previousTurn?.wordChoices ?? [],
+            selectedWord,
+            answerLength,
+            canvasStrokes: [],
+          },
+          chat: [
+            ...state.room.chat,
+            createSystemMessage(`208 GE_DRAWING_STARTED ${action.payload.drawerSessionId}`),
+          ],
+        },
+      }
+    }
+    case 'server/geTurnEndedApplied': {
+      if (!state.room.currentTurn) {
+        return state
+      }
+
+      const currentDrawerSessionId = state.room.currentTurn.drawerSessionId
+      const nextParticipants = applyEarnedPointsToParticipants(
+        state.room.participants,
+        action.payload.earnedPoints,
+      )
+      const correctSessionIds = Array.from(
+        new Set([
+          ...state.room.currentTurn.correctSessionIds,
+          ...Object.keys(action.payload.earnedPoints).filter(
+            (sessionId) => sessionId !== currentDrawerSessionId,
+          ),
+        ]),
+      )
+      const answer = action.payload.answer ?? state.room.currentTurn.selectedWord
+      const answerLength =
+        answer !== null ? Array.from(answer).length : state.room.currentTurn.answerLength
+      const currentRound = state.room.currentRound
+      const nextRound = currentRound
+        ? {
+            ...currentRound,
+            drawerOrder: currentRound.drawerOrder.filter(
+              (sessionId) => sessionId !== currentDrawerSessionId,
+            ),
+          }
+        : null
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RUNNING',
+          gameId: action.payload.gameId,
+          participants: nextParticipants,
+          currentRound: nextRound,
+          currentTurn: {
+            ...state.room.currentTurn,
+            turnId: action.payload.turnId,
+            phase: 'TURN_END',
+            remainingSec: 0,
+            deadlineAtMs: undefined,
+            correctSessionIds,
+            earnedPoints: action.payload.earnedPoints,
+            selectedWord: answer,
+            answerLength,
+          },
+          chat: [...state.room.chat, createSystemMessage(`205 GE_TURN_ENDED ${action.payload.reason}`)],
+        },
+      }
+    }
+    case 'server/geGameResultApplied': {
+      const nextParticipants = applyTotalPointsToParticipants(
+        state.room.participants,
+        action.payload.totalPoints,
+      )
+
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'RESULT',
+          gameId: action.payload.gameId,
+          participants: nextParticipants,
+          currentTurn: null,
+          chat: [...state.room.chat, createSystemMessage(`206 GE_GAME_RESULT ${action.payload.resultSec}s`)],
+        },
+      }
+    }
+    case 'server/geReturnToLobbyApplied':
+      return {
+        ...state,
+        room: {
+          ...state.room,
+          roomState: 'LOBBY',
+          gameId: null,
+          currentRound: null,
+          currentTurn: null,
+          lobbyCanvasStrokes: [],
+          participants: resetParticipantsForLobby(state.room.participants),
+          chat: [
+            ...state.room.chat,
+            createSystemMessage(
+              action.payload.restartSec !== undefined
+                ? `207 GE_RETURN_TO_LOBBY ${action.payload.reason} ${action.payload.restartSec}s`
+                : `207 GE_RETURN_TO_LOBBY ${action.payload.reason}`,
+            ),
+          ],
+        },
+      }
     case 'server/wordChoiceApplied':
       if (!state.room.currentTurn) {
         return state
@@ -1489,6 +2194,8 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
             phase: 'DRAWING',
             selectedWord: action.payload.selectedWord,
             remainingSec: action.payload.remainingSec,
+            deadlineAtMs: createDeadlineAtMs(action.payload.remainingSec),
+            earnedPoints: {},
           },
           chat: action.payload.chatMessage
             ? [...state.room.chat, action.payload.chatMessage]
@@ -1757,6 +2464,70 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       const payload = envelope.p
 
       switch (envelope.e) {
+        case 200: {
+          const gameStartedPayload = decodeGeGameStartedPayload(payload)
+          if (gameStartedPayload) {
+            dispatch({ type: 'server/geGameStartedApplied', payload: gameStartedPayload })
+          }
+          return
+        }
+        case 202: {
+          const roundStartedPayload = decodeGeRoundStartedPayload(payload)
+          if (roundStartedPayload) {
+            dispatch({ type: 'server/geRoundStartedApplied', payload: roundStartedPayload })
+          }
+          return
+        }
+        case 209: {
+          const turnStartedPayload = decodeGeTurnStartedPayload(payload)
+          if (turnStartedPayload) {
+            dispatch({ type: 'server/geTurnStartedApplied', payload: turnStartedPayload })
+          }
+          return
+        }
+        case 210: {
+          const guessCorrectPayload = decodeGeGuessCorrectPayload(payload)
+          if (guessCorrectPayload) {
+            dispatch({ type: 'server/geGuessCorrectApplied', payload: guessCorrectPayload })
+          }
+          return
+        }
+        case 203: {
+          const wordChoiceOpenedPayload = decodeGeWordChoiceOpenedPayload(payload)
+          if (wordChoiceOpenedPayload) {
+            dispatch({ type: 'server/geWordChoiceOpenedApplied', payload: wordChoiceOpenedPayload })
+          }
+          return
+        }
+        case 208: {
+          const drawingStartedPayload = decodeGeDrawingStartedPayload(payload)
+          if (drawingStartedPayload) {
+            dispatch({ type: 'server/geDrawingStartedApplied', payload: drawingStartedPayload })
+          }
+          return
+        }
+        case 205: {
+          const turnEndedPayload = decodeGeTurnEndedPayload(payload)
+          if (turnEndedPayload) {
+            dispatch({ type: 'server/geTurnEndedApplied', payload: turnEndedPayload })
+          }
+          return
+        }
+        case 206: {
+          const gameResultPayload = decodeGeGameResultPayload(payload)
+          if (gameResultPayload) {
+            dispatch({ type: 'server/geGameResultApplied', payload: gameResultPayload })
+          }
+          return
+        }
+        case 207: {
+          clearInboundStrokeQueue()
+          const returnToLobbyPayload = decodeGeReturnToLobbyPayload(payload)
+          if (returnToLobbyPayload) {
+            dispatch({ type: 'server/geReturnToLobbyApplied', payload: returnToLobbyPayload })
+          }
+          return
+        }
         case 300:
         case 408:
           if (payload && typeof payload === 'object') {
@@ -1968,9 +2739,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           )
         },
         requestWordChoice: (word) => {
+          const wordChoices = stateRef.current.room.currentTurn?.wordChoices ?? []
+          const choiceIndex = wordChoices.findIndex((candidate) => candidate === word)
           sendClientEvent(
             'WORD_CHOICE',
-            { word },
+            { choiceIndex: choiceIndex >= 0 ? choiceIndex : 0 },
             () =>
               server.applyWordChoice({
                 selectedWord: word,

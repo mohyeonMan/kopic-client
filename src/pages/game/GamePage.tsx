@@ -5,18 +5,14 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   TransitionEvent as ReactTransitionEvent,
 } from 'react'
-import { routes, type AppRoute } from '../../app/router/routes'
 import { defaultSettings } from '../../app/store/mockAppState'
-import type { CanvasStroke, DrawingTool, Participant, TurnPhase } from '../../app/store/mockAppState'
+import type { CanvasStroke, DrawingTool, Participant } from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
 import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
 
-type GamePageProps = {
-  onNavigate: (route: AppRoute) => void
-}
-
 type OverlayPreview =
   | 'actual'
+  | 'gameStart'
   | 'roundStart'
   | 'turnStart'
   | 'wordChoice'
@@ -25,7 +21,7 @@ type OverlayPreview =
   | 'turnEnd'
   | 'gameResult'
 
-type StageOverlayPhase = 'roundStart' | 'turnStart' | 'wordChoice' | 'turnEnd'
+type StageOverlayPhase = 'gameStart' | 'roundStart' | 'turnStart' | 'wordChoice' | 'turnEnd'
 
 const TOOL_COLORS = [
   '#000000',
@@ -85,7 +81,8 @@ const END_MODE_OPTIONS = [
   { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
 ] as const
 
-const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['roundStart', 'turnStart', 'wordChoice', 'turnEnd']
+const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['gameStart', 'roundStart', 'turnStart', 'wordChoice', 'turnEnd']
+const TRANSIENT_STAGE_OVERLAY_MS = 5000
 
 type NumericSettingKey = keyof typeof SETTING_OPTIONS
 
@@ -129,35 +126,35 @@ function participantTone(participant: Participant, drawerSessionId?: string, cor
   return 'participant-card'
 }
 
-function buildEarnedScores(participants: Participant[], correctSessionIds: string[], drawerSessionId?: string) {
+function buildEarnedScores(
+  participants: Participant[],
+  correctSessionIds: string[],
+  earnedPoints: Record<string, number>,
+  drawerSessionId?: string,
+) {
   const rows: EarnedScore[] = participants.map((participant) => {
+    const earnedPoint = earnedPoints[participant.sessionId] ?? 0
+
     if (participant.sessionId === drawerSessionId) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: 40, isCorrect: false, role: 'drawer' }
+      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: false, role: 'drawer' }
     }
 
     if (correctSessionIds.includes(participant.sessionId)) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: 80, isCorrect: true, role: 'correct' }
+      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: true, role: 'correct' }
     }
 
-    return { sessionId: participant.sessionId, nickname: participant.nickname, score: 0, isCorrect: false, role: 'miss' }
+    return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: false, role: 'miss' }
   })
 
   return rows.sort((left, right) => right.score - left.score)
 }
 
-function getVisibleOrder(participants: Participant[], drawerOrder: string[] | undefined, turnCursor: number | undefined) {
+function getVisibleOrder(participants: Participant[], drawerOrder: string[] | undefined) {
   if (!drawerOrder || drawerOrder.length === 0) {
-    return participants
-      .slice()
-      .sort((left, right) => left.joinedAt - right.joinedAt)
-      .map((participant) => ({
-        sessionId: participant.sessionId,
-        nickname: participant.nickname,
-      }))
+    return []
   }
 
   return drawerOrder
-    .slice(turnCursor ?? 0)
     .map((sessionId) => {
       const participant = participants.find((item) => item.sessionId === sessionId)
       if (!participant) {
@@ -172,8 +169,12 @@ function getVisibleOrder(participants: Participant[], drawerOrder: string[] | un
     .filter((entry): entry is VisibleOrderEntry => entry !== null)
 }
 
-function getMaskedWord(word: string | null, revealedCount: number) {
+function getMaskedWord(word: string | null, revealedCount: number, answerLength?: number) {
   if (!word) {
+    if (typeof answerLength === 'number' && answerLength > 0) {
+      return '●'.repeat(answerLength)
+    }
+
     return '●●●'
   }
 
@@ -208,20 +209,24 @@ function shouldSkipEnterSubmit(event: ReactKeyboardEvent<HTMLInputElement>) {
   return nativeEvent.isComposing === true || nativeEvent.keyCode === 229
 }
 
-export function GamePage({ onNavigate }: GamePageProps) {
+export function GamePage() {
   const [tool, setTool] = useState<DrawingTool>('PEN')
   const [size, setSize] = useState(5)
   const [color, setColor] = useState<string>(TOOL_COLORS[0])
   const [guessInput, setGuessInput] = useState('')
+  const [timerNowMs, setTimerNowMs] = useState(() => Date.now())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [overlayPreview, setOverlayPreview] = useState<OverlayPreview>('actual')
   const [activeStageOverlay, setActiveStageOverlay] = useState<StageOverlayPhase | null>(null)
   const [pendingStageOverlay, setPendingStageOverlay] = useState<StageOverlayPhase | null>(null)
   const [stageOverlayOpen, setStageOverlayOpen] = useState(false)
-  const [shortcutsOpen, setShortcutsOpen] = useState(true)
   const [participantBubbles, setParticipantBubbles] = useState<ParticipantBubblePosition[]>([])
   const [showChatScrollButton, setShowChatScrollButton] = useState(false)
   const stageOverlayOpenRafRef = useRef<number | null>(null)
+  const overlayPreviewTimeoutIdsRef = useRef<number[]>([])
+  const autoPreviewGameKeyRef = useRef<string | null>(null)
+  const autoPreviewRoundKeyRef = useRef<string | null>(null)
+  const autoPreviewTurnKeyRef = useRef<string | null>(null)
   const chatSeenAtByIdRef = useRef(new Map<string, number>())
   const chatListRef = useRef<HTMLUListElement | null>(null)
   const chatStickToBottomRef = useRef(true)
@@ -230,7 +235,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
-  const { state, actions, server, devTools } = useAppState()
+  const { state, actions, server } = useAppState()
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
@@ -248,17 +253,23 @@ export function GamePage({ onNavigate }: GamePageProps) {
   const isDrawer = state.session.sessionId === currentTurn?.drawerSessionId
   const viewerRole =
     overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
-  const visibleOrderEntries = getVisibleOrder(participants, currentRound?.drawerOrder, currentRound?.turnCursor)
-  const nextDrawerName =
-    currentRound && currentRound.drawerOrder.length > 0
-      ? participants.find(
-          (participant) =>
-            participant.sessionId ===
-            currentRound.drawerOrder[(currentRound.turnCursor + 1) % currentRound.drawerOrder.length],
-        )?.nickname
-      : undefined
+  const visibleOrderEntries = getVisibleOrder(participants, currentRound?.drawerOrder)
+  const nextDrawerName = (() => {
+    if (!currentRound || currentRound.drawerOrder.length === 0) {
+      return undefined
+    }
+
+    return participants.find(
+      (participant) => participant.sessionId === currentRound.drawerOrder[0],
+    )?.nickname
+  })()
   const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
   const currentCorrectIds = currentTurn?.correctSessionIds ?? EMPTY_SESSION_IDS
+  const currentEarnedPoints = currentTurn?.earnedPoints ?? {}
+  const displayedRemainingSec =
+    currentTurn?.deadlineAtMs !== undefined
+      ? Math.max(0, Math.ceil((currentTurn.deadlineAtMs - timerNowMs) / 1000))
+      : currentTurn?.remainingSec ?? 0
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
       return 0
@@ -266,10 +277,15 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
     const interval = Math.max(1, settings.hintRevealSec)
     const lettersPerReveal = Math.max(1, settings.hintLetterCount)
-    const elapsedSec = Math.max(0, settings.drawSec - currentTurn.remainingSec)
+    const elapsedSec = Math.max(0, settings.drawSec - displayedRemainingSec)
     return Math.floor(elapsedSec / interval) * lettersPerReveal
   })()
-  const earnedScores = buildEarnedScores(participants, currentCorrectIds, currentTurn?.drawerSessionId)
+  const earnedScores = buildEarnedScores(
+    participants,
+    currentCorrectIds,
+    currentEarnedPoints,
+    currentTurn?.drawerSessionId,
+  )
   const canDraw =
     roomState === 'LOBBY'
       ? !settingsOpen
@@ -600,21 +616,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
     actions.requestCanvasClear()
   }
 
-  const ensureRunning = (phase?: TurnPhase) => {
-    if (roomState === 'RESULT') {
-      devTools.resetToLobby()
-      actions.requestGameStart()
-    } else if (roomState === 'LOBBY') {
-      actions.requestGameStart()
-    }
-
-    if (phase) {
-      devTools.forceTurnPhase(phase)
-    }
-
-    setSettingsOpen(false)
-  }
-
   const previewMode = (() => {
     if (overlayPreview !== 'actual') {
       return overlayPreview
@@ -626,6 +627,10 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
     if (roomState === 'LOBBY') {
       return settingsOpen ? 'actual' : 'actual'
+    }
+
+    if (currentTurn?.phase === 'READY') {
+      return 'actual'
     }
 
     if (currentTurn?.phase === 'TURN_END') {
@@ -645,7 +650,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
       : null
   const shouldShowSecretWordBanner =
     roomState === 'RUNNING' &&
-    Boolean(currentTurn?.selectedWord) &&
+    (Boolean(currentTurn?.selectedWord) || typeof currentTurn?.answerLength === 'number') &&
     (viewerRole === 'drawer' || currentTurn?.phase === 'DRAWING' || previewMode === 'turnEnd')
   const isSecretWordBannerClosed = previewMode === 'turnEnd'
 
@@ -658,6 +663,13 @@ export function GamePage({ onNavigate }: GamePageProps) {
       stageOverlayOpenRafRef.current = null
       setStageOverlayOpen(true)
     })
+  }
+
+  const clearOverlayPreviewTimers = () => {
+    for (const timeoutId of overlayPreviewTimeoutIdsRef.current) {
+      window.clearTimeout(timeoutId)
+    }
+    overlayPreviewTimeoutIdsRef.current = []
   }
 
   const handleStageOverlayTransitionEnd = (event: ReactTransitionEvent<HTMLDivElement>) => {
@@ -681,11 +693,131 @@ export function GamePage({ onNavigate }: GamePageProps) {
 
   useEffect(() => {
     return () => {
+      clearOverlayPreviewTimers()
       if (stageOverlayOpenRafRef.current !== null) {
         window.cancelAnimationFrame(stageOverlayOpenRafRef.current)
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (roomState === 'RUNNING') {
+      return
+    }
+
+    autoPreviewGameKeyRef.current = null
+    autoPreviewRoundKeyRef.current = null
+    autoPreviewTurnKeyRef.current = null
+    clearOverlayPreviewTimers()
+    if (overlayPreview !== 'actual') {
+      setOverlayPreview('actual')
+    }
+  }, [overlayPreview, roomState])
+
+  useEffect(() => {
+    if (!currentTurn?.deadlineAtMs || roomState !== 'RUNNING') {
+      setTimerNowMs(Date.now())
+      return
+    }
+
+    setTimerNowMs(Date.now())
+
+    const timerId = window.setInterval(() => {
+      setTimerNowMs(Date.now())
+    }, 250)
+
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [currentTurn?.deadlineAtMs, roomState])
+
+  useEffect(() => {
+    const gameKey =
+      roomState === 'RUNNING' && state.room.gameId
+        ? `${state.room.gameId}`
+        : null
+    const roundKey =
+      roomState === 'RUNNING' && currentRound
+        ? `${state.room.gameId ?? 'no-game'}:round:${currentRound.roundNo}`
+        : null
+    const turnKey =
+      roomState === 'RUNNING' && currentTurn
+        ? `${state.room.gameId ?? 'no-game'}:turn:${currentTurn.turnId}`
+        : null
+
+    if (!gameKey) {
+      autoPreviewGameKeyRef.current = null
+      autoPreviewRoundKeyRef.current = null
+      autoPreviewTurnKeyRef.current = null
+      clearOverlayPreviewTimers()
+      return
+    }
+
+    if (gameKey !== autoPreviewGameKeyRef.current) {
+      autoPreviewGameKeyRef.current = gameKey
+      autoPreviewRoundKeyRef.current = null
+      autoPreviewTurnKeyRef.current = null
+      setOverlayPreview('gameStart')
+      return
+    }
+
+    if (!roundKey) {
+      autoPreviewRoundKeyRef.current = null
+      autoPreviewTurnKeyRef.current = null
+      clearOverlayPreviewTimers()
+      return
+    }
+
+    if (roundKey !== autoPreviewRoundKeyRef.current) {
+      autoPreviewRoundKeyRef.current = roundKey
+      autoPreviewTurnKeyRef.current = null
+      setOverlayPreview('roundStart')
+      return
+    }
+
+    if (!turnKey || turnKey === autoPreviewTurnKeyRef.current) {
+      return
+    }
+
+    autoPreviewTurnKeyRef.current = turnKey
+    setOverlayPreview('turnStart')
+  }, [
+    currentRound,
+    currentTurn,
+    overlayPreview,
+    roomState,
+    state.room.gameId,
+  ])
+
+  useEffect(() => {
+    if (
+      overlayPreview !== 'gameStart' &&
+      overlayPreview !== 'roundStart' &&
+      overlayPreview !== 'turnStart'
+    ) {
+      return
+    }
+
+    clearOverlayPreviewTimers()
+    const currentPreview = overlayPreview
+    const timeoutId = window.setTimeout(() => {
+      setOverlayPreview((preview) => (preview === currentPreview ? 'actual' : preview))
+    }, TRANSIENT_STAGE_OVERLAY_MS)
+    overlayPreviewTimeoutIdsRef.current.push(timeoutId)
+
+    return () => {
+      clearOverlayPreviewTimers()
+    }
+  }, [
+    overlayPreview,
+  ])
+
+  useEffect(() => {
+    if (overlayPreview === 'turnStart' && currentTurn?.phase && currentTurn.phase !== 'READY') {
+      clearOverlayPreviewTimers()
+      setOverlayPreview('actual')
+    }
+  }, [currentTurn?.phase, overlayPreview])
 
   useEffect(() => {
     if (!requestedStageOverlay) {
@@ -748,7 +880,7 @@ export function GamePage({ onNavigate }: GamePageProps) {
           </div>
           <div className="status-inline-chip status-inline-chip-time">
             <span>남은 시간</span>
-            <strong>{currentTurn ? `${currentTurn.remainingSec}s` : '-'}</strong>
+            <strong>{currentTurn ? `${displayedRemainingSec}s` : '-'}</strong>
           </div>
           <div className="order-strip-box">
             <span className="order-strip-label">이번 라운드 그림 순서</span>
@@ -836,16 +968,22 @@ export function GamePage({ onNavigate }: GamePageProps) {
                 </button>
               ) : null}
 
-              {shouldShowSecretWordBanner && currentTurn?.selectedWord ? (
+              {shouldShowSecretWordBanner && currentTurn ? (
                 <div
-                  key={viewerRole === 'drawer' ? `${currentTurn.turnId}-${currentTurn.selectedWord}` : `${currentTurn.turnId}-masked`}
+                  key={
+                    viewerRole === 'drawer'
+                      ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
+                      : `${currentTurn.turnId}-masked-${currentTurn.answerLength ?? 'unknown'}`
+                  }
                   className={
                     isSecretWordBannerClosed
                       ? `secret-word-banner${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-closed`
                       : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
                   }
                 >
-                  {viewerRole === 'drawer' ? currentTurn.selectedWord : getMaskedWord(currentTurn.selectedWord, revealedHintCount)}
+                  {viewerRole === 'drawer'
+                    ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
+                    : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)}
                 </div>
               ) : null}
 
@@ -991,6 +1129,22 @@ export function GamePage({ onNavigate }: GamePageProps) {
               {roomState === 'RUNNING' ? (
                 <div
                   className={
+                    activeStageOverlay === 'gameStart' && stageOverlayOpen
+                      ? 'canvas-full-overlay canvas-full-overlay-open'
+                      : 'canvas-full-overlay canvas-full-overlay-closed'
+                  }
+                  aria-hidden={activeStageOverlay !== 'gameStart'}
+                  onTransitionEnd={handleStageOverlayTransitionEnd}
+                >
+                  <p className="panel-label">게임 시작 안내 화면</p>
+                  <strong>게임 시작</strong>
+                  <span>{participants.length}명이 함께 라운드를 시작한다</span>
+                </div>
+              ) : null}
+
+              {roomState === 'RUNNING' ? (
+                <div
+                  className={
                     activeStageOverlay === 'roundStart' && stageOverlayOpen
                       ? 'canvas-full-overlay canvas-full-overlay-open'
                       : 'canvas-full-overlay canvas-full-overlay-closed'
@@ -1016,23 +1170,29 @@ export function GamePage({ onNavigate }: GamePageProps) {
                   <div className="overlay-heading">
                     <p className="panel-label">단어 선택 단계</p>
                     <strong>{drawer?.nickname} 차례</strong>
-                    <p className="info-copy">아래 단어 중 하나를 골라 바로 그림을 시작한다.</p>
+                    <p className="info-copy">
+                      {currentTurn.wordChoices.length > 0
+                        ? '아래 단어 중 하나를 골라 바로 그림을 시작한다.'
+                        : 'drawer가 단어를 고르는 중이다.'}
+                    </p>
                   </div>
-                  <div className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}>
-                    {currentTurn.wordChoices.map((word) => (
-                      <button
-                        key={word}
-                        type="button"
-                        className="word-choice-button"
-                        onClick={() => {
-                          setOverlayPreview('actual')
-                          actions.requestWordChoice(word)
-                        }}
-                      >
-                        {word}
-                      </button>
-                    ))}
-                  </div>
+                  {currentTurn.wordChoices.length > 0 ? (
+                    <div className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}>
+                      {currentTurn.wordChoices.map((word) => (
+                        <button
+                          key={word}
+                          type="button"
+                          className="word-choice-button"
+                          onClick={() => {
+                            setOverlayPreview('actual')
+                            actions.requestWordChoice(word)
+                          }}
+                        >
+                          {word}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1079,7 +1239,16 @@ export function GamePage({ onNavigate }: GamePageProps) {
                         </div>
                         <div className="earned-score-table-body">
                           {earnedScores.map((row, index) => (
-                            <div key={row.sessionId} className={row.isCorrect ? 'earned-score-row earned-score-row-correct' : 'earned-score-row'}>
+                            <div
+                              key={row.sessionId}
+                              className={
+                                row.role === 'correct'
+                                  ? 'earned-score-row earned-score-row-correct'
+                                  : row.role === 'drawer'
+                                    ? 'earned-score-row earned-score-row-drawer'
+                                    : 'earned-score-row'
+                              }
+                            >
                               <span className="earned-score-rank score-col-rank">{index + 1}</span>
                               <span className="earned-score-name score-col-name">{row.nickname}</span>
                               <span
@@ -1198,7 +1367,18 @@ export function GamePage({ onNavigate }: GamePageProps) {
               }}
             >
               {visibleChat.map((message) => (
-                <li key={message.id} className={`chat-${message.tone}`}>
+                <li
+                  key={message.id}
+                  className={
+                    message.senderSessionId &&
+                    (
+                      message.senderSessionId === currentTurn?.drawerSessionId ||
+                      currentCorrectIds.includes(message.senderSessionId)
+                    )
+                      ? `chat-${message.tone} chat-highlighted`
+                      : `chat-${message.tone}`
+                  }
+                >
                   <strong
                     className={
                       message.mine === true
@@ -1258,131 +1438,6 @@ export function GamePage({ onNavigate }: GamePageProps) {
         </div>
       </section>
 
-      <aside className="preview-shortcuts">
-        <div className="preview-shortcuts-header">
-          <p className="preview-shortcuts-title">바로가기 모음</p>
-          <button
-            type="button"
-            className="secondary-button preview-shortcuts-toggle"
-            onClick={() => setShortcutsOpen((open) => !open)}
-            aria-expanded={shortcutsOpen}
-            aria-controls="preview-shortcuts-grid"
-          >
-            {shortcutsOpen ? '접기' : '펼치기'}
-          </button>
-        </div>
-        <div
-          id="preview-shortcuts-grid"
-          className={shortcutsOpen ? 'preview-shortcuts-grid' : 'preview-shortcuts-grid preview-shortcuts-grid-closed'}
-          aria-hidden={!shortcutsOpen}
-        >
-          {isHost ? (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                devTools.resetToLobby()
-                setOverlayPreview('actual')
-                setSettingsOpen(true)
-              }}
-            >
-              게임 설정
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('WORD_CHOICE')
-              setOverlayPreview('roundStart')
-            }}
-          >
-            라운드 시작
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('WORD_CHOICE')
-              setOverlayPreview('turnStart')
-            }}
-          >
-            턴 시작
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('WORD_CHOICE')
-              setOverlayPreview('wordChoice')
-            }}
-          >
-            단어 고르기
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('DRAWING')
-              setOverlayPreview('drawingDrawer')
-            }}
-          >
-            그리기(drawer)
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('DRAWING')
-              setOverlayPreview('drawingGuesser')
-            }}
-          >
-            그리기(guesser)
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              ensureRunning('TURN_END')
-              setOverlayPreview('turnEnd')
-            }}
-          >
-            턴 종료
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              devTools.finishGame()
-              setOverlayPreview('actual')
-            }}
-          >
-            게임 결과
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              if (roomState === 'RUNNING') {
-                devTools.advanceMockFlow()
-              }
-              setOverlayPreview('actual')
-            }}
-          >
-            실제 흐름
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              actions.clearRoomCache()
-              onNavigate(routes.main)
-            }}
-          >
-            첫 화면
-          </button>
-        </div>
-      </aside>
     </div>
   )
 }

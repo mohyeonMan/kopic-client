@@ -10,7 +10,7 @@ export function AppRouter() {
   return (
     <AppLayout currentRoute={route} onNavigate={navigate}>
       {route === routes.main && <EntryPage onNavigate={navigate} />}
-      {route === routes.game && <GamePage onNavigate={navigate} />}
+      {route === routes.game && <GamePage />}
     </AppLayout>
   )
 }

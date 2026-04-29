@@ -18,6 +18,63 @@ export type ServerGameStartedPayload = {
   chatMessages?: ChatMessage[]
 }
 
+export type GeGameStartedPayload = {
+  gameId: string
+}
+
+export type GeRoundStartedPayload = {
+  gameId: string
+  roundNo: number
+  drawerSessionIds: string[]
+}
+
+export type GeTurnStartedPayload = {
+  gameId: string
+  roundNo: number
+  turnId: string
+  drawerSessionId: string
+  remainingSec: number
+}
+
+export type GeGuessCorrectPayload = {
+  gameId: string
+  sessionId: string
+}
+
+export type GeWordChoiceOpenedPayload = {
+  drawerSessionId: string
+  remainingSec: number
+  wordChoices: string[]
+}
+
+export type GeDrawingStartedPayload = {
+  gameId: string
+  drawerSessionId: string
+  remainingSec: number
+  selectedWord: string | null
+  answerLength?: number
+}
+
+export type GeTurnEndedPayload = {
+  gameId: string
+  turnId: string
+  reason: string
+  answer: string | null
+  earnedPoints: Record<string, number>
+}
+
+export type GeGameResultPayload = {
+  gameId: string
+  resultSec: number
+  totalPoints: Record<string, number>
+}
+
+export type GeReturnToLobbyPayload = {
+  gameId: string
+  reason: string
+  restartSec?: number
+}
+
 export type ServerWordChoicePayload = {
   selectedWord: string
   remainingSec: number
