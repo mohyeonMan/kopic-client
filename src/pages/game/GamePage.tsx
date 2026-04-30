@@ -86,14 +86,6 @@ const TRANSIENT_STAGE_OVERLAY_MS = 5000
 
 type NumericSettingKey = keyof typeof SETTING_OPTIONS
 
-type EarnedScore = {
-  sessionId: string
-  nickname: string
-  score: number
-  isCorrect: boolean
-  role: 'drawer' | 'correct' | 'miss'
-}
-
 type VisibleOrderEntry = {
   sessionId: string
   nickname: string
@@ -124,29 +116,6 @@ function participantTone(participant: Participant, drawerSessionId?: string, cor
   }
 
   return 'participant-card'
-}
-
-function buildEarnedScores(
-  participants: Participant[],
-  correctSessionIds: string[],
-  earnedPoints: Record<string, number>,
-  drawerSessionId?: string,
-) {
-  const rows: EarnedScore[] = participants.map((participant) => {
-    const earnedPoint = earnedPoints[participant.sessionId] ?? 0
-
-    if (participant.sessionId === drawerSessionId) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: false, role: 'drawer' }
-    }
-
-    if (correctSessionIds.includes(participant.sessionId)) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: true, role: 'correct' }
-    }
-
-    return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, isCorrect: false, role: 'miss' }
-  })
-
-  return rows.sort((left, right) => right.score - left.score)
 }
 
 function getVisibleOrder(participants: Participant[], drawerOrder: string[] | undefined) {
@@ -233,8 +202,12 @@ export function GamePage() {
   const stageRef = useRef<HTMLElement | null>(null)
   const centerPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
+  const turnEndCorrectViewportRef = useRef<HTMLDivElement | null>(null)
+  const turnEndCorrectSegmentRef = useRef<HTMLDivElement | null>(null)
   const participantItemRefs = useRef(new Map<string, HTMLLIElement | null>())
   const [sideSyncHeight, setSideSyncHeight] = useState<number | null>(null)
+  const [turnEndCorrectMarqueeActive, setTurnEndCorrectMarqueeActive] = useState(false)
+  const [turnEndCorrectMarqueeDurationSec, setTurnEndCorrectMarqueeDurationSec] = useState(12)
   const { state, actions, server } = useAppState()
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
@@ -254,18 +227,28 @@ export function GamePage() {
   const viewerRole =
     overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
   const visibleOrderEntries = getVisibleOrder(participants, currentRound?.drawerOrder)
-  const nextDrawerName = (() => {
-    if (!currentRound || currentRound.drawerOrder.length === 0) {
-      return undefined
-    }
-
-    return participants.find(
-      (participant) => participant.sessionId === currentRound.drawerOrder[0],
-    )?.nickname
-  })()
   const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
   const currentCorrectIds = currentTurn?.correctSessionIds ?? EMPTY_SESSION_IDS
-  const currentEarnedPoints = currentTurn?.earnedPoints ?? {}
+  const turnEndCorrectParticipants = useMemo(() => {
+    if (currentCorrectIds.length === 0) {
+      return []
+    }
+
+    const nicknameBySessionId = new Map(
+      participants.map((participant) => [participant.sessionId, participant.nickname]),
+    )
+
+    return currentCorrectIds
+      .map((sessionId) => {
+        const nickname = nicknameBySessionId.get(sessionId)
+        if (!nickname) {
+          return null
+        }
+
+        return { sessionId, nickname }
+      })
+      .filter((participant): participant is VisibleOrderEntry => participant !== null)
+  }, [currentCorrectIds, participants])
   const displayedRemainingSec =
     currentTurn?.deadlineAtMs !== undefined
       ? Math.max(0, Math.ceil((currentTurn.deadlineAtMs - timerNowMs) / 1000))
@@ -280,12 +263,6 @@ export function GamePage() {
     const elapsedSec = Math.max(0, settings.drawSec - displayedRemainingSec)
     return Math.floor(elapsedSec / interval) * lettersPerReveal
   })()
-  const earnedScores = buildEarnedScores(
-    participants,
-    currentCorrectIds,
-    currentEarnedPoints,
-    currentTurn?.drawerSessionId,
-  )
   const canDraw =
     roomState === 'LOBBY'
       ? !settingsOpen
@@ -653,6 +630,37 @@ export function GamePage() {
     (Boolean(currentTurn?.selectedWord) || typeof currentTurn?.answerLength === 'number') &&
     (viewerRole === 'drawer' || currentTurn?.phase === 'DRAWING' || previewMode === 'turnEnd')
   const isSecretWordBannerClosed = previewMode === 'turnEnd'
+
+  useLayoutEffect(() => {
+    const viewport = turnEndCorrectViewportRef.current
+    const segment = turnEndCorrectSegmentRef.current
+
+    if (!viewport || !segment || previewMode !== 'turnEnd' || turnEndCorrectParticipants.length <= 1) {
+      setTurnEndCorrectMarqueeActive(false)
+      setTurnEndCorrectMarqueeDurationSec(12)
+      return
+    }
+
+    const updateMarqueeState = () => {
+      const nextActive = segment.scrollWidth > viewport.clientWidth + 1
+      setTurnEndCorrectMarqueeActive(nextActive)
+      setTurnEndCorrectMarqueeDurationSec(
+        nextActive ? Math.max(12, Number((segment.scrollWidth / 44).toFixed(2))) : 12,
+      )
+    }
+
+    updateMarqueeState()
+
+    const observer = new ResizeObserver(() => updateMarqueeState())
+    observer.observe(viewport)
+    observer.observe(segment)
+    window.addEventListener('resize', updateMarqueeState)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateMarqueeState)
+    }
+  }, [previewMode, turnEndCorrectParticipants])
 
   const queueStageOverlayOpen = () => {
     if (stageOverlayOpenRafRef.current !== null) {
@@ -1136,9 +1144,7 @@ export function GamePage() {
                   aria-hidden={activeStageOverlay !== 'gameStart'}
                   onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
-                  <p className="panel-label">게임 시작 안내 화면</p>
                   <strong>게임 시작</strong>
-                  <span>{participants.length}명이 함께 라운드를 시작한다</span>
                 </div>
               ) : null}
 
@@ -1152,7 +1158,6 @@ export function GamePage() {
                   aria-hidden={activeStageOverlay !== 'roundStart'}
                   onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
-                  <p className="panel-label">라운드 시작 안내 화면</p>
                   <strong>{currentRound ? `${currentRound.roundNo} 라운드 시작` : '1 라운드 시작'}</strong>
                 </div>
               ) : null}
@@ -1206,9 +1211,7 @@ export function GamePage() {
                   aria-hidden={activeStageOverlay !== 'turnStart'}
                   onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
-                  <p className="panel-label">턴 시작 안내 화면</p>
                   <strong>{drawer?.nickname ?? '현재 drawer'} 차례</strong>
-                  <span>다음은 {nextDrawerName ?? '라운드 종료'}</span>
                 </div>
               ) : null}
 
@@ -1227,44 +1230,52 @@ export function GamePage() {
                   onTransitionEnd={handleStageOverlayTransitionEnd}
                 >
                   <div className="canvas-full-overlay-panel">
-                    <p className="panel-label">턴 끝난 결과 화면</p>
-                    <strong>{drawer?.nickname ?? '현재 drawer'} 턴 종료</strong>
-                    <div className="earned-score-content">
-                      <div className="earned-score-table">
-                        <div className="earned-score-table-head" aria-hidden="true">
-                          <span className="score-col-rank">순위</span>
-                          <span className="score-col-name">참여자</span>
-                          <span className="score-col-result">결과</span>
-                          <span className="score-col-points">점수</span>
-                        </div>
-                        <div className="earned-score-table-body">
-                          {earnedScores.map((row, index) => (
+                    <div className="turn-end-summary">
+                      <p className="turn-end-answer">
+                        <span className="turn-end-answer-prefix">정답은</span>
+                        <strong className="turn-end-answer-word">
+                          {currentTurn?.selectedWord ?? getMaskedWord(null, 0, currentTurn?.answerLength)}
+                        </strong>
+                        <span className="turn-end-answer-suffix">입니다.</span>
+                      </p>
+                      <div className="turn-end-correct-section">
+                        <p className="turn-end-correct-label">정답자</p>
+                        <div ref={turnEndCorrectViewportRef} className="turn-end-correct-viewport">
+                          {turnEndCorrectParticipants.length > 0 ? (
                             <div
-                              key={row.sessionId}
                               className={
-                                row.role === 'correct'
-                                  ? 'earned-score-row earned-score-row-correct'
-                                  : row.role === 'drawer'
-                                    ? 'earned-score-row earned-score-row-drawer'
-                                    : 'earned-score-row'
+                                turnEndCorrectMarqueeActive
+                                  ? 'turn-end-correct-track turn-end-correct-track-animated'
+                                  : 'turn-end-correct-track'
+                              }
+                              style={
+                                turnEndCorrectMarqueeActive
+                                  ? ({
+                                      ['--turn-end-correct-marquee-duration' as string]: `${turnEndCorrectMarqueeDurationSec}s`,
+                                    } as CSSProperties)
+                                  : undefined
                               }
                             >
-                              <span className="earned-score-rank score-col-rank">{index + 1}</span>
-                              <span className="earned-score-name score-col-name">{row.nickname}</span>
-                              <span
-                                className={
-                                  row.role === 'correct'
-                                    ? 'earned-score-role earned-score-role-correct score-col-result'
-                                    : row.role === 'drawer'
-                                      ? 'earned-score-role earned-score-role-drawer score-col-result'
-                                      : 'earned-score-role score-col-result'
-                                }
-                              >
-                                {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
-                              </span>
-                              <strong className="earned-score-points score-col-points">{row.score} pts</strong>
+                              <div ref={turnEndCorrectSegmentRef} className="turn-end-correct-segment">
+                                {turnEndCorrectParticipants.map((participant) => (
+                                  <span key={participant.sessionId} className="turn-end-correct-chip">
+                                    {participant.nickname}
+                                  </span>
+                                ))}
+                              </div>
+                              {turnEndCorrectMarqueeActive ? (
+                                <div className="turn-end-correct-segment" aria-hidden="true">
+                                  {turnEndCorrectParticipants.map((participant) => (
+                                    <span key={`${participant.sessionId}-duplicate`} className="turn-end-correct-chip">
+                                      {participant.nickname}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
-                          ))}
+                          ) : (
+                            <span className="turn-end-correct-empty">정답자 없음</span>
+                          )}
                         </div>
                       </div>
                     </div>
