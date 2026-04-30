@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { CanvasPoint, CanvasStroke, DrawingTool } from '../../app/store/mockAppState'
+import { createUUID } from '../../app/utils/createUUID'
 
 type CanvasBoardProps = {
   strokes: CanvasStroke[]
@@ -232,7 +233,7 @@ function paintSolidStroke(
 
 function buildCommittedStroke(draftStroke: DraftStroke): CanvasStroke {
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     ...draftStroke,
   }
 }

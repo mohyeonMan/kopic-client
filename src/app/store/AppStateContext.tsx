@@ -35,6 +35,7 @@ import {
   type Envelope,
 } from '../../ws/protocol/events'
 import { wsSessionManager } from '../../ws/client/wsSessionManager'
+import { createUUID } from '../utils/createUUID'
 
 type AppAction =
   | { type: 'local/sessionNicknameUpdated'; payload: string }
@@ -193,7 +194,7 @@ function decodeCompactStroke(payload: unknown): CanvasStroke | null {
     .map(([x, y]) => ({ x, y }))
 
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     tool,
     color: colorHex,
     size,
@@ -203,7 +204,7 @@ function decodeCompactStroke(payload: unknown): CanvasStroke | null {
 
 function createSystemMessage(text: string): ChatMessage {
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     nickname: 'system',
     text,
     tone: 'system',
@@ -212,7 +213,7 @@ function createSystemMessage(text: string): ChatMessage {
 
 function createPresenceMessage(nickname: string, joined: boolean): ChatMessage {
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     nickname: '알림',
     text: `${nickname} 님이 ${joined ? '입장' : '퇴장'} 하셨습니다`,
     tone: 'alert',
@@ -222,7 +223,7 @@ function createPresenceMessage(nickname: string, joined: boolean): ChatMessage {
 
 function createHostChangedMessage(nickname: string): ChatMessage {
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     nickname: '알림',
     text: `${nickname}님이 새로운 방장이 되셨습니다.`,
     tone: 'alert',
@@ -232,7 +233,7 @@ function createHostChangedMessage(nickname: string): ChatMessage {
 
 function createCorrectAnswerAlertMessage(nickname: string): ChatMessage {
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     nickname: '알림',
     text: `${nickname} 님이 정답을 맞혔습니다.`,
     tone: 'alert-success',
@@ -289,7 +290,7 @@ function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
         : undefined
 
   return {
-    id: crypto.randomUUID(),
+    id: createUUID(),
     nickname: '알수없음',
     text: rawText.slice(0, 50),
     tone: resolveChatTone(undefined, sealed),
@@ -550,7 +551,7 @@ function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
     : []
 
   return {
-    id: readNonEmptyString(raw.id) ?? crypto.randomUUID(),
+    id: readNonEmptyString(raw.id) ?? createUUID(),
     tool,
     color: readNonEmptyString(raw.color) ?? '#203247',
     size,
@@ -806,7 +807,7 @@ function normalizeChatMessages(
 
     const tone = resolveChatTone(item.tone, item.sealed)
     const message: ChatMessage = {
-      id: readNonEmptyString(item.id) ?? crypto.randomUUID(),
+      id: readNonEmptyString(item.id) ?? createUUID(),
       nickname: readNonEmptyString(item.nickname) ?? '알수없음',
       text,
       tone,
@@ -1711,7 +1712,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           chat: [
             ...state.room.chat,
             {
-              id: crypto.randomUUID(),
+              id: createUUID(),
               nickname: state.session.nickname,
               text: action.payload,
               tone: 'guess',
