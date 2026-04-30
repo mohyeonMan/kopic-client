@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { isAppRoute, routes, type AppRoute } from './routes'
+import { isAppRoute, normalizeRoutePath, routes, type AppRoute } from './routes'
 import { wsSessionManager, wsSessionOwner } from '../../ws/client/wsSessionManager'
 import { useAppState } from '../store/useAppState'
 
 function getCurrentRoute(): AppRoute {
-  return isAppRoute(window.location.pathname) ? window.location.pathname : routes.main
+  const pathname = normalizeRoutePath(window.location.pathname)
+  return isAppRoute(pathname) ? pathname : routes.main
 }
 
 export function useAppRouter() {

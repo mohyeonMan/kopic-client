@@ -1,5 +1,5 @@
 import type { ConnectionStatus } from '../../app/store/mockAppState'
-import { routes } from '../../app/router/routes'
+import { normalizeRoutePath, routes } from '../../app/router/routes'
 
 type SessionEvent =
   | { type: 'status'; status: ConnectionStatus }
@@ -13,6 +13,7 @@ const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
 const WS_MAX_RECONNECT_ATTEMPTS = 3
 const WS_GE_ID = 'ge-local'
+const WS_BASE_PATH = resolveWsBasePath()
 
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
@@ -53,13 +54,32 @@ function resolveNickname() {
   return null
 }
 
+function resolveWsBasePath() {
+  const baseUrl = import.meta.env.BASE_URL ?? '/'
+  if (!baseUrl || baseUrl === '/') {
+    return ''
+  }
+
+  const trimmed = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
+
+function resolveWsPath() {
+  const configuredPath = import.meta.env.VITE_WS_PATH?.trim()
+  if (configuredPath) {
+    return configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`
+  }
+
+  return `${WS_BASE_PATH}/ws` || '/ws'
+}
+
 function resolveWsUrl() {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || import.meta.env.DEV) {
     return 'ws://localhost:8080/ws'
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = new URL(`${protocol}://${window.location.hostname}:8080/ws`)
+  const url = new URL(`${protocol}://${window.location.host}${resolveWsPath()}`)
   const queryToken = new URLSearchParams(window.location.search).get('token')
   const storageToken =
     window.localStorage.getItem('token') ??
@@ -167,7 +187,7 @@ function handleReconnectFailure() {
     },
   })
 
-  if (window.location.pathname === routes.main) {
+  if (normalizeRoutePath(window.location.pathname) === routes.main) {
     return
   }
 
@@ -196,7 +216,7 @@ function handleSessionDisconnected() {
     },
   })
 
-  if (window.location.pathname === routes.main) {
+  if (normalizeRoutePath(window.location.pathname) === routes.main) {
     return
   }
 
