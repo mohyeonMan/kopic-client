@@ -82,8 +82,14 @@ export function GamePage() {
       return null
     }
 
+    const nextDrawerSessionId = currentRound.drawerOrder[currentRound.turnCursor + 1]
+
+    if (!nextDrawerSessionId) {
+      return null
+    }
+
     return (
-      participants.find((participant) => participant.sessionId === currentRound.drawerOrder[0])?.nickname ??
+      participants.find((participant) => participant.sessionId === nextDrawerSessionId)?.nickname ??
       null
     )
   })()
