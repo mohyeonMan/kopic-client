@@ -214,6 +214,14 @@ function shouldSkipEnterSubmit(event: ReactKeyboardEvent<HTMLInputElement>) {
   return nativeEvent.isComposing === true || nativeEvent.keyCode === 229
 }
 
+function getParticipantAccentColor(colorIndex?: number) {
+  if (typeof colorIndex !== 'number' || !Number.isFinite(colorIndex)) {
+    return undefined
+  }
+
+  return TOOL_COLORS[colorIndex - 1]
+}
+
 export function GamePage() {
   const [tool, setTool] = useState<DrawingTool>('PEN')
   const [size, setSize] = useState(5)
@@ -957,6 +965,13 @@ export function GamePage() {
                 >
                     <div className="participant-main">
                       <div className="participant-heading participant-heading-top">
+                        {getParticipantAccentColor(participant.colorIndex) ? (
+                          <span
+                            className="participant-color-accent"
+                            style={{ ['--participant-accent-color' as string]: getParticipantAccentColor(participant.colorIndex) }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
                         <strong>{participant.nickname}</strong>
                       </div>
                       <div className="participant-meta-row">

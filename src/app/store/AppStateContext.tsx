@@ -90,6 +90,7 @@ type CompactGameSettingsPayload = [
 type ServerRoomJoinedPayload = {
   sessionId: string
   nickname: string
+  colorIndex?: number
 }
 type ServerRoomLeftPayload = {
   sid: string
@@ -133,6 +134,16 @@ const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, 0, []]
 const clientEventCodeByName = new Map<ClientEventName, ClientEventCode>(
   clientEventMeta.map((event) => [event.name, event.code]),
 )
+
+function normalizeParticipantColorIndex(value: unknown) {
+  const colorIndex = readFiniteNumber(value)
+  if (colorIndex === undefined) {
+    return undefined
+  }
+
+  const rounded = Math.round(colorIndex)
+  return rounded >= 1 && rounded <= WS_COLOR_PALETTE.length ? rounded : undefined
+}
 
 function roundTo(value: number, digits: number) {
   const factor = 10 ** digits
@@ -659,6 +670,11 @@ function normalizeParticipants(
         readNonEmptyString(participant.nickname) ??
         readNonEmptyString(participant.n) ??
         `Guest${index + 1}`,
+      colorIndex:
+        normalizeParticipantColorIndex(participant.colorIndex) ??
+        normalizeParticipantColorIndex(participant.ci) ??
+        normalizeParticipantColorIndex(participant.color) ??
+        normalizeParticipantColorIndex(participant.c),
       isHost: sessionId === hostSessionId,
       score: readFiniteNumber(participant.score) ?? 0,
       isOnline:
@@ -1487,11 +1503,15 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
     return null
   }
 
-  const { sid, sessionId, nickname, n } = payload as {
+  const { sid, sessionId, nickname, n, colorIndex, ci, color, c } = payload as {
     sid?: unknown
     sessionId?: unknown
     nickname?: unknown
     n?: unknown
+    colorIndex?: unknown
+    ci?: unknown
+    color?: unknown
+    c?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
@@ -1516,6 +1536,11 @@ function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | nu
   return {
     sessionId: participantSessionId.trim(),
     nickname: participantNickname,
+    colorIndex:
+      normalizeParticipantColorIndex(colorIndex) ??
+      normalizeParticipantColorIndex(ci) ??
+      normalizeParticipantColorIndex(color) ??
+      normalizeParticipantColorIndex(c),
   }
 }
 
@@ -1825,6 +1850,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
               ? {
                   ...participant,
                   nickname: action.payload.nickname,
+                  colorIndex: action.payload.colorIndex ?? participant.colorIndex,
                   isHost: participant.sessionId === state.room.hostSessionId,
                   isOnline: true,
                 }
@@ -1849,6 +1875,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       const joinedParticipant: Participant = {
         sessionId: action.payload.sessionId,
         nickname: action.payload.nickname,
+        colorIndex: action.payload.colorIndex,
         isHost: action.payload.sessionId === state.room.hostSessionId,
         score: 0,
         isOnline: true,
