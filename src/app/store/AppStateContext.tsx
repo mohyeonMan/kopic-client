@@ -1630,8 +1630,6 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
           ...state.session,
           joinPending: false,
           joinAccepted: true,
-          joinRoomCode: undefined,
-          joinAction: undefined,
           joinError: undefined,
           connectionError: undefined,
         },

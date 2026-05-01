@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { routes, type AppRoute } from '../../app/router/routes'
+import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
 import { useAppState } from '../../app/store/useAppState'
 
 type EntryPageProps = {
@@ -8,20 +8,21 @@ type EntryPageProps = {
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const { state, actions } = useAppState()
+  const inviteRoomCode = readInviteRoomCode(window.location.pathname)
   const nicknameLength = state.session.nickname.trim().length
   const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
   const joinError = state.session.joinError
   const connectionError = state.session.connectionError
-  const [joinModalOpen, setJoinModalOpen] = useState(false)
+  const [joinModalOpen, setJoinModalOpen] = useState(() => inviteRoomCode !== null)
   const [joinModalNickname, setJoinModalNickname] = useState(state.session.nickname)
-  const [joinModalRoomCode, setJoinModalRoomCode] = useState('')
+  const [joinModalRoomCode, setJoinModalRoomCode] = useState(inviteRoomCode ?? '')
   const joinModalNicknameLength = joinModalNickname.trim().length
   const joinModalNicknameValid = joinModalNicknameLength >= 1 && joinModalNicknameLength <= 10
   const joinModalRoomCodeValid = joinModalRoomCode.trim().length > 0
 
   const openJoinModal = () => {
     setJoinModalNickname(state.session.nickname)
-    setJoinModalRoomCode('')
+    setJoinModalRoomCode(inviteRoomCode ?? '')
     setJoinModalOpen(true)
   }
 

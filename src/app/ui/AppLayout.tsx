@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { routes, type AppRoute } from '../router/routes'
+import { buildInvitePath, routes, type AppRoute } from '../router/routes'
 import { useAppState } from '../store/useAppState'
 
 type AppLayoutProps = {
@@ -12,11 +12,19 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const { state, actions } = useAppState()
   const [copied, setCopied] = useState(false)
   const isGameRoute = currentRoute === routes.game
+  const canCopyInviteLink =
+    state.room.roomCode.trim().length > 0 &&
+    (state.session.joinAction === 1 || Boolean(state.session.joinRoomCode))
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
 
   const handleCopyCode = async () => {
+    if (!canCopyInviteLink) {
+      return
+    }
+
     try {
-      await navigator.clipboard.writeText(state.room.roomCode)
+      const inviteUrl = new URL(buildInvitePath(state.room.roomCode), window.location.origin).toString()
+      await navigator.clipboard.writeText(inviteUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1200)
     } catch {
@@ -31,9 +39,11 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
           <h1 className="topbar-brand">KOPIC</h1>
           <div className="topbar-meta topbar-meta-game">
             <strong className="topbar-room-name">{state.room.roomCode}</strong>
-            <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
-              {copied ? '\uBCF5\uC0AC\uB428' : '\uB9C1\uD06C \uBCF5\uC0AC'}
-            </button>
+            {canCopyInviteLink ? (
+              <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
+                {copied ? '\uBCF5\uC0AC\uB428' : '\uB9C1\uD06C \uBCF5\uC0AC'}
+              </button>
+            ) : null}
             <button
               type="button"
               className="route-tab topbar-exit-button"
