@@ -2,225 +2,33 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type {
   AnimationEvent as ReactAnimationEvent,
   CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
   TransitionEvent as ReactTransitionEvent,
 } from 'react'
 import { defaultSettings } from '../../app/store/mockAppState'
-import type { CanvasStroke, DrawingTool, Participant } from '../../app/store/mockAppState'
+import type { CanvasStroke, DrawingTool } from '../../app/store/mockAppState'
 import { useAppState } from '../../app/store/useAppState'
-import { CanvasBoard } from '../../features/game-canvas/CanvasBoard'
-
-type OverlayPreview =
-  | 'actual'
-  | 'gameStart'
-  | 'roundStart'
-  | 'turnStart'
-  | 'wordChoice'
-  | 'drawingDrawer'
-  | 'drawingGuesser'
-  | 'turnEnd'
-  | 'gameResult'
-
-type StageOverlayPhase = 'gameStart' | 'roundStart' | 'turnStart' | 'wordChoice' | 'turnEnd'
-
-const TOOL_COLORS = [
-  '#000000',
-  '#345a74',
-  '#56758f',
-  '#d14b3f',
-  '#ea6f58',
-  '#ef9b47',
-  '#f2c14e',
-  '#5f8d4e',
-  '#7aac63',
-  '#1d6b4e',
-  '#1f8a8a',
-  '#4aa3b8',
-  '#5f6dd9',
-  '#6f55c6',
-  '#9656a2',
-  '#bd6a88',
-  '#8d6e63',
-  '#6f5a4b',
-  '#9aa5b1',
-  '#ffffff',
-] as const
-
-function toGrayscaleHex(hexColor: string) {
-  const hex = hexColor.startsWith('#') ? hexColor.slice(1) : hexColor
-  if (hex.length !== 6) {
-    return hexColor
-  }
-
-  const red = Number.parseInt(hex.slice(0, 2), 16)
-  const green = Number.parseInt(hex.slice(2, 4), 16)
-  const blue = Number.parseInt(hex.slice(4, 6), 16)
-
-  if (Number.isNaN(red) || Number.isNaN(green) || Number.isNaN(blue)) {
-    return hexColor
-  }
-
-  const luminance = Math.round(red * 0.299 + green * 0.587 + blue * 0.114)
-  const channel = luminance.toString(16).padStart(2, '0')
-  return `#${channel}${channel}${channel}`
-}
-
-const TOOL_COLORS_GRAYSCALE = TOOL_COLORS.map((color) => toGrayscaleHex(color))
-
-const SETTING_OPTIONS = {
-  roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
-  drawSec: [20, 30, 40, 50, 60],
-  wordChoiceSec: [5, 7, 10, 12, 15],
-  wordChoiceCount: [3, 4, 5],
-  hintRevealSec: [5, 7, 10, 12, 15],
-  hintLetterCount: [1, 2, 3],
-} as const
-
-const END_MODE_OPTIONS = [
-  { value: 'FIRST_CORRECT', label: '1인' },
-  { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
-] as const
-
-const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['gameStart', 'roundStart', 'turnStart', 'wordChoice', 'turnEnd']
-const TRANSIENT_STAGE_OVERLAY_MS = 5000
-
-type NumericSettingKey = keyof typeof SETTING_OPTIONS
-
-type EarnedScore = {
-  sessionId: string
-  nickname: string
-  score: number
-  role: 'drawer' | 'correct' | 'miss'
-}
-
-type VisibleOrderEntry = {
-  sessionId: string
-  nickname: string
-}
-
-type TurnEndOverlaySnapshot = {
-  turnId: string
-  answerText: string
-  earnedScores: EarnedScore[]
-}
-
-type ParticipantBubblePosition = {
-  sessionId: string
-  text: string
-  createdAt: number
-  top: number
-  left: number
-}
-
-type AnimatedParticipantItem = {
-  participant: Participant
-  phase: 'stable' | 'enter' | 'exit'
-}
-
-const EMPTY_SESSION_IDS: string[] = []
-
-function participantTone(participant: Participant, drawerSessionId?: string, correctSessionIds?: string[]) {
-  if (participant.sessionId === drawerSessionId) {
-    return 'participant-card participant-card-drawer'
-  }
-
-  if (correctSessionIds?.includes(participant.sessionId)) {
-    return 'participant-card participant-card-correct'
-  }
-
-  return 'participant-card'
-}
-
-function buildEarnedScores(
-  participants: Participant[],
-  correctSessionIds: string[],
-  earnedPoints: Record<string, number>,
-  drawerSessionId?: string,
-) {
-  const rows: EarnedScore[] = participants.map((participant) => {
-    const earnedPoint = earnedPoints[participant.sessionId] ?? 0
-
-    if (participant.sessionId === drawerSessionId) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, role: 'drawer' }
-    }
-
-    if (correctSessionIds.includes(participant.sessionId)) {
-      return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, role: 'correct' }
-    }
-
-    return { sessionId: participant.sessionId, nickname: participant.nickname, score: earnedPoint, role: 'miss' }
-  })
-
-  return rows.sort((left, right) => right.score - left.score)
-}
-
-function getVisibleOrder(participants: Participant[], drawerOrder: string[] | undefined) {
-  if (!drawerOrder || drawerOrder.length === 0) {
-    return []
-  }
-
-  return drawerOrder
-    .map((sessionId) => {
-      const participant = participants.find((item) => item.sessionId === sessionId)
-      if (!participant) {
-        return null
-      }
-
-      return {
-        sessionId: participant.sessionId,
-        nickname: participant.nickname,
-      }
-    })
-    .filter((entry): entry is VisibleOrderEntry => entry !== null)
-}
-
-function getMaskedWord(word: string | null, revealedCount: number, answerLength?: number) {
-  if (!word) {
-    if (typeof answerLength === 'number' && answerLength > 0) {
-      return '●'.repeat(answerLength)
-    }
-
-    return '●●●'
-  }
-
-  const chars = Array.from(word)
-  const visibleCount = Math.max(0, Math.min(chars.length, revealedCount))
-  let revealed = 0
-
-  return chars
-    .map((char) => {
-      if (char === ' ') {
-        return ' '
-      }
-
-      if (revealed < visibleCount) {
-        revealed += 1
-        return char
-      }
-
-      return '●'
-    })
-    .join('')
-}
-
-function getBubbleText(text: string) {
-  const chars = Array.from(text)
-  return chars.length > 20 ? `${chars.slice(0, 17).join('')}...` : text
-}
-
-function shouldSkipEnterSubmit(event: ReactKeyboardEvent<HTMLInputElement>) {
-  const nativeEvent = event.nativeEvent as KeyboardEvent & { isComposing?: boolean }
-
-  return nativeEvent.isComposing === true || nativeEvent.keyCode === 229
-}
-
-function getParticipantAccentColor(colorIndex?: number) {
-  if (typeof colorIndex !== 'number' || !Number.isFinite(colorIndex)) {
-    return undefined
-  }
-
-  return TOOL_COLORS[colorIndex - 1]
-}
+import { GameBoardPanel } from './components/GameBoardPanel'
+import { GameChatPanel } from './components/GameChatPanel'
+import { GameStatusBar } from './components/GameStatusBar'
+import { ParticipantBubbleLayer } from './components/ParticipantBubbleLayer'
+import { ParticipantPanel } from './components/ParticipantPanel'
+import {
+  EMPTY_SESSION_IDS,
+  STAGE_OVERLAY_PHASES,
+  TOOL_COLORS,
+  TRANSIENT_STAGE_OVERLAY_MS,
+  buildEarnedScores,
+  getBubbleText,
+  getMaskedWord,
+  getParticipantAccentColor,
+  getVisibleOrder,
+  type AnimatedParticipantItem,
+  type NumericSettingKey,
+  type OverlayPreview,
+  type ParticipantBubblePosition,
+  type StageOverlayPhase,
+  type TurnEndOverlaySnapshot,
+} from './gamePageShared'
 
 export function GamePage() {
   const [tool, setTool] = useState<DrawingTool>('PEN')
@@ -511,6 +319,15 @@ export function GamePage() {
     list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' })
   }
 
+  const handleChatScroll = (list: HTMLUListElement) => {
+    chatStickToBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40
+    setShowChatScrollButton(!chatStickToBottomRef.current)
+  }
+
+  const handleParticipantItemRefChange = (sessionId: string, element: HTMLLIElement | null) => {
+    participantItemRefs.current.set(sessionId, element)
+  }
+
   useLayoutEffect(() => {
     const stageElement = stageRef.current
     const scrollElement = sidePanelScrollRef.current
@@ -640,6 +457,41 @@ export function GamePage() {
     }
 
     actions.requestCanvasClear()
+  }
+
+  const handleToggleSettings = () => {
+    setSettingsOpen((open) => !open)
+  }
+
+  const handleCloseSettings = () => {
+    setSettingsOpen(false)
+  }
+
+  const handleStartGame = () => {
+    setSettingsOpen(false)
+    actions.requestGameStart()
+  }
+
+  const handleRequestWordChoice = (word: string) => {
+    setOverlayPreview('actual')
+    actions.requestWordChoice(word)
+  }
+
+  const handleToolChange = (nextTool: DrawingTool) => {
+    setTool(nextTool)
+  }
+
+  const handleSizeChange = (nextSize: number) => {
+    setSize(nextSize)
+  }
+
+  const handleColorChange = (nextColor: string) => {
+    if (!canUseFullPalette) {
+      return
+    }
+
+    setTool((currentTool) => (currentTool === 'ERASER' ? 'PEN' : currentTool))
+    setColor(nextColor)
   }
 
   const previewMode = (() => {
@@ -911,586 +763,84 @@ export function GamePage() {
     sideSyncHeight && sideSyncHeight > 0
       ? ({ ['--game-side-sync-height' as string]: `${sideSyncHeight}px` } as CSSProperties)
       : undefined
+  const drawerName = drawer?.nickname ?? '출제자'
 
   return (
     <div className="gamepage-shell">
-      <section className="panel game-status-bar">
-        <div className="status-bar-row">
-          <div className="status-inline-chip status-inline-chip-round">
-            <span>라운드</span>
-            <strong>{currentRound ? `${currentRound.roundNo} / ${currentRound.totalRounds}` : '-'}</strong>
-          </div>
-          <div className="status-inline-chip status-inline-chip-time">
-            <span>남은 시간</span>
-            <strong>{currentTurn ? `${displayedRemainingSec}s` : '-'}</strong>
-          </div>
-          <div className="order-strip-box">
-            <span className="order-strip-label">이번 라운드 그림 순서</span>
-            <div className="order-strip" role="list">
-              {visibleOrderEntries.map((entry) => (
-                <span key={entry.sessionId} className="order-pill" role="listitem">
-                  {entry.nickname}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <GameStatusBar
+        currentRound={currentRound}
+        currentTurn={currentTurn}
+        displayedRemainingSec={displayedRemainingSec}
+        visibleOrderEntries={visibleOrderEntries}
+      />
 
       <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
-	        <aside className="panel game-side-panel game-side-panel-left">
-	          <div className="section-heading participant-heading-compact">
-	            <h2>참여자</h2>
-	            <div className="pill participant-count-pill">{participants.length}명</div>
-	          </div>
-	
-	          <div ref={sidePanelScrollRef} className="side-panel-scroll">
-	            <div className="side-panel-scroll-inner">
-	              <ul className="participant-cards">
-	                {animatedParticipants.map(({ participant, phase }) => (
-                <li
-                  key={participant.sessionId}
-                  ref={(element) => {
-                    participantItemRefs.current.set(participant.sessionId, element)
-                  }}
-                  className={
-                    `${
-                      participant.sessionId === state.session.sessionId
-                        ? `${participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)} participant-card-self`
-                        : participantTone(participant, currentTurn?.drawerSessionId, currentCorrectIds)
-                    }${
-                      phase === 'enter'
-                        ? ' participant-card-enter'
-                        : phase === 'exit'
-                          ? ' participant-card-exit'
-                          : ''
-                    }`
-                  }
-                  onAnimationEnd={(event) =>
-                    handleParticipantCardAnimationEnd(event, participant.sessionId, phase)
-                  }
-                >
-                    <div className="participant-main">
-                      <div className="participant-heading participant-heading-top">
-                        {getParticipantAccentColor(participant.colorIndex) ? (
-                          <span
-                            className="participant-color-accent"
-                            style={{ ['--participant-accent-color' as string]: getParticipantAccentColor(participant.colorIndex) }}
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        <strong>{participant.nickname}</strong>
-                      </div>
-                      <div className="participant-meta-row">
-                        {participant.isHost ? <span className="host-badge">Host</span> : <span className="host-badge-placeholder" aria-hidden="true" />}
-                        <p className="participant-score">{participant.score} pts</p>
-                      </div>
-                    </div>
-                </li>
-              ))}
-            </ul>
-            </div>
-          </div>
-        </aside>
+        <ParticipantPanel
+          participantCount={participants.length}
+          animatedParticipants={animatedParticipants}
+          mySessionId={state.session.sessionId}
+          drawerSessionId={currentTurn?.drawerSessionId}
+          currentCorrectIds={currentCorrectIds}
+          sidePanelScrollRef={sidePanelScrollRef}
+          onParticipantItemRefChange={handleParticipantItemRefChange}
+          onParticipantCardAnimationEnd={handleParticipantCardAnimationEnd}
+        />
 
-        <section ref={centerPanelRef} className="panel game-center-panel">
-          <div className="board-shell">
-            <div className="board-frame">
-              <div className="grid-overlay" />
-              <CanvasBoard
-                strokes={boardStrokes}
-                canDraw={Boolean(canDraw)}
-                tool={tool}
-                color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
-                size={Math.max(2, size * 2)}
-                onSendStrokeChunk={handleSendStrokeChunk}
-                onCommitStroke={handleCommitStroke}
-              />
+        <GameBoardPanel
+          centerPanelRef={centerPanelRef}
+          roomState={roomState}
+          boardStrokes={boardStrokes}
+          canDraw={Boolean(canDraw)}
+          tool={tool}
+          activePaletteColor={activePaletteColor}
+          size={size}
+          isHost={isHost}
+          settingsOpen={settingsOpen}
+          settings={settings}
+          currentRound={currentRound}
+          currentTurn={currentTurn}
+          viewerRole={viewerRole}
+          drawerName={drawerName}
+          nextDrawerName={nextDrawerName}
+          previewMode={previewMode}
+          activeStageOverlay={activeStageOverlay}
+          stageOverlayOpen={stageOverlayOpen}
+          shouldShowSecretWordBanner={shouldShowSecretWordBanner}
+          isSecretWordBannerClosed={isSecretWordBannerClosed}
+          revealedHintCount={revealedHintCount}
+          turnEndOverlaySnapshot={turnEndOverlaySnapshot}
+          earnedScores={earnedScores}
+          ranking={ranking}
+          canUseFullPalette={canUseFullPalette}
+          isSharedDrawingPhase={isSharedDrawingPhase}
+          forcedPaletteColor={forcedPaletteColor}
+          onSendStrokeChunk={handleSendStrokeChunk}
+          onCommitStroke={handleCommitStroke}
+          onToggleSettings={handleToggleSettings}
+          onApplySetting={applySetting}
+          onApplyEndMode={applyEndMode}
+          onStartGame={handleStartGame}
+          onCloseSettings={handleCloseSettings}
+          onStageOverlayTransitionEnd={handleStageOverlayTransitionEnd}
+          onRequestWordChoice={handleRequestWordChoice}
+          onSetTool={handleToolChange}
+          onClearCanvas={handleClearCanvas}
+          onSetSize={handleSizeChange}
+          onSetColor={handleColorChange}
+        />
 
-              {roomState === 'LOBBY' ? (
-                <button
-                  type="button"
-                  className={settingsOpen ? 'board-settings-toggle secondary-button board-settings-toggle-hidden' : 'board-settings-toggle secondary-button'}
-                  onClick={() => setSettingsOpen((open) => !open)}
-                >
-                  {isHost ? '설정 열기' : '설정 보기'}
-                </button>
-              ) : null}
+        <GameChatPanel
+          visibleChat={visibleChat}
+          chatListRef={chatListRef}
+          showChatScrollButton={showChatScrollButton}
+          guessInput={guessInput}
+          onGuessInputChange={setGuessInput}
+          onGuessSubmit={submitGuess}
+          onChatScroll={handleChatScroll}
+          onScrollToBottom={scrollChatToBottom}
+        />
 
-              {shouldShowSecretWordBanner && currentTurn ? (
-                <div
-                  key={
-                    viewerRole === 'drawer'
-                      ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
-                      : `${currentTurn.turnId}-masked-${currentTurn.answerLength ?? 'unknown'}`
-                  }
-                  className={
-                    isSecretWordBannerClosed
-                      ? `secret-word-banner${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-closed`
-                      : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
-                  }
-                >
-                  {viewerRole === 'drawer'
-                    ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
-                    : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)}
-                </div>
-              ) : null}
-
-              {roomState === 'LOBBY' ? (
-                <div
-                  className={
-                    settingsOpen
-                      ? 'canvas-overlay-card canvas-overlay-card-settings canvas-overlay-card-settings-open'
-                      : 'canvas-overlay-card canvas-overlay-card-settings canvas-overlay-card-settings-closed'
-                  }
-                  aria-hidden={!settingsOpen}
-                >
-                  <div className="overlay-heading">
-                    <p className="panel-label">게임 설정</p>
-                  </div>
-                  <div className="lobby-grid">
-                    <label className="field">
-                      <span>라운드 수</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.roundCount}
-                        onChange={(event) => applySetting('roundCount', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.roundCount.map((option) => (
-                          <option key={option} value={option}>
-                            {option} 라운드
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>그리기 시간</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.drawSec}
-                        onChange={(event) => applySetting('drawSec', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.drawSec.map((option) => (
-                          <option key={option} value={option}>
-                            {option}초
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>단어 선택 시간</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.wordChoiceSec}
-                        onChange={(event) => applySetting('wordChoiceSec', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.wordChoiceSec.map((option) => (
-                          <option key={option} value={option}>
-                            {option}초
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>선택 단어 수</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.wordChoiceCount}
-                        onChange={(event) => applySetting('wordChoiceCount', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.wordChoiceCount.map((option) => (
-                          <option key={option} value={option}>
-                            {option}개
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>종료 정답자 수</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.endMode}
-                        onChange={(event) => applyEndMode(event.target.value as 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT')}
-                      >
-                        {END_MODE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>힌트 공개 주기</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.hintRevealSec}
-                        onChange={(event) => applySetting('hintRevealSec', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.hintRevealSec.map((option) => (
-                          <option key={option} value={option}>
-                            {option}초
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>힌트 공개 글자 수</span>
-                      <select
-                        className={!isHost ? 'select-no-caret' : undefined}
-                        disabled={!isHost}
-                        value={settings.hintLetterCount}
-                        onChange={(event) => applySetting('hintLetterCount', event.target.value)}
-                      >
-                        {SETTING_OPTIONS.hintLetterCount.map((option) => (
-                          <option key={option} value={option}>
-                            {option}글자
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="button-row overlay-actions">
-                    {isHost ? (
-                      <button
-                        type="button"
-                        className="primary-button"
-                        onClick={() => {
-                          setSettingsOpen(false)
-                          actions.requestGameStart()
-                        }}
-                      >
-                        게임 시작
-                      </button>
-                    ) : null}
-                    <button type="button" className="secondary-button settings-close-button" onClick={() => setSettingsOpen(false)}>
-                      닫기
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {roomState === 'RUNNING' ? (
-                <div
-                  className={
-                    activeStageOverlay === 'gameStart' && stageOverlayOpen
-                      ? 'canvas-full-overlay canvas-full-overlay-open'
-                      : 'canvas-full-overlay canvas-full-overlay-closed'
-                  }
-                  aria-hidden={activeStageOverlay !== 'gameStart'}
-                  onTransitionEnd={handleStageOverlayTransitionEnd}
-                >
-                  <strong>게임을 시작합니다.</strong>
-                </div>
-              ) : null}
-
-              {roomState === 'RUNNING' ? (
-                <div
-                  className={
-                    activeStageOverlay === 'roundStart' && stageOverlayOpen
-                      ? 'canvas-full-overlay canvas-full-overlay-open'
-                      : 'canvas-full-overlay canvas-full-overlay-closed'
-                  }
-                  aria-hidden={activeStageOverlay !== 'roundStart'}
-                  onTransitionEnd={handleStageOverlayTransitionEnd}
-                >
-                  <strong>{currentRound ? `${currentRound.roundNo}라운드` : '1라운드'}</strong>
-                </div>
-              ) : null}
-
-              {roomState === 'RUNNING' && currentTurn ? (
-                <div
-                  className={
-                    activeStageOverlay === 'wordChoice' && stageOverlayOpen
-                      ? 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-open'
-                      : 'canvas-overlay-card canvas-overlay-card-word-choice canvas-overlay-card-word-choice-closed'
-                  }
-                  aria-hidden={activeStageOverlay !== 'wordChoice'}
-                  onTransitionEnd={handleStageOverlayTransitionEnd}
-                >
-                  <div className="overlay-heading">
-                    <strong>
-                      {viewerRole === 'drawer' && currentTurn.wordChoices.length > 0
-                        ? '제시어를 선택해주세요.'
-                        : `${drawer?.nickname ?? '출제자'}님이 제시어를 선택중입니다.`}
-                    </strong>
-                  </div>
-                  {currentTurn.wordChoices.length > 0 ? (
-                    <div className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}>
-                      {currentTurn.wordChoices.map((word) => (
-                        <button
-                          key={word}
-                          type="button"
-                          className="word-choice-button"
-                          onClick={() => {
-                            setOverlayPreview('actual')
-                            actions.requestWordChoice(word)
-                          }}
-                        >
-                          {word}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {roomState === 'RUNNING' ? (
-                <div
-                  className={
-                    activeStageOverlay === 'turnStart' && stageOverlayOpen
-                      ? 'canvas-full-overlay canvas-full-overlay-open'
-                      : 'canvas-full-overlay canvas-full-overlay-closed'
-                  }
-                  aria-hidden={activeStageOverlay !== 'turnStart'}
-                  onTransitionEnd={handleStageOverlayTransitionEnd}
-                >
-                  <strong>{`${drawer?.nickname ?? '출제자'}님이 그림을 그립니다.`}</strong>
-                  {nextDrawerName ? <span>{`다음은 ${nextDrawerName}님`}</span> : null}
-                </div>
-              ) : null}
-
-              {previewMode === 'drawingDrawer' && roomState === 'RUNNING' ? null : null}
-
-              {previewMode === 'drawingGuesser' && roomState === 'RUNNING' ? null : null}
-
-              {roomState === 'RUNNING' ? (
-                <div
-                  className={
-                    activeStageOverlay === 'turnEnd' && stageOverlayOpen
-                      ? 'canvas-full-overlay canvas-full-overlay-open canvas-full-overlay-turn-end'
-                      : 'canvas-full-overlay canvas-full-overlay-closed canvas-full-overlay-turn-end'
-                  }
-                  aria-hidden={activeStageOverlay !== 'turnEnd'}
-                  onTransitionEnd={handleStageOverlayTransitionEnd}
-                >
-                  <div className="canvas-full-overlay-panel">
-                    <div className="turn-end-summary">
-                      <p className="turn-end-answer">
-                        <span className="turn-end-answer-prefix">정답은</span>
-                        <strong className="turn-end-answer-word">
-                          {turnEndOverlaySnapshot?.answerText ?? currentTurn?.selectedWord ?? getMaskedWord(null, 0, currentTurn?.answerLength)}
-                        </strong>
-                        <span className="turn-end-answer-suffix">입니다.</span>
-                      </p>
-                      <div className="earned-score-content turn-end-earned-score-content">
-                        <div className="earned-score-table">
-                          <div className="earned-score-table-head" aria-hidden="true">
-                            <span className="score-col-rank">순위</span>
-                            <span className="score-col-name">참여자</span>
-                            <span className="score-col-result">결과</span>
-                            <span className="score-col-points">점수</span>
-                          </div>
-                          <div className="earned-score-table-body">
-                            {(turnEndOverlaySnapshot?.earnedScores ?? earnedScores).map((row, index) => (
-                              <div
-                                key={row.sessionId}
-                                className={
-                                  row.role === 'correct'
-                                    ? 'earned-score-row earned-score-row-correct'
-                                    : row.role === 'drawer'
-                                      ? 'earned-score-row earned-score-row-drawer'
-                                      : 'earned-score-row'
-                                }
-                              >
-                                <span className="earned-score-rank score-col-rank">{index + 1}</span>
-                                <span className="earned-score-name score-col-name">{row.nickname}</span>
-                                <span
-                                  className={
-                                    row.role === 'correct'
-                                      ? 'earned-score-role earned-score-role-correct score-col-result'
-                                      : row.role === 'drawer'
-                                        ? 'earned-score-role earned-score-role-drawer score-col-result'
-                                        : 'earned-score-role score-col-result'
-                                  }
-                                >
-                                  {row.role === 'correct' ? '정답' : row.role === 'drawer' ? '출제자' : '미정답'}
-                                </span>
-                                <strong className="earned-score-points score-col-points">{row.score} pts</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {previewMode === 'gameResult' ? (
-                <div className="canvas-result-screen">
-                  {ranking.map((participant, index) => (
-                    <div key={participant.sessionId} className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}>
-                      <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="tool-row">
-              <div className="tool-main-actions">
-                <button
-                  type="button"
-                  className={tool === 'PEN' ? 'primary-button' : 'secondary-button'}
-                  onClick={() => setTool('PEN')}
-                  disabled={!canDraw}
-                >
-                  펜
-                </button>
-                <button
-                  type="button"
-                  className={tool === 'ERASER' ? 'primary-button' : 'secondary-button'}
-                  onClick={() => setTool('ERASER')}
-                  disabled={!canDraw}
-                >
-                  지우개
-                </button>
-                <button
-                  type="button"
-                  className={tool === 'FILL' ? 'primary-button' : 'secondary-button'}
-                  onClick={() => setTool('FILL')}
-                  disabled={!canDraw}
-                >
-                  채우기
-                </button>
-                <button type="button" className="secondary-button" onClick={handleClearCanvas} disabled={!canDraw}>
-                  전체 지우기
-                </button>
-              </div>
-              <label className="size-control">
-                <span className="size-control-label">굵기 {size}</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={9}
-                  step={1}
-                  value={size}
-                  onChange={(event) => setSize(Number(event.target.value))}
-                  disabled={!canDraw}
-                />
-              </label>
-              <div className="color-palette">
-                {TOOL_COLORS.map((swatch, swatchIndex) => (
-                  <button
-                    key={swatch}
-                    type="button"
-                    aria-label={`Select ${swatch}`}
-                    className={
-                      swatch === activePaletteColor
-                        ? 'color-swatch color-swatch-active'
-                        : 'color-swatch'
-                    }
-                    style={
-                      canUseFullPalette
-                        ? { background: swatch }
-                        : isSharedDrawingPhase && swatch === forcedPaletteColor
-                          ? { background: swatch }
-                          : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
-                    }
-                    onClick={() => {
-                      if (!canUseFullPalette) {
-                        return
-                      }
-                      setTool((currentTool) => (currentTool === 'ERASER' ? 'PEN' : currentTool))
-                      setColor(swatch)
-                    }}
-                    disabled={!canUseFullPalette}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <aside className="panel game-side-panel game-side-panel-right">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Chat</p>
-            </div>
-          </div>
-
-          <div className="chat-panel-box">
-            <ul
-              ref={chatListRef}
-              className="chat-list game-chat-list"
-              onScroll={(event) => {
-                const list = event.currentTarget
-                chatStickToBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40
-                setShowChatScrollButton(!chatStickToBottomRef.current)
-              }}
-            >
-              {visibleChat.map((message) => (
-                <li
-                  key={message.id}
-                  className={
-                    message.privilegedVisible === true
-                      ? `chat-${message.tone} chat-highlighted`
-                      : `chat-${message.tone}`
-                  }
-                >
-                  <strong
-                    className={
-                      message.mine === true
-                        ? 'chat-nickname chat-nickname-mine'
-                        : 'chat-nickname'
-                    }
-                  >
-                    {message.nickname}
-                  </strong>
-                  <span>{message.text}</span>
-                </li>
-              ))}
-            </ul>
-
-            {showChatScrollButton ? (
-              <button
-                type="button"
-                className="chat-scroll-to-bottom-button"
-                onClick={scrollChatToBottom}
-                aria-label="최신 채팅으로 이동"
-              />
-            ) : null}
-
-            <div className="chat-input-row">
-              <input
-                value={guessInput}
-                maxLength={50}
-                placeholder="메시지를 입력하세요"
-                onChange={(event) => setGuessInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (shouldSkipEnterSubmit(event)) {
-                    return
-                  }
-
-                  if (event.key === 'Enter') {
-                    submitGuess()
-                  }
-                }}
-              />
-              <button type="button" className="primary-button" onClick={submitGuess}>
-                전송
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        <div className="participant-bubble-layer" aria-hidden="true">
-          {participantBubbles.map((bubble) => (
-            <div
-              key={`${bubble.sessionId}-${bubble.createdAt}`}
-              className="participant-bubble-floating"
-              style={{ top: `${bubble.top}px`, left: `${bubble.left}px` }}
-            >
-              <span className="participant-bubble-text">{bubble.text}</span>
-            </div>
-          ))}
-        </div>
+        <ParticipantBubbleLayer participantBubbles={participantBubbles} />
       </section>
 
     </div>
