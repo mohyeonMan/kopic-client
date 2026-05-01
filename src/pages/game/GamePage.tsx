@@ -1397,15 +1397,7 @@ export function GamePage() {
               {visibleChat.map((message) => (
                 <li
                   key={message.id}
-                  className={
-                    message.senderSessionId &&
-                    (
-                      message.senderSessionId === currentTurn?.drawerSessionId ||
-                      currentCorrectIds.includes(message.senderSessionId)
-                    )
-                      ? `chat-${message.tone} chat-highlighted`
-                      : `chat-${message.tone}`
-                  }
+                  className={`chat-${message.tone}`}
                 >
                   <strong
                     className={
