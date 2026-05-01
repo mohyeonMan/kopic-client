@@ -258,6 +258,37 @@ export function CanvasBoard({
 
   strokesRef.current = strokes
 
+  useEffect(() => {
+    const canvas = draftCanvasRef.current
+    if (!canvas) {
+      return
+    }
+
+    const preventDefault = (event: Event) => {
+      if (!canDraw) {
+        return
+      }
+
+      event.preventDefault()
+    }
+
+    canvas.addEventListener('touchstart', preventDefault, { passive: false })
+    canvas.addEventListener('touchmove', preventDefault, { passive: false })
+    canvas.addEventListener('gesturestart', preventDefault as EventListener, { passive: false })
+    canvas.addEventListener('gesturechange', preventDefault as EventListener, { passive: false })
+    canvas.addEventListener('selectstart', preventDefault)
+    canvas.addEventListener('dragstart', preventDefault)
+
+    return () => {
+      canvas.removeEventListener('touchstart', preventDefault)
+      canvas.removeEventListener('touchmove', preventDefault)
+      canvas.removeEventListener('gesturestart', preventDefault as EventListener)
+      canvas.removeEventListener('gesturechange', preventDefault as EventListener)
+      canvas.removeEventListener('selectstart', preventDefault)
+      canvas.removeEventListener('dragstart', preventDefault)
+    }
+  }, [canDraw])
+
   const drawCommittedStroke = useCallback((context: CanvasRenderingContext2D, stroke: CanvasStroke) => {
     if (stroke.tool === 'FILL') {
       drawStroke(context, stroke)
