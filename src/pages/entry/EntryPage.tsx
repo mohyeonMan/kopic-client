@@ -78,25 +78,44 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
     <div className="page-grid entry-grid">
       <section className="entry-main-panel">
         <h1 className="entry-logo">KOPIC</h1>
-        <p className="entry-description">
-          {'\uC2E4\uC2DC\uAC04 \uADF8\uB9BC \uD034\uC988 \uAC8C\uC784 KOPIC\uC5D0 \uC624\uC2E0 \uAC83\uC744 \uD658\uC601\uD569\uB2C8\uB2E4. \uB2C9\uB124\uC784\uC744 \uC785\uB825\uD558\uACE0 \uBC14\uB85C \uC785\uC7A5\uD558\uAC70\uB098, \uBC29\uC744 \uB9CC\uB4E4\uC5B4 \uC9C0\uC778\uACFC \uAC19\uC774 \uC2DC\uC791\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.'}
+        <p className="entry-tagline">
+          {'그림으로 맞히는 실시간 퀴즈 게임'}
         </p>
         <p className="entry-description entry-description-sub">
-          {'\uD55C \uD134\uB9C8\uB2E4 \uCD9C\uC81C\uC790\uAC00 \uB2E8\uC5B4\uB97C \uACE0\uB974\uACE0 \uADF8\uB9BC\uC744 \uADF8\uB9AC\uBA74, \uCC38\uC5EC\uC790\uB4E4\uC740 \uCC44\uD305\uC73C\uB85C \uB2F5\uC744 \uB9DE\uD799\uB2C8\uB2E4. \uBE60\uB974\uAC8C \uB9DE\uCD98 \uD50C\uB808\uC774\uC5B4\uC77C\uC218\uB85D \uB354 \uB192\uC740 \uC810\uC218\uB97C \uC5BB\uC2B5\uB2C8\uB2E4.'}
+          {'- 닉네임만 입력하면 바로 시작할 수 있어요.'}
         </p>
         <p className="entry-description entry-description-sub">
-          {'\uB77C\uC6B4\uB4DC\uAC00 \uB05D\uB098\uBA74 \uC810\uC218\uD45C\uAC00 \uBC14\uB85C \uC5C5\uB370\uC774\uD2B8\uB418\uACE0, \uB2E4\uC74C \uD134 \uC21C\uC11C\uC640 \uD604\uC7AC \uACB0\uACFC\uB97C \uD55C\uB208\uC5D0 \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.'}
+          {'- 방을 만들고 링크를 공유해서 친구들과 함께 즐길 수 있어요.'}
         </p>
         <p className="entry-description entry-description-sub">
-          {'\uBC29\uC7A5\uC740 \uAC8C\uC784 \uC124\uC815\uC5D0\uC11C \uB77C\uC6B4\uB4DC \uC218, \uD134 \uC2DC\uAC04, \uB2E8\uC5B4 \uAC1C\uC218 \uB4F1\uC744 \uC870\uC815\uD574 \uC6D0\uD558\uB294 \uC18D\uB3C4\uC640 \uB09C\uC774\uB3C4\uB85C \uC9C4\uD589\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.'}
+          {'- 한 사람이 그림을 그리면, 다른 플레이어는 채팅으로 정답을 맞혀요.'}
+        </p>
+        <p className="entry-description entry-description-sub">
+          {'- 먼저 맞힐수록 더 높은 점수를 얻을 수 있어요.'}
+        </p>
+        <p className="entry-tagline entry-rule-label">{'규칙'}</p>
+        <p className="entry-description entry-description-sub">
+          {'- 닉네임과 채팅에는 욕설, 비하 표현, 성적인 표현을 쓰지 말아주세요.'}
+        </p>
+        <p className="entry-description entry-description-sub">
+          {'- 모두가 함께 즐길 수 있도록 도배나 분위기를 해치는 행동은 삼가주세요.'}
+        </p>
+        <p className="entry-description entry-description-sub">
+          {'- 정답자가 없으면 출제자도 점수를 얻을 수 없어요. 최선을 다해 그려주세요.'}
+        </p>
+        <p className="entry-description entry-description-sub">
+          {'- 너무 직접적인 힌트는 게임의 재미를 떨어뜨릴 수 있어요.'}
+        </p>
+        <p className="entry-description entry-description-sub">
+          {'- 정답을 맞힌 뒤 보낸 채팅은 정답자와 출제자에게만 전달돼요.'}
         </p>
 
         <label className="field entry-nickname-field">
-          <span>{'\uB2C9\uB124\uC784'}</span>
+          <span>{'닉네임'}</span>
           <input
             value={state.session.nickname}
             onChange={(event) => handleMainNicknameChange(event.target.value)}
-            placeholder={'\uB2C9\uB124\uC784\uC740 10\uC790 \uC774\uB0B4\uB85C \uC785\uB825\uD574\uC8FC\uC138\uC694.'}
+            placeholder={'닉네임은 10자 이내로 입력해주세요.'}
             maxLength={10}
           />
         </label>
@@ -110,7 +129,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
               actions.requestJoin({ action: 0 })
             }}
           >
-            {state.session.joinPending ? '\uC785\uC7A5 \uC911...' : '\uBE60\uB978 \uC785\uC7A5'}
+            {state.session.joinPending ? '입장 중...' : '빠른 입장'}
           </button>
           <div className="entry-actions-secondary">
             <button
@@ -121,7 +140,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
                 actions.requestJoin({ action: 1 })
               }}
             >
-              {'\uBC29 \uB9CC\uB4E4\uAE30'}
+              {'방 만들기'}
             </button>
             <button
               type="button"
@@ -129,7 +148,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
               disabled={state.session.joinPending}
               onClick={openJoinModal}
             >
-              {'\uBC29 \uCC38\uC5EC'}
+              {'방 참여'}
             </button>
           </div>
         </div>
@@ -145,25 +164,25 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             className="entry-join-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="\uBC29 \uCC38\uC5EC"
+            aria-label="방 참여"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3>{'\uBC29 \uCC38\uC5EC'}</h3>
+            <h3>{'방 참여'}</h3>
             <label className="field">
-              <span>{'\uB2C9\uB124\uC784'}</span>
+              <span>{'닉네임'}</span>
               <input
                 value={joinModalNickname}
                 onChange={(event) => handleJoinModalNicknameChange(event.target.value)}
-                placeholder={'\uB2C9\uB124\uC784\uC740 10\uC790 \uC774\uB0B4\uB85C \uC785\uB825\uD574\uC8FC\uC138\uC694.'}
+                placeholder={'닉네임은 10자 이내로 입력해주세요.'}
                 maxLength={10}
               />
             </label>
             <label className="field">
-              <span>{'\uBC29 \uCF54\uB4DC'}</span>
+              <span>{'방 코드'}</span>
               <input
                 value={joinModalRoomCode}
                 onChange={(event) => setJoinModalRoomCode(event.target.value)}
-                placeholder={'\uBC29 \uCF54\uB4DC'}
+                placeholder={'방 코드'}
               />
             </label>
             <div className="entry-join-modal-actions entry-join-modal-actions-single">
@@ -173,14 +192,14 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
                 disabled={!joinModalNicknameValid || !joinModalRoomCodeValid || state.session.joinPending}
                 onClick={submitJoinByRoomCode}
               >
-                {'\uCC38\uAC00'}
+                {'참가'}
               </button>
               <button
                 type="button"
                 className="secondary-button"
                 onClick={closeJoinModal}
               >
-                {'\uB2EB\uAE30'}
+                {'닫기'}
               </button>
             </div>
           </div>

@@ -65,7 +65,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
             <strong className="topbar-room-name">{state.room.roomCode}</strong>
             {canCopyInviteLink ? (
               <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
-                {copied ? '\uBCF5\uC0AC\uB428' : '\uB9C1\uD06C \uBCF5\uC0AC'}
+                {copied ? '복사됨' : '링크 복사'}
               </button>
             ) : null}
             <button
@@ -76,7 +76,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                 onNavigate(routes.main)
               }}
             >
-              {'\uB098\uAC00\uAE30'}
+              {'나가기'}
             </button>
           </div>
         </header>
@@ -87,10 +87,13 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       <footer className="app-footer">
         <p className="app-footer-title">KOPIC</p>
         <p className="app-footer-meta">
-          Developer: <span className="app-footer-value">Your Name</span>
+          Developer: <span className="app-footer-value">mohyeonMan 박지훈</span>
         </p>
         <p className="app-footer-meta">
-          Contact: <span className="app-footer-value">you@example.com</span>
+          Contact: <span className="app-footer-value">qkrwlgns0510@gmail.com</span>
+        </p>
+        <p className="app-footer-meta">
+          Github: <span className="app-footer-value">https://github.com/mohyeonMan</span>
         </p>
       </footer>
     </div>

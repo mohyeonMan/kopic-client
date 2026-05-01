@@ -228,10 +228,25 @@
   font-size: 14px;
 }
 
+.entry-tagline {
+  margin: 2px 0 6px;
+  color: var(--ink-strong);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
 .entry-description-sub {
   margin-top: -4px;
   font-size: 13px;
   color: var(--ink-muted);
+}
+
+.entry-rule-label {
+  margin-top: 18px;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
 }
 
 .entry-actions {
