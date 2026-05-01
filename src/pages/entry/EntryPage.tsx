@@ -93,7 +93,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
         <p className="entry-description entry-description-sub entry-description-dash">
           {'- 먼저 맞힐수록 더 높은 점수를 얻을 수 있어요.'}
         </p>
-        <p className="entry-tagline entry-rule-label">{'규칙'}</p>
+        <p className="entry-tagline entry-rule-label">{'게임 규칙'}</p>
         <p className="entry-description entry-description-sub entry-description-dash">
           {'- 닉네임과 채팅에는 욕설, 비하 표현, 성적인 표현을 쓰지 말아주세요.'}
         </p>

@@ -407,6 +407,8 @@ export function CanvasBoard({
       return
     }
 
+    event.preventDefault()
+
     if (tool === 'FILL') {
       const committedStroke = buildCommittedStroke({
         tool,
@@ -444,6 +446,8 @@ export function CanvasBoard({
     if (!canvas || activePointerIdRef.current !== event.pointerId || !draftStrokeRef.current) {
       return
     }
+
+    event.preventDefault()
 
     const nextPoint = getCanvasPoint(event, canvas)
     const nextDraftPoints = [...draftStrokeRef.current.points, nextPoint]
@@ -490,6 +494,8 @@ export function CanvasBoard({
       return
     }
 
+    event.preventDefault()
+
     canvas.releasePointerCapture(event.pointerId)
     activePointerIdRef.current = null
 
@@ -524,6 +530,7 @@ export function CanvasBoard({
         onPointerMove={handlePointerMove}
         onPointerUp={finishStroke}
         onPointerCancel={cancelStroke}
+        onContextMenu={(event) => event.preventDefault()}
         onPointerLeave={(event) => {
           if (event.buttons === 0) {
             cancelStroke()
