@@ -264,6 +264,7 @@ export function GamePage() {
   const settings = state.room.settings ?? defaultSettings
   const isHost = hostSessionId === state.session.sessionId
   const drawer = participants.find((participant) => participant.sessionId === currentTurn?.drawerSessionId)
+  const me = participants.find((participant) => participant.sessionId === state.session.sessionId)
   const isDrawer = state.session.sessionId === currentTurn?.drawerSessionId
   const viewerRole =
     overlayPreview === 'drawingGuesser' ? 'guesser' : overlayPreview === 'drawingDrawer' ? 'drawer' : isDrawer ? 'drawer' : 'guesser'
@@ -311,6 +312,12 @@ export function GamePage() {
       : roomState === 'RUNNING'
         ? viewerRole === 'drawer' && currentTurn?.phase === 'DRAWING'
         : false
+  const isDrawerDrawingPhase =
+    roomState === 'RUNNING' && viewerRole === 'drawer' && currentTurn?.phase === 'DRAWING'
+  const isSharedDrawingPhase = roomState === 'LOBBY' && !settingsOpen
+  const canUseFullPalette = isDrawerDrawingPhase
+  const forcedPaletteColor = getParticipantAccentColor(me?.colorIndex)
+  const activePaletteColor = isSharedDrawingPhase && forcedPaletteColor ? forcedPaletteColor : color
   const boardStrokes =
     roomState === 'LOBBY'
       ? lobbyCanvasStrokes
@@ -994,7 +1001,7 @@ export function GamePage() {
                 strokes={boardStrokes}
                 canDraw={Boolean(canDraw)}
                 tool={tool}
-                color={tool === 'ERASER' ? '#ffffff' : color}
+                color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
                 size={Math.max(2, size * 2)}
                 onSendStrokeChunk={handleSendStrokeChunk}
                 onCommitStroke={handleCommitStroke}
@@ -1374,17 +1381,26 @@ export function GamePage() {
                     key={swatch}
                     type="button"
                     aria-label={`Select ${swatch}`}
-                    className={swatch === color ? 'color-swatch color-swatch-active' : 'color-swatch'}
+                    className={
+                      swatch === activePaletteColor
+                        ? 'color-swatch color-swatch-active'
+                        : 'color-swatch'
+                    }
                     style={
-                      canDraw
+                      canUseFullPalette
                         ? { background: swatch }
-                        : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
+                        : isSharedDrawingPhase && swatch === forcedPaletteColor
+                          ? { background: swatch }
+                          : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
                     }
                     onClick={() => {
+                      if (!canUseFullPalette) {
+                        return
+                      }
                       setTool((currentTool) => (currentTool === 'ERASER' ? 'PEN' : currentTool))
                       setColor(swatch)
                     }}
-                    disabled={!canDraw}
+                    disabled={!canUseFullPalette}
                   />
                 ))}
               </div>
