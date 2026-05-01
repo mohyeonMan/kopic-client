@@ -8,7 +8,15 @@ type EntryPageProps = {
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const { state, actions } = useAppState()
-  const inviteRoomCode = readInviteRoomCode(window.location.pathname)
+  const inviteRoomCodeFromPath = readInviteRoomCode(window.location.pathname)
+  const inviteRoomCodeFromSearch =
+    new URLSearchParams(window.location.search).get('roomCode')?.trim() ?? null
+  const inviteRoomCode =
+    inviteRoomCodeFromPath && inviteRoomCodeFromPath.length > 0
+      ? inviteRoomCodeFromPath
+      : inviteRoomCodeFromSearch && inviteRoomCodeFromSearch.length > 0
+        ? inviteRoomCodeFromSearch
+        : null
   const nicknameLength = state.session.nickname.trim().length
   const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
   const joinError = state.session.joinError

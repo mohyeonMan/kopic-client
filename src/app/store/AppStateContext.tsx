@@ -1934,9 +1934,7 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         ...activeRound,
         roundNo: action.payload.roundNo,
         turnCursor: nextTurnCursor,
-        drawerOrder: activeRound.drawerOrder.filter(
-          (sessionId) => sessionId !== action.payload.drawerSessionId,
-        ),
+        drawerOrder: activeRound.drawerOrder,
       }
       const turnNo =
         state.room.currentTurn?.phase === 'TURN_END'
