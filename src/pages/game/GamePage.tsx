@@ -1397,7 +1397,11 @@ export function GamePage() {
               {visibleChat.map((message) => (
                 <li
                   key={message.id}
-                  className={`chat-${message.tone}`}
+                  className={
+                    message.privilegedVisible === true
+                      ? `chat-${message.tone} chat-highlighted`
+                      : `chat-${message.tone}`
+                  }
                 >
                   <strong
                     className={

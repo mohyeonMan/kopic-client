@@ -65,6 +65,7 @@ export type ChatMessage = {
   nickname: string
   text: string
   tone: 'system' | 'guess' | 'correct' | 'sealed' | 'alert' | 'alert-success'
+  privilegedVisible?: boolean
   displayInChat?: boolean
   senderSessionId?: string
   mine?: boolean

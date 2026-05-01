@@ -259,6 +259,44 @@ function resolveChatTone(rawTone: unknown, sealed: unknown): ChatMessage['tone']
     : 'guess'
 }
 
+function isPrivilegedViewerForTurn(currentTurn: TurnSummary | null, ownSessionId: string) {
+  if (!currentTurn) {
+    return false
+  }
+
+  return (
+    currentTurn.drawerSessionId === ownSessionId ||
+    currentTurn.correctSessionIds.includes(ownSessionId)
+  )
+}
+
+function isPrivilegedSenderForTurn(currentTurn: TurnSummary | null, senderSessionId?: string) {
+  if (!currentTurn || !senderSessionId) {
+    return false
+  }
+
+  return (
+    currentTurn.drawerSessionId === senderSessionId ||
+    currentTurn.correctSessionIds.includes(senderSessionId)
+  )
+}
+
+function resolvePrivilegedChatVisibility(
+  tone: ChatMessage['tone'],
+  currentTurn: TurnSummary | null,
+  ownSessionId: string,
+  senderSessionId?: string,
+) {
+  if (tone === 'sealed') {
+    return true
+  }
+
+  return (
+    isPrivilegedViewerForTurn(currentTurn, ownSessionId) &&
+    isPrivilegedSenderForTurn(currentTurn, senderSessionId)
+  )
+}
+
 function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | null {
   if (!payload || typeof payload !== 'object') {
     return null
@@ -785,6 +823,7 @@ function normalizeChatMessages(
   raw: unknown,
   ownSessionId: string,
   fallback: ChatMessage[],
+  currentTurn: TurnSummary | null,
 ): ChatMessage[] {
   if (!Array.isArray(raw)) {
     return fallback
@@ -811,6 +850,10 @@ function normalizeChatMessages(
       nickname: readNonEmptyString(item.nickname) ?? '알수없음',
       text,
       tone,
+      privilegedVisible:
+        typeof item.privilegedVisible === 'boolean'
+          ? item.privilegedVisible
+          : resolvePrivilegedChatVisibility(tone, currentTurn, ownSessionId, senderSessionId),
       mine:
         typeof item.mine === 'boolean'
           ? item.mine
@@ -941,7 +984,7 @@ function normalizeRoomSnapshotPayload(
     ? readPointsMap(snapshotGame.totalPoints)
     : readPointsMap(payload.totalPoints)
   const normalizedParticipants = applyTotalPointsToParticipants(participants, snapshotTotalPoints)
-  const chat = normalizeChatMessages(payload.chat, ownSessionId, state.room.chat)
+  const chat = normalizeChatMessages(payload.chat, ownSessionId, state.room.chat, normalizedCurrentTurn)
 
   return {
     ownSessionId,
@@ -1714,6 +1757,12 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
               nickname: state.session.nickname,
               text: action.payload,
               tone: 'guess',
+              privilegedVisible: resolvePrivilegedChatVisibility(
+                'guess',
+                state.room.currentTurn,
+                state.session.sessionId,
+                state.session.sessionId,
+              ),
               senderSessionId: state.session.sessionId,
               mine: true,
               createdAt: Date.now(),
@@ -2217,6 +2266,15 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
               {
                 ...action.payload,
                 nickname: resolvedNickname,
+                privilegedVisible:
+                  typeof action.payload.privilegedVisible === 'boolean'
+                    ? action.payload.privilegedVisible
+                    : resolvePrivilegedChatVisibility(
+                        action.payload.tone,
+                        state.room.currentTurn,
+                        state.session.sessionId,
+                        senderSessionId,
+                      ),
                 mine: isMine,
               },
             ],
