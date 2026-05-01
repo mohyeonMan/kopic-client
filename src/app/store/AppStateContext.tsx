@@ -13,7 +13,7 @@ import {
   type RoundSummary,
   type TurnPhase,
   type TurnSummary,
-} from './mockAppState'
+} from '../../entities/game/model'
 import {
   AppStateContext,
   type AppStateContextValue,

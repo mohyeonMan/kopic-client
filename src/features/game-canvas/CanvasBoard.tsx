@@ -5,7 +5,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import type { CanvasPoint, CanvasStroke, DrawingTool } from '../../app/store/mockAppState'
+import type { CanvasPoint, CanvasStroke, DrawingTool } from '../../entities/game/model'
 import { createUUID } from '../../app/utils/createUUID'
 
 type CanvasBoardProps = {

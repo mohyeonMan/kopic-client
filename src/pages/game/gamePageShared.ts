@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
-import type { Participant } from '../../app/store/mockAppState'
+import type { Participant } from '../../entities/game/model'
 
 export type OverlayPreview =
   | 'actual'

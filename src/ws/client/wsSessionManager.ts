@@ -1,4 +1,4 @@
-import type { ConnectionStatus } from '../../app/store/mockAppState'
+import type { ConnectionStatus } from '../../entities/game/model'
 import { normalizeRoutePath, routes } from '../../app/router/routes'
 
 type SessionEvent =

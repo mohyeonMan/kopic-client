@@ -7,7 +7,7 @@ import type {
   RoundSummary,
   RoomState,
   TurnSummary,
-} from '../../../app/store/mockAppState'
+} from '../../../entities/game/model'
 import { CanvasBoard } from '../../../features/game-canvas/CanvasBoard'
 import {
   END_MODE_OPTIONS,

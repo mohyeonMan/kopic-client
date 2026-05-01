@@ -4,8 +4,7 @@ import type {
   CSSProperties,
   TransitionEvent as ReactTransitionEvent,
 } from 'react'
-import { defaultSettings } from '../../app/store/mockAppState'
-import type { CanvasStroke, DrawingTool } from '../../app/store/mockAppState'
+import { defaultSettings, type CanvasStroke, type DrawingTool } from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'
 import { GameBoardPanel } from './components/GameBoardPanel'
 import { GameChatPanel } from './components/GameChatPanel'

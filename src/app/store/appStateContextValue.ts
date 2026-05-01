@@ -9,7 +9,7 @@ import type {
   RoundSummary,
   TurnPhase,
   TurnSummary,
-} from './mockAppState'
+} from '../../entities/game/model'
 
 export type ServerGameStartedPayload = {
   gameId: string

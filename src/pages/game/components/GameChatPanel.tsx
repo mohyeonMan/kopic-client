@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { ChatMessage } from '../../../app/store/mockAppState'
+import type { ChatMessage } from '../../../entities/game/model'
 import { shouldSkipEnterSubmit } from '../gamePageShared'
 
 type GameChatPanelProps = {

@@ -1,4 +1,4 @@
-import type { RoundSummary, TurnSummary } from '../../../app/store/mockAppState'
+import type { RoundSummary, TurnSummary } from '../../../entities/game/model'
 import type { VisibleOrderEntry } from '../gamePageShared'
 
 type GameStatusBarProps = {
