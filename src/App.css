@@ -226,6 +226,8 @@
   color: var(--ink-soft);
   line-height: 1.45;
   font-size: 14px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .entry-tagline {
@@ -241,6 +243,11 @@
   margin-top: -4px;
   font-size: 13px;
   color: var(--ink-muted);
+}
+
+.entry-description-dash {
+  padding-left: 0.9rem;
+  text-indent: -0.9rem;
 }
 
 .entry-rule-label {
@@ -344,7 +351,7 @@
 }
 
 .entry-nickname-field {
-  margin-top: 72px;
+  margin-top: 40px;
 }
 
 .panel {
@@ -2557,6 +2564,44 @@
   .meta-grid,
   .turn-rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .entry-main-panel {
+    gap: 10px;
+    padding: 10px 4px 10px 22px;
+  }
+
+  .entry-main-panel::before {
+    left: 8px;
+  }
+
+  .entry-logo {
+    font-size: 48px;
+  }
+
+  .entry-tagline {
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .entry-description {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .entry-description-sub {
+    margin-top: 0;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .entry-rule-label {
+    margin-top: 16px;
+    margin-bottom: 4px;
+  }
+
+  .entry-nickname-field {
+    margin-top: 28px;
   }
 
   .canvas-meta-grid {

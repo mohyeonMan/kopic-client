@@ -81,32 +81,32 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
         <p className="entry-tagline">
           {'그림으로 맞히는 실시간 퀴즈 게임'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 닉네임만 입력하면 바로 시작할 수 있어요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 방을 만들고 링크를 공유해서 친구들과 함께 즐길 수 있어요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 한 사람이 그림을 그리면, 다른 플레이어는 채팅으로 정답을 맞혀요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 먼저 맞힐수록 더 높은 점수를 얻을 수 있어요.'}
         </p>
         <p className="entry-tagline entry-rule-label">{'규칙'}</p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 닉네임과 채팅에는 욕설, 비하 표현, 성적인 표현을 쓰지 말아주세요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 모두가 함께 즐길 수 있도록 도배나 분위기를 해치는 행동은 삼가주세요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 정답자가 없으면 출제자도 점수를 얻을 수 없어요. 최선을 다해 그려주세요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 너무 직접적인 힌트는 게임의 재미를 떨어뜨릴 수 있어요.'}
         </p>
-        <p className="entry-description entry-description-sub">
+        <p className="entry-description entry-description-sub entry-description-dash">
           {'- 정답을 맞힌 뒤 보낸 채팅은 정답자와 출제자에게만 전달돼요.'}
         </p>
 
