@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { isAppRoute, normalizeRoutePath, routes, type AppRoute } from './routes'
 import { wsSessionManager, wsSessionOwner } from '../../ws/client/wsSessionManager'
-import { useAppState } from '../store/useAppState'
+import { useAppActions } from '../store/useAppActions'
+import { useAppSessionState } from '../store/useAppSessionState'
 
 function getCurrentRoute(): AppRoute {
   const pathname = normalizeRoutePath(window.location.pathname)
@@ -10,27 +11,28 @@ function getCurrentRoute(): AppRoute {
 
 export function useAppRouter() {
   const [route, setRoute] = useState<AppRoute>(getCurrentRoute)
-  const { state, actions } = useAppState()
+  const actions = useAppActions()
+  const session = useAppSessionState()
   const previousRouteRef = useRef<AppRoute>(route)
-  const shouldKeepGameSession = state.session.joinPending || state.session.joinAccepted
-  const joinRoomCode = state.session.joinPending ? state.session.joinRoomCode ?? null : undefined
-  const joinAction = state.session.joinPending ? state.session.joinAction ?? 0 : undefined
+  const shouldKeepGameSession = session.joinPending || session.joinAccepted
+  const joinRoomCode = session.joinPending ? session.joinRoomCode ?? null : undefined
+  const joinAction = session.joinPending ? session.joinAction ?? 0 : undefined
 
   useEffect(() => {
     if (!shouldKeepGameSession) {
       return
     }
 
-    wsSessionManager.acquire(wsSessionOwner.game, state.session.nickname, joinRoomCode, joinAction)
-  }, [joinAction, joinRoomCode, shouldKeepGameSession, state.session.nickname])
+    wsSessionManager.acquire(wsSessionOwner.game, session.nickname, joinRoomCode, joinAction)
+  }, [joinAction, joinRoomCode, session.nickname, shouldKeepGameSession])
 
   useEffect(() => {
-    if (!state.session.joinAccepted) {
+    if (!session.joinAccepted) {
       return
     }
 
     wsSessionManager.clearJoinConnectParams()
-  }, [state.session.joinAccepted])
+  }, [session.joinAccepted])
 
   useEffect(() => {
     if (route === routes.game) {
@@ -58,13 +60,13 @@ export function useAppRouter() {
       return
     }
 
-    if (state.session.joinAccepted) {
+    if (session.joinAccepted) {
       return
     }
 
     window.history.replaceState({}, '', routes.main)
     setRoute(routes.main)
-  }, [route, state.session.joinAccepted])
+  }, [route, session.joinAccepted])
 
   useEffect(() => {
     previousRouteRef.current = route

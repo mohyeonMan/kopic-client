@@ -12,7 +12,14 @@ import {
   type Envelope,
 } from '../../ws/protocol/events'
 import {
+  AppActionsContext,
+  AppSessionStateContext,
+  AppShellStateContext,
   AppStateContext,
+  type AppActions,
+  type AppConnectionControls,
+  type AppDevTools,
+  type AppShellState,
   type AppStateContextValue,
 } from './appStateContextValue'
 import {
@@ -133,6 +140,116 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const actions = useMemo<AppActions>(
+    () => ({
+      updateNickname: (nickname) =>
+        dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname }),
+      requestJoin: (options) => {
+        if (stateRef.current.session.joinPending || stateRef.current.session.joinAccepted) {
+          return
+        }
+
+        const normalizedRoomCode = options?.roomCode?.trim()
+        dispatch({
+          type: 'local/joinRequested',
+          payload: {
+            roomCode: normalizedRoomCode && normalizedRoomCode.length > 0 ? normalizedRoomCode : undefined,
+            action: options?.action === 1 ? 1 : 0,
+          },
+        })
+      },
+      dismissJoinError: () => {
+        dispatch({ type: 'local/joinErrorDismissed' })
+      },
+      dismissConnectionError: () => {
+        dispatch({ type: 'local/connectionErrorDismissed' })
+      },
+      clearRoomCache: () => {
+        clearInboundStrokeQueue()
+        dispatch({ type: 'local/roomCacheCleared' })
+      },
+      patchLobbySettings: (settings) => {
+        if (stateRef.current.room.hostSessionId !== stateRef.current.session.sessionId) {
+          return
+        }
+
+        dispatch({ type: 'local/lobbySettingsPatched', payload: settings })
+
+        const nextSettings: GameSettings = {
+          ...stateRef.current.room.settings,
+          ...settings,
+        }
+
+        sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', encodeCompactGameSettings(nextSettings))
+      },
+      requestGameStart: () => {
+        sendClientEvent(
+          'GAME_START_REQUEST',
+          {},
+          () => server.applyGameStarted(createMockGameStartedPayload(stateRef.current)),
+        )
+      },
+      requestWordChoice: (word) => {
+        const wordChoices = stateRef.current.room.currentTurn?.wordChoices ?? []
+        const choiceIndex = wordChoices.findIndex((candidate) => candidate === word)
+
+        sendClientEvent(
+          'WORD_CHOICE',
+          { choiceIndex: choiceIndex >= 0 ? choiceIndex : 0 },
+          () =>
+            server.applyWordChoice({
+              selectedWord: word,
+              remainingSec: stateRef.current.room.settings.drawSec,
+              chatMessage: createSystemMessage(`310 DRAWING_STARTED (${word})`),
+            }),
+        )
+      },
+      submitGuess: (text) => {
+        dispatch({ type: 'local/guessSubmitted', payload: text })
+        sendClientEvent('GUESS_SUBMIT', { t: text })
+      },
+      sendCanvasStroke: (stroke) => {
+        sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
+      },
+      requestCanvasClear: () => {
+        clearInboundStrokeQueue()
+        server.applyCanvasClear()
+        sendClientEvent('DRAW_STROKE', CANVAS_CLEAR_MARKER)
+      },
+    }),
+    [clearInboundStrokeQueue, sendClientEvent, server],
+  )
+
+  const connection = useMemo<AppConnectionControls>(
+    () => ({
+      setStatus: (status) => dispatch({ type: 'connection/statusChanged', payload: status }),
+    }),
+    [],
+  )
+
+  const devTools = useMemo<AppDevTools>(
+    () => ({
+      forceTurnPhase: (phase) => dispatch({ type: 'dev/turnPhaseForced', payload: phase }),
+      advanceMockFlow: () => dispatch({ type: 'dev/mockFlowAdvanced' }),
+      finishGame: () => {
+        server.applyGameEnded()
+      },
+      resetToLobby: () => {
+        server.applyRoomSnapshot(createLobbySnapshot(stateRef.current))
+      },
+    }),
+    [server],
+  )
+
+  const shellState = useMemo<AppShellState>(
+    () => ({
+      roomCode: state.room.roomCode,
+      joinAction: state.session.joinAction,
+      joinRoomCode: state.session.joinRoomCode,
+    }),
+    [state.room.roomCode, state.session.joinAction, state.session.joinRoomCode],
+  )
+
   useEffect(() => {
     const unsubscribe = wsSessionManager.subscribe((event) => {
       if (event.type === 'status') {
@@ -169,98 +286,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppStateContextValue>(() => {
     return {
       state,
-      actions: {
-        updateNickname: (nickname) =>
-          dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname }),
-        requestJoin: (options) => {
-          if (stateRef.current.session.joinPending || stateRef.current.session.joinAccepted) {
-            return
-          }
-
-          const normalizedRoomCode = options?.roomCode?.trim()
-          dispatch({
-            type: 'local/joinRequested',
-            payload: {
-              roomCode: normalizedRoomCode && normalizedRoomCode.length > 0 ? normalizedRoomCode : undefined,
-              action: options?.action === 1 ? 1 : 0,
-            },
-          })
-        },
-        dismissJoinError: () => {
-          dispatch({ type: 'local/joinErrorDismissed' })
-        },
-        dismissConnectionError: () => {
-          dispatch({ type: 'local/connectionErrorDismissed' })
-        },
-        clearRoomCache: () => {
-          clearInboundStrokeQueue()
-          dispatch({ type: 'local/roomCacheCleared' })
-        },
-        patchLobbySettings: (settings) => {
-          if (stateRef.current.room.hostSessionId !== stateRef.current.session.sessionId) {
-            return
-          }
-
-          dispatch({ type: 'local/lobbySettingsPatched', payload: settings })
-
-          const nextSettings: GameSettings = {
-            ...stateRef.current.room.settings,
-            ...settings,
-          }
-
-          sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', encodeCompactGameSettings(nextSettings))
-        },
-        requestGameStart: () => {
-          sendClientEvent(
-            'GAME_START_REQUEST',
-            {},
-            () => server.applyGameStarted(createMockGameStartedPayload(stateRef.current)),
-          )
-        },
-        requestWordChoice: (word) => {
-          const wordChoices = stateRef.current.room.currentTurn?.wordChoices ?? []
-          const choiceIndex = wordChoices.findIndex((candidate) => candidate === word)
-
-          sendClientEvent(
-            'WORD_CHOICE',
-            { choiceIndex: choiceIndex >= 0 ? choiceIndex : 0 },
-            () =>
-              server.applyWordChoice({
-                selectedWord: word,
-                remainingSec: stateRef.current.room.settings.drawSec,
-                chatMessage: createSystemMessage(`310 DRAWING_STARTED (${word})`),
-              }),
-          )
-        },
-        submitGuess: (text) => {
-          dispatch({ type: 'local/guessSubmitted', payload: text })
-          sendClientEvent('GUESS_SUBMIT', { t: text })
-        },
-        sendCanvasStroke: (stroke) => {
-          sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
-        },
-        requestCanvasClear: () => {
-          clearInboundStrokeQueue()
-          server.applyCanvasClear()
-          sendClientEvent('DRAW_STROKE', CANVAS_CLEAR_MARKER)
-        },
-      },
-      connection: {
-        setStatus: (status) => dispatch({ type: 'connection/statusChanged', payload: status }),
-      },
+      actions,
+      connection,
       server,
-      devTools: {
-        forceTurnPhase: (phase) => dispatch({ type: 'dev/turnPhaseForced', payload: phase }),
-        advanceMockFlow: () => dispatch({ type: 'dev/mockFlowAdvanced' }),
-        finishGame: () => {
-          server.applyGameEnded()
-        },
-        resetToLobby: () => {
-          server.applyRoomSnapshot(createLobbySnapshot(state))
-        },
-      },
+      devTools,
     }
-  }, [clearInboundStrokeQueue, sendClientEvent, server, state])
+  }, [actions, connection, devTools, server, state])
 
-  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+  return (
+    <AppActionsContext.Provider value={actions}>
+      <AppSessionStateContext.Provider value={state.session}>
+        <AppShellStateContext.Provider value={shellState}>
+          <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+        </AppShellStateContext.Provider>
+      </AppSessionStateContext.Provider>
+    </AppActionsContext.Provider>
+  )
 }

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { buildInvitePath, routes, type AppRoute } from '../router/routes'
-import { useAppState } from '../store/useAppState'
+import { useAppActions } from '../store/useAppActions'
+import { useAppShellState } from '../store/useAppShellState'
 
 type AppLayoutProps = {
   currentRoute: AppRoute
@@ -33,12 +34,13 @@ async function copyText(text: string) {
 }
 
 export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps) {
-  const { state, actions } = useAppState()
+  const actions = useAppActions()
+  const shellState = useAppShellState()
   const [copied, setCopied] = useState(false)
   const isGameRoute = currentRoute === routes.game
   const canCopyInviteLink =
-    state.room.roomCode.trim().length > 0 &&
-    (state.session.joinAction === 1 || Boolean(state.session.joinRoomCode))
+    shellState.roomCode.trim().length > 0 &&
+    (shellState.joinAction === 1 || Boolean(shellState.joinRoomCode))
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
 
   const handleCopyCode = async () => {
@@ -47,7 +49,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     }
 
     try {
-      const inviteUrl = new URL(buildInvitePath(state.room.roomCode), window.location.origin).toString()
+      const inviteUrl = new URL(buildInvitePath(shellState.roomCode), window.location.origin).toString()
       await copyText(inviteUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1200)
@@ -62,7 +64,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
         <header className="topbar">
           <h1 className="topbar-brand">KOPIC</h1>
           <div className="topbar-meta topbar-meta-game">
-            <strong className="topbar-room-name">{state.room.roomCode}</strong>
+            <strong className="topbar-room-name">{shellState.roomCode}</strong>
             {canCopyInviteLink ? (
               <button type="button" className="secondary-button topbar-copy-button" onClick={handleCopyCode}>
                 {copied ? '복사됨' : '링크 복사'}

@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
-import { useAppState } from '../../app/store/useAppState'
+import { useAppActions } from '../../app/store/useAppActions'
+import { useAppSessionState } from '../../app/store/useAppSessionState'
 
 type EntryPageProps = {
   onNavigate: (route: AppRoute) => void
 }
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
-  const { state, actions } = useAppState()
+  const actions = useAppActions()
+  const session = useAppSessionState()
   const inviteRoomCodeFromPath = readInviteRoomCode(window.location.pathname)
   const inviteRoomCodeFromSearch =
     new URLSearchParams(window.location.search).get('roomCode')?.trim() ?? null
@@ -17,19 +19,19 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
       : inviteRoomCodeFromSearch && inviteRoomCodeFromSearch.length > 0
         ? inviteRoomCodeFromSearch
         : null
-  const nicknameLength = state.session.nickname.trim().length
+  const nicknameLength = session.nickname.trim().length
   const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
-  const joinError = state.session.joinError
-  const connectionError = state.session.connectionError
+  const joinError = session.joinError
+  const connectionError = session.connectionError
   const [joinModalOpen, setJoinModalOpen] = useState(() => inviteRoomCode !== null)
-  const [joinModalNickname, setJoinModalNickname] = useState(state.session.nickname)
+  const [joinModalNickname, setJoinModalNickname] = useState(session.nickname)
   const [joinModalRoomCode, setJoinModalRoomCode] = useState(inviteRoomCode ?? '')
   const joinModalNicknameLength = joinModalNickname.trim().length
   const joinModalNicknameValid = joinModalNicknameLength >= 1 && joinModalNicknameLength <= 10
   const joinModalRoomCodeValid = joinModalRoomCode.trim().length > 0
 
   const openJoinModal = () => {
-    setJoinModalNickname(state.session.nickname)
+    setJoinModalNickname(session.nickname)
     setJoinModalRoomCode(inviteRoomCode ?? '')
     setJoinModalOpen(true)
   }
@@ -41,7 +43,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
   const submitJoinByRoomCode = () => {
     const nextNickname = joinModalNickname.trim()
     const nextRoomCode = joinModalRoomCode.trim()
-    if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || state.session.joinPending) {
+    if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || session.joinPending) {
       return
     }
 
@@ -59,12 +61,12 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
   }
 
   useEffect(() => {
-    if (!state.session.joinAccepted) {
+    if (!session.joinAccepted) {
       return
     }
 
     onNavigate(routes.game)
-  }, [onNavigate, state.session.joinAccepted])
+  }, [onNavigate, session.joinAccepted])
 
   useEffect(() => {
     if (!joinError && !connectionError) {
@@ -113,7 +115,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
         <label className="field entry-nickname-field">
           <span>{'닉네임'}</span>
           <input
-            value={state.session.nickname}
+            value={session.nickname}
             onChange={(event) => handleMainNicknameChange(event.target.value)}
             placeholder={'닉네임은 10자 이내로 입력해주세요.'}
             maxLength={10}
@@ -124,18 +126,18 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
           <button
             type="button"
             className="primary-button entry-action-quick"
-            disabled={!nicknameValid || state.session.joinPending}
+            disabled={!nicknameValid || session.joinPending}
             onClick={() => {
               actions.requestJoin({ action: 0 })
             }}
           >
-            {state.session.joinPending ? '입장 중...' : '빠른 입장'}
+            {session.joinPending ? '입장 중...' : '빠른 입장'}
           </button>
           <div className="entry-actions-secondary">
             <button
               type="button"
               className="secondary-button"
-              disabled={!nicknameValid || state.session.joinPending}
+              disabled={!nicknameValid || session.joinPending}
               onClick={() => {
                 actions.requestJoin({ action: 1 })
               }}
@@ -145,7 +147,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             <button
               type="button"
               className="secondary-button"
-              disabled={state.session.joinPending}
+              disabled={session.joinPending}
               onClick={openJoinModal}
             >
               {'방 참여'}
@@ -189,7 +191,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
               <button
                 type="button"
                 className="primary-button"
-                disabled={!joinModalNicknameValid || !joinModalRoomCodeValid || state.session.joinPending}
+                disabled={!joinModalNicknameValid || !joinModalRoomCodeValid || session.joinPending}
                 onClick={submitJoinByRoomCode}
               >
                 {'참가'}

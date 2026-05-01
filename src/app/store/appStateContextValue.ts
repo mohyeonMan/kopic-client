@@ -7,6 +7,7 @@ import type {
   GameSettings,
   RoomSnapshot,
   RoundSummary,
+  SessionState,
   TurnPhase,
   TurnSummary,
 } from '../../entities/game/model'
@@ -81,38 +82,55 @@ export type ServerWordChoicePayload = {
   chatMessage?: ChatMessage
 }
 
+export type AppActions = {
+  updateNickname: (nickname: string) => void
+  requestJoin: (options?: { roomCode?: string; action?: 0 | 1 }) => void
+  dismissJoinError: () => void
+  dismissConnectionError: () => void
+  clearRoomCache: () => void
+  patchLobbySettings: (settings: Partial<GameSettings>) => void
+  requestGameStart: () => void
+  requestWordChoice: (word: string) => void
+  submitGuess: (text: string) => void
+  sendCanvasStroke: (stroke: CanvasStroke) => void
+  requestCanvasClear: () => void
+}
+
+export type AppConnectionControls = {
+  setStatus: (status: ConnectionStatus) => void
+}
+
+export type AppServerControls = {
+  applyRoomSnapshot: (snapshot: RoomSnapshot) => void
+  applyGameStarted: (payload: ServerGameStartedPayload) => void
+  applyWordChoice: (payload: ServerWordChoicePayload) => void
+  applyCanvasStroke: (stroke: CanvasStroke) => void
+  applyCanvasClear: () => void
+  applyGameEnded: () => void
+}
+
+export type AppDevTools = {
+  forceTurnPhase: (phase: TurnPhase) => void
+  advanceMockFlow: () => void
+  finishGame: () => void
+  resetToLobby: () => void
+}
+
+export type AppShellState = {
+  roomCode: AppState['room']['roomCode']
+  joinAction: AppState['session']['joinAction']
+  joinRoomCode: AppState['session']['joinRoomCode']
+}
+
 export type AppStateContextValue = {
   state: AppState
-  actions: {
-    updateNickname: (nickname: string) => void
-    requestJoin: (options?: { roomCode?: string; action?: 0 | 1 }) => void
-    dismissJoinError: () => void
-    dismissConnectionError: () => void
-    clearRoomCache: () => void
-    patchLobbySettings: (settings: Partial<GameSettings>) => void
-    requestGameStart: () => void
-    requestWordChoice: (word: string) => void
-    submitGuess: (text: string) => void
-    sendCanvasStroke: (stroke: CanvasStroke) => void
-    requestCanvasClear: () => void
-  }
-  connection: {
-    setStatus: (status: ConnectionStatus) => void
-  }
-  server: {
-    applyRoomSnapshot: (snapshot: RoomSnapshot) => void
-    applyGameStarted: (payload: ServerGameStartedPayload) => void
-    applyWordChoice: (payload: ServerWordChoicePayload) => void
-    applyCanvasStroke: (stroke: CanvasStroke) => void
-    applyCanvasClear: () => void
-    applyGameEnded: () => void
-  }
-  devTools: {
-    forceTurnPhase: (phase: TurnPhase) => void
-    advanceMockFlow: () => void
-    finishGame: () => void
-    resetToLobby: () => void
-  }
+  actions: AppActions
+  connection: AppConnectionControls
+  server: AppServerControls
+  devTools: AppDevTools
 }
 
 export const AppStateContext = createContext<AppStateContextValue | null>(null)
+export const AppActionsContext = createContext<AppActions | null>(null)
+export const AppSessionStateContext = createContext<SessionState | null>(null)
+export const AppShellStateContext = createContext<AppShellState | null>(null)
