@@ -1,5 +1,5 @@
 import './app/styles/appShared.css'
-import { AppShell } from './app/AppShell'
+import { AppShell } from '@/app/AppShell'
 
 function App() {
   return <AppShell />

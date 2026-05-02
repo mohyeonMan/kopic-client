@@ -1,5 +1,5 @@
-import { AppStateProvider } from './store/AppStateContext'
-import { AppRouter } from './router/AppRouter'
+import { AppRouter } from '@/app/router/AppRouter'
+import { AppStateProvider } from '@/app/store/AppStateContext'
 
 export function AppShell() {
   return (
