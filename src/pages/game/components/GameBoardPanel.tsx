@@ -1,3 +1,5 @@
+import './board/BoardOverlayShared.css'
+import './GameBoardPanel.css'
 import type { RefObject, TransitionEvent as ReactTransitionEvent } from 'react'
 import type {
   CanvasStroke,

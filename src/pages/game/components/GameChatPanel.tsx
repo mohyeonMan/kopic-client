@@ -1,3 +1,4 @@
+import './GameChatPanel.css'
 import type { RefObject } from 'react'
 import type { ChatMessage } from '../../../entities/game/model'
 import { shouldSkipEnterSubmit } from '../gamePageShared'

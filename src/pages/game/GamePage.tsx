@@ -1,3 +1,4 @@
+import './GamePage.css'
 import { useMemo, useRef, type CSSProperties } from 'react'
 import { defaultSettings } from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'

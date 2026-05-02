@@ -1,3 +1,4 @@
+import './ParticipantPanel.css'
 import type { AnimationEvent as ReactAnimationEvent, RefObject } from 'react'
 import { getParticipantAccentColor, participantTone, type AnimatedParticipantItem } from '../gamePageShared'
 

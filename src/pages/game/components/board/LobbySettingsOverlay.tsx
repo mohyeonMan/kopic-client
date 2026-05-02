@@ -1,3 +1,4 @@
+import './LobbySettingsOverlay.css'
 import type { GameSettings, RoomState } from '../../../../entities/game/model'
 import {
   END_MODE_OPTIONS,

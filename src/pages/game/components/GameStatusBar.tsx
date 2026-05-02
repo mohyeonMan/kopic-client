@@ -1,3 +1,4 @@
+import './GameStatusBar.css'
 import type { RoundSummary, TurnSummary } from '../../../entities/game/model'
 import type { VisibleOrderEntry } from '../gamePageShared'
 

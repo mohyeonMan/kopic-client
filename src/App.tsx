@@ -1,4 +1,4 @@
-import './App.css'
+import './app/styles/appShared.css'
 import { AppShell } from './app/AppShell'
 
 function App() {

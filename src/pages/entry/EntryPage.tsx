@@ -1,3 +1,4 @@
+import './EntryPage.css'
 import { useEffect, useState } from 'react'
 import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
 import { useAppActions } from '../../app/store/useAppActions'

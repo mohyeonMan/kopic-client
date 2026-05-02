@@ -1,3 +1,4 @@
+import './ParticipantBubbleLayer.css'
 import type { ParticipantBubblePosition } from '../gamePageShared'
 
 type ParticipantBubbleLayerProps = {

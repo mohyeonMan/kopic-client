@@ -1,3 +1,4 @@
+import './AppLayout.css'
 import { useState, type ReactNode } from 'react'
 import { buildInvitePath, routes, type AppRoute } from '../router/routes'
 import { useAppActions } from '../store/useAppActions'

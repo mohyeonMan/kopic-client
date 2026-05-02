@@ -1,0 +1,138 @@
+.section-heading h2 {
+  margin: 0;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.route-tab,
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background 160ms ease;
+}
+
+.route-tab:disabled,
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.route-tab:hover,
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
+.route-tab {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink-soft);
+}
+
+.route-tab-active,
+.primary-button {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.secondary-button {
+  background: var(--panel-border);
+  color: var(--ink-strong);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 28px;
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(29, 53, 87, 0.08);
+  color: var(--ink-strong);
+  font-size: 14px;
+}
+
+.eyebrow,
+.panel-label {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.field {
+  display: grid;
+  gap: 10px;
+}
+
+.field input,
+.field select {
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.field select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(32, 50, 71, 0.7) 50%),
+    linear-gradient(135deg, rgba(32, 50, 71, 0.7) 50%, transparent 50%);
+  background-position:
+    calc(100% - 22px) calc(50% - 3px),
+    calc(100% - 16px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid rgba(225, 122, 46, 0.35);
+  outline-offset: 2px;
+}
+
+.info-copy {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 980px) {
+  .panel {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .section-heading {
+    flex-direction: column;
+  }
+}

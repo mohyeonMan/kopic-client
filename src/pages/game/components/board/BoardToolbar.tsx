@@ -1,3 +1,4 @@
+import './BoardToolbar.css'
 import type { DrawingTool } from '../../../../entities/game/model'
 import {
   TOOL_COLORS,

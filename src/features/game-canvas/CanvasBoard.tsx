@@ -1,3 +1,4 @@
+import './CanvasBoard.css'
 import {
   useCallback,
   useEffect,

@@ -1,3 +1,4 @@
+import './BoardCanvas.css'
 import type { CanvasStroke, DrawingTool, RoomState, TurnSummary } from '../../../../entities/game/model'
 import { CanvasBoard } from '../../../../features/game-canvas/CanvasBoard'
 import { getMaskedWord, type ViewerRole } from '../../gamePageShared'

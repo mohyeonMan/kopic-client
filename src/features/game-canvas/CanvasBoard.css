@@ -1,0 +1,19 @@
+.draw-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.draw-surface-active {
+  cursor: crosshair;
+}
+
+.draw-surface-static {
+  pointer-events: none;
+}
