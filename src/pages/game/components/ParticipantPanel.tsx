@@ -8,6 +8,7 @@ type ParticipantPanelProps = {
   mySessionId: string
   drawerSessionId?: string
   currentCorrectIds: string[]
+  isMobileActive: boolean
   sidePanelScrollRef: RefObject<HTMLDivElement | null>
   onParticipantItemRefChange: (sessionId: string, element: HTMLLIElement | null) => void
   onParticipantCardAnimationEnd: (
@@ -23,12 +24,18 @@ export function ParticipantPanel({
   mySessionId,
   drawerSessionId,
   currentCorrectIds,
+  isMobileActive,
   sidePanelScrollRef,
   onParticipantItemRefChange,
   onParticipantCardAnimationEnd,
 }: ParticipantPanelProps) {
+  const asideClassName =
+    `panel game-side-panel game-side-panel-left${
+      isMobileActive ? ' game-participant-panel-mobile-active' : ' game-side-panel-mobile-hidden'
+    }`
+
   return (
-    <aside className="panel game-side-panel game-side-panel-left">
+    <aside className={asideClassName}>
       <div className="section-heading participant-heading-compact">
         <h2>참여자</h2>
         <div className="pill participant-count-pill">{participantCount}명</div>

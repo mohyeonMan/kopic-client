@@ -1,13 +1,17 @@
 .draw-surface {
   position: absolute;
   inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
+  overscroll-behavior: contain;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  -webkit-user-drag: none;
   -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 .draw-surface-active {

@@ -1,5 +1,5 @@
 import './GamePage.css'
-import { useMemo, useRef, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { defaultSettings } from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'
 import { GameBoardPanel } from './components/GameBoardPanel'
@@ -18,6 +18,7 @@ import { useChatAutoScroll } from './hooks/useChatAutoScroll'
 import { useGameControls } from './hooks/useGameControls'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
+import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
 
@@ -26,6 +27,8 @@ export function GamePage() {
   const stageRef = useRef<HTMLElement | null>(null)
   const centerPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
+  const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
+  const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
@@ -161,6 +164,7 @@ export function GamePage() {
     visibleChat,
   })
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
+  const { isKeyboardVisible, keyboardInset, viewportHeight } = useMobileViewport()
 
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
@@ -177,13 +181,22 @@ export function GamePage() {
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const drawerName = drawer?.nickname ?? '출제자'
+  const isBoardFocusMode = isKeyboardVisible || isChatComposerFocused
+  const activeMobilePanel = isBoardFocusMode ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
-    sideSyncHeight && sideSyncHeight > 0
-      ? ({ ['--game-side-sync-height' as string]: `${sideSyncHeight}px` } as CSSProperties)
-      : undefined
+    ({
+      ...(sideSyncHeight && sideSyncHeight > 0
+        ? { ['--game-side-sync-height' as string]: `${sideSyncHeight}px` }
+        : null),
+      ['--mobile-viewport-offset-bottom' as string]: `${keyboardInset}px`,
+      ['--mobile-visual-viewport-height' as string]: `${viewportHeight || 0}px`,
+    }) as CSSProperties
+  const pageClassName =
+    `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}` +
+    (isBoardFocusMode ? ' gamepage-shell-chat-focus' : '')
 
   return (
-    <div className="gamepage-shell">
+    <div className={pageClassName}>
       <GameStatusBar
         currentRound={currentRound}
         currentTurn={currentTurn}
@@ -198,6 +211,7 @@ export function GamePage() {
           mySessionId={state.session.sessionId}
           drawerSessionId={currentTurn?.drawerSessionId}
           currentCorrectIds={currentCorrectIds}
+          isMobileActive={activeMobilePanel === 'participants'}
           sidePanelScrollRef={sidePanelScrollRef}
           onParticipantItemRefChange={handleParticipantItemRefChange}
           onParticipantCardAnimationEnd={handleParticipantCardAnimationEnd}
@@ -246,14 +260,50 @@ export function GamePage() {
           onSetColor={handleColorChange}
         />
 
+        <div className="game-mobile-panel-switcher" role="tablist" aria-label="모바일 하단 패널">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMobilePanel === 'chat'}
+            className={
+              activeMobilePanel === 'chat'
+                ? 'game-mobile-panel-switcher-button game-mobile-panel-switcher-button-active'
+                : 'game-mobile-panel-switcher-button'
+            }
+            onClick={() => setMobilePanel('chat')}
+          >
+            채팅
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMobilePanel === 'participants'}
+            className={
+              activeMobilePanel === 'participants'
+                ? 'game-mobile-panel-switcher-button game-mobile-panel-switcher-button-active'
+                : 'game-mobile-panel-switcher-button'
+            }
+            onClick={() => setMobilePanel('participants')}
+          >
+            참여자 {participants.length}
+          </button>
+        </div>
+
         <GameChatPanel
           visibleChat={visibleChat}
           chatListRef={chatListRef}
           showChatScrollButton={showChatScrollButton}
           guessInput={guessInput}
+          isComposerFocused={isChatComposerFocused}
+          isMobileActive={activeMobilePanel === 'chat'}
           onGuessInputChange={setGuessInput}
           onGuessSubmit={submitGuess}
           onChatScroll={handleChatScroll}
+          onComposerBlur={() => setIsChatComposerFocused(false)}
+          onComposerFocus={() => {
+            setIsChatComposerFocused(true)
+            setMobilePanel('chat')
+          }}
           onScrollToBottom={scrollChatToBottom}
         />
 

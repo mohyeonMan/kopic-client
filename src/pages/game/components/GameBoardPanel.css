@@ -26,7 +26,20 @@
 }
 
 @media (max-width: 980px) {
+  .board-shell {
+    gap: 8px;
+  }
+
   .board-frame {
-    min-height: 280px;
+    width: min(100%, calc((var(--mobile-visual-viewport-height) - 214px) * 4 / 3));
+    max-height: calc(var(--mobile-visual-viewport-height) - 214px);
+    min-height: 260px;
+    border-radius: 20px;
+  }
+
+  .gamepage-shell-chat-focus .board-frame {
+    width: min(100%, calc((var(--mobile-visual-viewport-height) - 166px) * 4 / 3));
+    max-height: calc(var(--mobile-visual-viewport-height) - 166px);
+    min-height: 228px;
   }
 }

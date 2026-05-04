@@ -8,9 +8,13 @@ type GameChatPanelProps = {
   chatListRef: RefObject<HTMLUListElement | null>
   showChatScrollButton: boolean
   guessInput: string
+  isComposerFocused: boolean
+  isMobileActive: boolean
   onGuessInputChange: (value: string) => void
   onGuessSubmit: () => void
   onChatScroll: (list: HTMLUListElement) => void
+  onComposerBlur: () => void
+  onComposerFocus: () => void
   onScrollToBottom: () => void
 }
 
@@ -19,13 +23,22 @@ export function GameChatPanel({
   chatListRef,
   showChatScrollButton,
   guessInput,
+  isComposerFocused,
+  isMobileActive,
   onGuessInputChange,
   onGuessSubmit,
   onChatScroll,
+  onComposerBlur,
+  onComposerFocus,
   onScrollToBottom,
 }: GameChatPanelProps) {
+  const asideClassName =
+    `panel game-side-panel game-side-panel-right${
+      isMobileActive ? ' game-chat-panel-mobile-active' : ' game-side-panel-mobile-hidden'
+    }${isComposerFocused ? ' game-chat-panel-composer-focused' : ''}`
+
   return (
-    <aside className="panel game-side-panel game-side-panel-right">
+    <aside className={asideClassName}>
       <div className="section-heading">
         <div>
           <p className="eyebrow">Chat</p>
@@ -70,25 +83,36 @@ export function GameChatPanel({
           />
         ) : null}
 
-        <div className="chat-input-row">
-          <input
-            value={guessInput}
-            maxLength={50}
-            placeholder="메시지를 입력하세요"
-            onChange={(event) => onGuessInputChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (shouldSkipEnterSubmit(event)) {
-                return
-              }
+        <div className="chat-input-dock">
+          <div className="chat-input-row">
+            <input
+              value={guessInput}
+              maxLength={50}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              enterKeyHint="send"
+              placeholder="메시지를 입력하세요"
+              onFocus={() => {
+                onComposerFocus()
+                onScrollToBottom()
+              }}
+              onBlur={onComposerBlur}
+              onChange={(event) => onGuessInputChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (shouldSkipEnterSubmit(event)) {
+                  return
+                }
 
-              if (event.key === 'Enter') {
-                onGuessSubmit()
-              }
-            }}
-          />
-          <button type="button" className="primary-button" onClick={onGuessSubmit}>
-            전송
-          </button>
+                if (event.key === 'Enter') {
+                  onGuessSubmit()
+                }
+              }}
+            />
+            <button type="button" className="primary-button" onClick={onGuessSubmit}>
+              전송
+            </button>
+          </div>
         </div>
       </div>
     </aside>

@@ -1,10 +1,17 @@
 .gamepage-shell {
+  --mobile-chat-dock-height: 58px;
+  --mobile-viewport-offset-bottom: 0px;
+  --mobile-visual-viewport-height: 100svh;
   width: 100%;
   display: grid;
   align-content: start;
   grid-auto-rows: max-content;
   gap: 10px;
   padding-bottom: 24px;
+}
+
+.game-mobile-panel-switcher {
+  display: none;
 }
 
 .game-stage-layout {
@@ -75,6 +82,7 @@
 @media (max-width: 980px) {
   .game-stage-layout {
     position: static;
+    grid-template-columns: minmax(0, 1fr);
     padding-left: 0;
     padding-right: 0;
     display: grid;
@@ -83,7 +91,7 @@
 
   .gamepage-shell {
     gap: 6px;
-    padding-bottom: 8px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
   }
 
   .game-side-panel {
@@ -96,6 +104,49 @@
 
   .game-center-panel {
     order: 1;
+  }
+
+  .game-mobile-panel-switcher {
+    position: sticky;
+    bottom: calc(
+      env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + var(--mobile-chat-dock-height) + 10px
+    );
+    z-index: 8;
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .game-mobile-panel-switcher-button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 252, 247, 0.92);
+    color: var(--ink-soft);
+    box-shadow: 0 8px 20px rgba(32, 50, 71, 0.08);
+    font: inherit;
+    cursor: pointer;
+    transition:
+      background 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .game-mobile-panel-switcher-button-active {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .gamepage-shell-chat-focus .game-mobile-panel-switcher {
+    opacity: 0;
+    pointer-events: none;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .gamepage-shell-chat-focus .game-stage-layout {
+    gap: 4px;
   }
 }
 

@@ -28,6 +28,14 @@ const FILL_TOLERANCE = 56
 const SOLID_STROKE_ALPHA_THRESHOLD = 8
 const SOLID_STROKE_PADDING = 2
 
+function clearTextSelection() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.getSelection?.()?.removeAllRanges()
+}
+
 function getCanvasPoint(
   event: ReactPointerEvent<HTMLCanvasElement>,
   canvas: HTMLCanvasElement,
@@ -266,25 +274,30 @@ export function CanvasBoard({
     }
 
     const preventDefault = (event: Event) => {
-      if (!canDraw) {
-        return
-      }
-
+      clearTextSelection()
       event.preventDefault()
     }
 
     canvas.addEventListener('touchstart', preventDefault, { passive: false })
     canvas.addEventListener('touchmove', preventDefault, { passive: false })
+    canvas.addEventListener('touchend', preventDefault, { passive: false })
+    canvas.addEventListener('touchcancel', preventDefault, { passive: false })
     canvas.addEventListener('gesturestart', preventDefault as EventListener, { passive: false })
     canvas.addEventListener('gesturechange', preventDefault as EventListener, { passive: false })
+    canvas.addEventListener('gestureend', preventDefault as EventListener, { passive: false })
+    canvas.addEventListener('contextmenu', preventDefault)
     canvas.addEventListener('selectstart', preventDefault)
     canvas.addEventListener('dragstart', preventDefault)
 
     return () => {
       canvas.removeEventListener('touchstart', preventDefault)
       canvas.removeEventListener('touchmove', preventDefault)
+      canvas.removeEventListener('touchend', preventDefault)
+      canvas.removeEventListener('touchcancel', preventDefault)
       canvas.removeEventListener('gesturestart', preventDefault as EventListener)
       canvas.removeEventListener('gesturechange', preventDefault as EventListener)
+      canvas.removeEventListener('gestureend', preventDefault as EventListener)
+      canvas.removeEventListener('contextmenu', preventDefault)
       canvas.removeEventListener('selectstart', preventDefault)
       canvas.removeEventListener('dragstart', preventDefault)
     }
@@ -430,7 +443,10 @@ export function CanvasBoard({
   }, [strokes, syncCommittedCanvas])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    clearTextSelection()
+
     if (!canDraw) {
+      event.preventDefault()
       return
     }
 
