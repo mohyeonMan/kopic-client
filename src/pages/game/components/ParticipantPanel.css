@@ -181,15 +181,20 @@
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active {
-    max-height: min(34svh, 260px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll {
     min-height: 0;
+    flex: 1 1 auto;
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll-inner {
-    max-height: min(24svh, 200px);
+    height: 100%;
+    max-height: none;
   }
 
   .gamepage-shell-chat-focus .game-side-panel-left {

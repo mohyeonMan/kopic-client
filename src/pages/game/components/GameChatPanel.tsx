@@ -10,6 +10,7 @@ type GameChatPanelProps = {
   guessInput: string
   isComposerFocused: boolean
   isMobileActive: boolean
+  onGuessClear: () => void
   onGuessInputChange: (value: string) => void
   onGuessSubmit: () => void
   onChatScroll: (list: HTMLUListElement) => void
@@ -25,6 +26,7 @@ export function GameChatPanel({
   guessInput,
   isComposerFocused,
   isMobileActive,
+  onGuessClear,
   onGuessInputChange,
   onGuessSubmit,
   onChatScroll,
@@ -84,34 +86,41 @@ export function GameChatPanel({
         ) : null}
 
         <div className="chat-input-dock">
-          <div className="chat-input-row">
-            <input
-              value={guessInput}
-              maxLength={50}
-              inputMode="text"
-              autoCapitalize="none"
-              autoCorrect="off"
-              enterKeyHint="send"
-              placeholder="메시지를 입력하세요"
-              onFocus={() => {
-                onComposerFocus()
-                onScrollToBottom()
-              }}
-              onBlur={onComposerBlur}
-              onChange={(event) => onGuessInputChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (shouldSkipEnterSubmit(event)) {
-                  return
-                }
+          <div className="chat-input-dock-shell">
+            <div className="chat-input-row">
+              <input
+                value={guessInput}
+                maxLength={50}
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                enterKeyHint="send"
+                placeholder="메시지를 입력하세요"
+                onFocus={() => {
+                  onComposerFocus()
+                  onScrollToBottom()
+                }}
+                onBlur={onComposerBlur}
+                onChange={(event) => onGuessInputChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (shouldSkipEnterSubmit(event)) {
+                    return
+                  }
 
-                if (event.key === 'Enter') {
-                  onGuessSubmit()
-                }
-              }}
-            />
-            <button type="button" className="primary-button" onClick={onGuessSubmit}>
-              전송
-            </button>
+                  if (event.key === 'Enter') {
+                    onGuessSubmit()
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="secondary-button chat-clear-button"
+                onClick={onGuessClear}
+                disabled={guessInput.length === 0}
+              >
+                지우기
+              </button>
+            </div>
           </div>
         </div>
       </div>

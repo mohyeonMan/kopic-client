@@ -24,6 +24,10 @@
   display: contents;
 }
 
+.chat-input-dock-shell {
+  display: contents;
+}
+
 .game-side-panel-right {
   width: auto;
 }
@@ -227,7 +231,7 @@
   box-shadow: 0 0 0 2px rgba(225, 122, 46, 0.22);
 }
 
-.chat-input-row .primary-button {
+.chat-clear-button {
   border-radius: 0;
   padding: 0 10px;
   min-width: 58px;
@@ -238,7 +242,7 @@
   line-height: 1;
 }
 
-.chat-input-row .primary-button:hover {
+.chat-clear-button:hover {
   transform: none;
 }
 
@@ -252,6 +256,10 @@
   }
 
   .game-side-panel-right.panel.game-chat-panel-mobile-active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
     padding: 0;
     background: transparent;
     border: 0;
@@ -264,10 +272,10 @@
   }
 
   .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
-    flex: 0 0 auto;
-    min-height: clamp(150px, 20svh, 190px);
-    height: clamp(150px, 20svh, 190px);
-    max-height: min(210px, calc(var(--mobile-visual-viewport-height) - 214px));
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
     padding: 8px;
     padding-bottom: calc(
       var(--mobile-chat-dock-height) + env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + 14px
@@ -282,9 +290,9 @@
   }
 
   .gamepage-shell-chat-focus .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
-    min-height: clamp(112px, 15svh, 140px);
-    height: clamp(112px, 15svh, 140px);
-    max-height: calc(var(--mobile-visual-viewport-height) - 150px);
+    min-height: 0;
+    height: 100%;
+    max-height: none;
   }
 
   .chat-input-dock {
@@ -294,6 +302,16 @@
     right: 8px;
     bottom: calc(env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + 8px);
     z-index: 22;
+  }
+
+  .chat-input-dock-shell {
+    display: grid;
+    padding: 6px;
+    border: 1px solid rgba(32, 50, 71, 0.14);
+    border-radius: 20px;
+    background: rgba(255, 252, 247, 0.96);
+    box-shadow: 0 14px 30px rgba(32, 50, 71, 0.16);
+    backdrop-filter: blur(12px);
   }
 
   .chat-scroll-to-bottom-button {
@@ -315,10 +333,10 @@
     margin-top: 0;
     min-height: 50px;
     height: 50px;
-    border-radius: 16px;
-    border-color: rgba(32, 50, 71, 0.14);
-    background: rgba(255, 252, 247, 0.98);
-    box-shadow: 0 12px 26px rgba(32, 50, 71, 0.16);
+    border-radius: 14px;
+    border-color: rgba(32, 50, 71, 0.1);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: none;
   }
 
   .chat-input-row input {
@@ -329,10 +347,10 @@
 
   .chat-input-row:focus-within {
     border-color: rgba(225, 122, 46, 0.38);
-    box-shadow: 0 12px 26px rgba(32, 50, 71, 0.16);
+    box-shadow: none;
   }
 
-  .chat-input-row .primary-button {
+  .chat-clear-button {
     min-width: 68px;
     padding: 0 12px;
     font-size: 14px;

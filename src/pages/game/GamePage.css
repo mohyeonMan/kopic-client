@@ -3,6 +3,7 @@
   --mobile-viewport-offset-bottom: 0px;
   --mobile-visual-viewport-height: 100svh;
   width: 100%;
+  min-height: 0;
   display: grid;
   align-content: start;
   grid-auto-rows: max-content;
@@ -19,6 +20,7 @@
   width: 100%;
   max-width: 1680px;
   margin: 0 auto;
+  min-height: 0;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) minmax(0, 3fr);
@@ -83,6 +85,9 @@
   .game-stage-layout {
     position: static;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-content: stretch;
+    height: 100%;
     padding-left: 0;
     padding-right: 0;
     display: grid;
@@ -90,15 +95,19 @@
   }
 
   .gamepage-shell {
+    height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 6px;
     padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+    overflow: hidden;
   }
 
   .game-side-panel {
     position: static;
     width: auto;
     max-height: none;
-    overflow: visible;
+    min-height: 0;
+    overflow: hidden;
     padding: 8px;
   }
 
@@ -147,6 +156,12 @@
 
   .gamepage-shell-chat-focus .game-stage-layout {
     gap: 4px;
+  }
+
+  .game-chat-panel-mobile-active,
+  .game-participant-panel-mobile-active {
+    min-height: 0;
+    height: 100%;
   }
 }
 

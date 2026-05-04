@@ -1,5 +1,12 @@
 import './AppLayout.css'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { buildInvitePath, routes, type AppRoute } from '../router/routes'
 import { useAppActions } from '../store/useAppActions'
 import { useAppShellState } from '../store/useAppShellState'
@@ -8,6 +15,30 @@ type AppLayoutProps = {
   currentRoute: AppRoute
   onNavigate: (route: AppRoute) => void
   children: ReactNode
+}
+
+type ShellViewportState = {
+  keyboardInset: number
+  viewportHeight: number
+}
+
+function readShellViewportState(): ShellViewportState {
+  if (typeof window === 'undefined') {
+    return {
+      keyboardInset: 0,
+      viewportHeight: 0,
+    }
+  }
+
+  const layoutViewportHeight = window.innerHeight
+  const visualViewport = window.visualViewport
+  const viewportHeight = Math.round(visualViewport?.height ?? layoutViewportHeight)
+  const viewportTop = Math.round(visualViewport?.offsetTop ?? 0)
+
+  return {
+    keyboardInset: Math.max(0, layoutViewportHeight - viewportHeight - viewportTop),
+    viewportHeight,
+  }
 }
 
 async function copyText(text: string) {
@@ -39,6 +70,9 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const shellState = useAppShellState()
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
+  const [shellViewportState, setShellViewportState] = useState<ShellViewportState>(() =>
+    readShellViewportState(),
+  )
   const shareMenuRef = useRef<HTMLDivElement | null>(null)
   const feedbackTimeoutRef = useRef<number | null>(null)
   const isGameRoute = currentRoute === routes.game
@@ -47,8 +81,61 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const inviteUrl = canShareRoom
     ? new URL(buildInvitePath(roomCode), window.location.origin).toString()
     : null
-  const canUseNativeShare = typeof navigator.share === 'function'
+  const supportsNativeShare = typeof navigator.share === 'function'
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
+  const shellStyle: CSSProperties | undefined = isGameRoute
+    ? ({
+        ['--app-shell-viewport-height' as string]:
+          shellViewportState.viewportHeight > 0
+            ? `${shellViewportState.viewportHeight}px`
+            : '100svh',
+        ['--app-shell-keyboard-inset' as string]: `${shellViewportState.keyboardInset}px`,
+      }) as CSSProperties
+    : undefined
+
+  useLayoutEffect(() => {
+    if (!isGameRoute || typeof window === 'undefined') {
+      return
+    }
+
+    const visualViewport = window.visualViewport
+    let frameId = 0
+
+    const updateViewportState = () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        setShellViewportState((current) => {
+          const next = readShellViewportState()
+
+          return current.keyboardInset === next.keyboardInset &&
+            current.viewportHeight === next.viewportHeight
+            ? current
+            : next
+        })
+      })
+    }
+
+    updateViewportState()
+
+    window.addEventListener('resize', updateViewportState)
+    window.addEventListener('orientationchange', updateViewportState)
+    visualViewport?.addEventListener('resize', updateViewportState)
+    visualViewport?.addEventListener('scroll', updateViewportState)
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+
+      window.removeEventListener('resize', updateViewportState)
+      window.removeEventListener('orientationchange', updateViewportState)
+      visualViewport?.removeEventListener('resize', updateViewportState)
+      visualViewport?.removeEventListener('scroll', updateViewportState)
+    }
+  }, [isGameRoute])
 
   useEffect(() => {
     if (!shareMenuOpen) {
@@ -83,6 +170,55 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!isGameRoute || typeof document === 'undefined') {
+      return
+    }
+
+    const htmlElement = document.documentElement
+    const bodyElement = document.body
+    htmlElement.classList.add('app-html-game')
+    bodyElement.classList.add('app-body-game')
+
+    let lastTouchEndAt = 0
+
+    const preventGesture = (event: Event) => {
+      event.preventDefault()
+    }
+
+    const preventMultiTouchZoom = (event: TouchEvent) => {
+      if (event.touches.length > 1) {
+        event.preventDefault()
+      }
+    }
+
+    const preventDoubleTapZoom = (event: TouchEvent) => {
+      const now = Date.now()
+
+      if (now - lastTouchEndAt < 280) {
+        event.preventDefault()
+      }
+
+      lastTouchEndAt = now
+    }
+
+    document.addEventListener('gesturestart', preventGesture as EventListener, { passive: false })
+    document.addEventListener('gesturechange', preventGesture as EventListener, { passive: false })
+    document.addEventListener('gestureend', preventGesture as EventListener, { passive: false })
+    document.addEventListener('touchmove', preventMultiTouchZoom, { passive: false })
+    document.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
+
+    return () => {
+      htmlElement.classList.remove('app-html-game')
+      bodyElement.classList.remove('app-body-game')
+      document.removeEventListener('gesturestart', preventGesture as EventListener)
+      document.removeEventListener('gesturechange', preventGesture as EventListener)
+      document.removeEventListener('gestureend', preventGesture as EventListener)
+      document.removeEventListener('touchmove', preventMultiTouchZoom)
+      document.removeEventListener('touchend', preventDoubleTapZoom)
+    }
+  }, [isGameRoute])
 
   const showShareFeedback = (message: string) => {
     setShareFeedback(message)
@@ -132,22 +268,65 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     }
 
     try {
-      if (canUseNativeShare) {
-        await navigator.share({
-          title: `KOPIC 방 ${roomCode}`,
-          text: `${roomCode} 방으로 바로 참여하세요.`,
-          url: inviteUrl,
-        })
+      if (supportsNativeShare) {
+        const shareCandidates = [
+          {
+            title: `KOPIC 방 ${roomCode}`,
+            text: `${roomCode} 방으로 바로 참여하세요.`,
+            url: inviteUrl,
+          },
+          {
+            text: `${roomCode} 방으로 바로 참여하세요.\n${inviteUrl}`,
+          },
+          {
+            url: inviteUrl,
+          },
+        ]
+
+        let shared = false
+        let lastShareError: unknown = null
+
+        for (const candidate of shareCandidates) {
+          try {
+            if (typeof navigator.canShare === 'function' && !navigator.canShare(candidate)) {
+              continue
+            }
+
+            await navigator.share(candidate)
+            shared = true
+            break
+          } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+              throw error
+            }
+
+            lastShareError = error
+          }
+        }
+
+        if (!shared) {
+          if (lastShareError) {
+            throw lastShareError
+          }
+
+          throw new Error('native share unavailable')
+        }
+
         showShareFeedback('공유됨')
       } else {
         await copyText(inviteUrl)
-        showShareFeedback('링크 복사됨')
+        showShareFeedback('기기 공유 미지원, 링크 복사됨')
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         setShareFeedback(null)
       } else {
-        showShareFeedback('공유 실패')
+        try {
+          await copyText(inviteUrl)
+          showShareFeedback('공유 실패, 링크 복사됨')
+        } catch {
+          showShareFeedback('공유 실패')
+        }
       }
     } finally {
       setShareMenuOpen(false)
@@ -155,7 +334,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   }
 
   return (
-    <div className={shellClassName}>
+    <div className={shellClassName} style={shellStyle}>
       {isGameRoute ? (
         <header className="topbar">
           <h1 className="topbar-brand">KOPIC</h1>
@@ -207,7 +386,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                       role="menuitem"
                       onClick={handleNativeShare}
                     >
-                      {canUseNativeShare ? '공유하기' : '공유하기(복사)'}
+                      {supportsNativeShare ? '공유하기' : '공유하기'}
                     </button>
                   </div>
                 </>

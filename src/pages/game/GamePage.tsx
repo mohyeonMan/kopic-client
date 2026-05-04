@@ -189,7 +189,8 @@ export function GamePage() {
         ? { ['--game-side-sync-height' as string]: `${sideSyncHeight}px` }
         : null),
       ['--mobile-viewport-offset-bottom' as string]: `${keyboardInset}px`,
-      ['--mobile-visual-viewport-height' as string]: `${viewportHeight || 0}px`,
+      ['--mobile-visual-viewport-height' as string]:
+        viewportHeight > 0 ? `${viewportHeight}px` : '100svh',
     }) as CSSProperties
   const pageClassName =
     `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}` +
@@ -296,6 +297,7 @@ export function GamePage() {
           guessInput={guessInput}
           isComposerFocused={isChatComposerFocused}
           isMobileActive={activeMobilePanel === 'chat'}
+          onGuessClear={() => setGuessInput('')}
           onGuessInputChange={setGuessInput}
           onGuessSubmit={submitGuess}
           onChatScroll={handleChatScroll}
@@ -303,6 +305,8 @@ export function GamePage() {
           onComposerFocus={() => {
             setIsChatComposerFocused(true)
             setMobilePanel('chat')
+            window.scrollTo(0, 0)
+            window.setTimeout(() => window.scrollTo(0, 0), 80)
           }}
           onScrollToBottom={scrollChatToBottom}
         />
