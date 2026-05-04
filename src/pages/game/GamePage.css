@@ -85,9 +85,6 @@
   .game-stage-layout {
     position: static;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
-    align-content: stretch;
-    height: 100%;
     padding-left: 0;
     padding-right: 0;
     display: grid;
@@ -95,11 +92,8 @@
   }
 
   .gamepage-shell {
-    height: 100%;
-    grid-template-rows: auto minmax(0, 1fr);
     gap: 6px;
     padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
-    overflow: hidden;
   }
 
   .game-side-panel {
@@ -161,7 +155,6 @@
   .game-chat-panel-mobile-active,
   .game-participant-panel-mobile-active {
     min-height: 0;
-    height: 100%;
   }
 }
 

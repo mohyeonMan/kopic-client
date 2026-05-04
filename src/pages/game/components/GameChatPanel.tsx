@@ -1,5 +1,5 @@
 import './GameChatPanel.css'
-import type { RefObject } from 'react'
+import { useRef, type RefObject, type TouchEvent as ReactTouchEvent } from 'react'
 import type { ChatMessage } from '../../../entities/game/model'
 import { shouldSkipEnterSubmit } from '../gamePageShared'
 
@@ -34,10 +34,24 @@ export function GameChatPanel({
   onComposerFocus,
   onScrollToBottom,
 }: GameChatPanelProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const asideClassName =
     `panel game-side-panel game-side-panel-right${
       isMobileActive ? ' game-chat-panel-mobile-active' : ' game-side-panel-mobile-hidden'
     }${isComposerFocused ? ' game-chat-panel-composer-focused' : ''}`
+
+  const handleInputTouchStart = (event: ReactTouchEvent<HTMLInputElement>) => {
+    const input = inputRef.current
+
+    if (!input || document.activeElement === input) {
+      return
+    }
+
+    event.preventDefault()
+    onComposerFocus()
+    onScrollToBottom()
+    input.focus({ preventScroll: true })
+  }
 
   return (
     <aside className={asideClassName}>
@@ -89,6 +103,7 @@ export function GameChatPanel({
           <div className="chat-input-dock-shell">
             <div className="chat-input-row">
               <input
+                ref={inputRef}
                 value={guessInput}
                 maxLength={50}
                 inputMode="text"
@@ -96,6 +111,7 @@ export function GameChatPanel({
                 autoCorrect="off"
                 enterKeyHint="send"
                 placeholder="메시지를 입력하세요"
+                onTouchStart={handleInputTouchStart}
                 onFocus={() => {
                   onComposerFocus()
                   onScrollToBottom()
@@ -115,6 +131,7 @@ export function GameChatPanel({
               <button
                 type="button"
                 className="secondary-button chat-clear-button"
+                onPointerDown={(event) => event.preventDefault()}
                 onClick={onGuessClear}
                 disabled={guessInput.length === 0}
               >
