@@ -196,14 +196,14 @@
     width: 100%;
     min-height: var(--app-shell-viewport-height);
     height: var(--app-shell-viewport-height);
-    overflow: hidden;
-  }
-
-  .app-shell-game .page-frame {
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+  }
+
+  .app-shell-game .page-frame {
+    overflow: visible;
   }
 
   .app-shell-game .topbar {

@@ -1,8 +1,10 @@
 import './GameStatusBar.css'
+import type { RefObject } from 'react'
 import type { RoundSummary, TurnSummary } from '../../../entities/game/model'
 import type { VisibleOrderEntry } from '../gamePageShared'
 
 type GameStatusBarProps = {
+  containerRef?: RefObject<HTMLElement | null>
   currentRound: RoundSummary | null
   currentTurn: TurnSummary | null
   displayedRemainingSec: number
@@ -10,13 +12,14 @@ type GameStatusBarProps = {
 }
 
 export function GameStatusBar({
+  containerRef,
   currentRound,
   currentTurn,
   displayedRemainingSec,
   visibleOrderEntries,
 }: GameStatusBarProps) {
   return (
-    <section className="panel game-status-bar">
+    <section ref={containerRef} className="panel game-status-bar">
       <div className="status-bar-row">
         <div className="status-inline-chip status-inline-chip-round">
           <span>라운드</span>

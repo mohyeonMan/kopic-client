@@ -10,7 +10,6 @@ type GameChatPanelProps = {
   guessInput: string
   isComposerFocused: boolean
   isMobileActive: boolean
-  onGuessClear: () => void
   onGuessInputChange: (value: string) => void
   onGuessSubmit: () => void
   onChatScroll: (list: HTMLUListElement) => void
@@ -26,7 +25,6 @@ export function GameChatPanel({
   guessInput,
   isComposerFocused,
   isMobileActive,
-  onGuessClear,
   onGuessInputChange,
   onGuessSubmit,
   onChatScroll,
@@ -104,11 +102,13 @@ export function GameChatPanel({
             <div className="chat-input-row">
               <input
                 ref={inputRef}
+                type="text"
                 value={guessInput}
                 maxLength={50}
                 inputMode="text"
                 autoCapitalize="none"
                 autoCorrect="off"
+                autoComplete="off"
                 enterKeyHint="send"
                 placeholder="메시지를 입력하세요"
                 onTouchStart={handleInputTouchStart}
@@ -130,12 +130,12 @@ export function GameChatPanel({
               />
               <button
                 type="button"
-                className="secondary-button chat-clear-button"
+                className="secondary-button chat-submit-button"
                 onPointerDown={(event) => event.preventDefault()}
-                onClick={onGuessClear}
-                disabled={guessInput.length === 0}
+                onClick={onGuessSubmit}
+                disabled={guessInput.trim().length === 0}
               >
-                지우기
+                전송
               </button>
             </div>
           </div>

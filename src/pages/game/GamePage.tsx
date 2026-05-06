@@ -24,6 +24,7 @@ import { useTurnTimer } from './hooks/useTurnTimer'
 
 export function GamePage() {
   const { state, actions, server } = useAppState()
+  const statusBarRef = useRef<HTMLElement | null>(null)
   const stageRef = useRef<HTMLElement | null>(null)
   const centerPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
@@ -195,10 +196,17 @@ export function GamePage() {
   const pageClassName =
     `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}` +
     (isBoardFocusMode ? ' gamepage-shell-chat-focus' : '')
+  const scrollToStatusBarAnchor = () => {
+    statusBarRef.current?.scrollIntoView({
+      block: 'start',
+      inline: 'nearest',
+    })
+  }
 
   return (
     <div className={pageClassName}>
       <GameStatusBar
+        containerRef={statusBarRef}
         currentRound={currentRound}
         currentTurn={currentTurn}
         displayedRemainingSec={displayedRemainingSec}
@@ -297,7 +305,6 @@ export function GamePage() {
           guessInput={guessInput}
           isComposerFocused={isChatComposerFocused}
           isMobileActive={activeMobilePanel === 'chat'}
-          onGuessClear={() => setGuessInput('')}
           onGuessInputChange={setGuessInput}
           onGuessSubmit={submitGuess}
           onChatScroll={handleChatScroll}
@@ -305,8 +312,9 @@ export function GamePage() {
           onComposerFocus={() => {
             setIsChatComposerFocused(true)
             setMobilePanel('chat')
-            window.scrollTo(0, 0)
-            window.setTimeout(() => window.scrollTo(0, 0), 80)
+            scrollToStatusBarAnchor()
+            window.requestAnimationFrame(scrollToStatusBarAnchor)
+            window.setTimeout(scrollToStatusBarAnchor, 90)
           }}
           onScrollToBottom={scrollChatToBottom}
         />
