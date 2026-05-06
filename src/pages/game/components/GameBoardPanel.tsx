@@ -37,6 +37,7 @@ type GameBoardPanelProps = {
   forcedPaletteColor?: string
   gameStartCountdownSec?: number
   isHost: boolean
+  isCorrectHighlightActive: boolean
   isSecretWordBannerClosed: boolean
   isSharedDrawingPhase: boolean
   nextTurnCountdownSec?: number
@@ -86,6 +87,7 @@ export function GameBoardPanel({
   forcedPaletteColor,
   gameStartCountdownSec,
   isHost,
+  isCorrectHighlightActive,
   isSecretWordBannerClosed,
   isSharedDrawingPhase,
   nextTurnCountdownSec,
@@ -123,7 +125,13 @@ export function GameBoardPanel({
   return (
     <section ref={centerPanelRef} className="panel game-center-panel">
       <div className="board-shell">
-        <div className="board-frame">
+        <div
+          className={
+            isCorrectHighlightActive
+              ? 'board-frame board-frame-correct-highlight'
+              : 'board-frame'
+          }
+        >
           <BoardCanvas
             activePaletteColor={activePaletteColor}
             boardStrokes={boardStrokes}

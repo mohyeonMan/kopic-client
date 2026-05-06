@@ -18,6 +18,8 @@ export function GameStatusBar({
   displayedRemainingSec,
   visibleOrderEntries,
 }: GameStatusBarProps) {
+  const isDrawingPhase = currentTurn?.phase === 'DRAWING'
+
   return (
     <section ref={containerRef} className="panel game-status-bar">
       <div className="status-bar-row">
@@ -27,7 +29,7 @@ export function GameStatusBar({
         </div>
         <div className="status-inline-chip status-inline-chip-time">
           <span>남은 시간</span>
-          <strong>{currentTurn ? `${displayedRemainingSec}s` : '-'}</strong>
+          <strong>{isDrawingPhase ? Math.max(0, displayedRemainingSec) : '-'}</strong>
         </div>
         <div className="order-strip-box">
           <span className="order-strip-label">이번 라운드 그림 순서</span>

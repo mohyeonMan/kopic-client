@@ -1,5 +1,5 @@
 import './GamePage.css'
-import { useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { defaultSettings } from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'
 import { GameBoardPanel } from './components/GameBoardPanel'
@@ -31,6 +31,7 @@ export function GamePage() {
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
   const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
+  const [correctHighlightRoundNo, setCorrectHighlightRoundNo] = useState<number | null>(null)
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
@@ -203,6 +204,42 @@ export function GamePage() {
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const drawerName = drawer?.nickname ?? '출제자'
+  const isMeCorrectInCurrentTurn =
+    currentTurn !== null
+      ? currentTurn.correctSessionIds.includes(state.session.sessionId) &&
+        state.session.sessionId !== currentTurn.drawerSessionId
+      : false
+
+  useEffect(() => {
+    if (roomState !== 'RUNNING') {
+      setCorrectHighlightRoundNo(null)
+      return
+    }
+
+    const roundNo = currentRound?.roundNo
+    if (typeof roundNo !== 'number') {
+      return
+    }
+
+    if (isMeCorrectInCurrentTurn) {
+      setCorrectHighlightRoundNo((previous) => (previous === roundNo ? previous : roundNo))
+      return
+    }
+
+    setCorrectHighlightRoundNo((previous) => {
+      if (previous === null) {
+        return null
+      }
+
+      return previous !== roundNo ? null : previous
+    })
+  }, [currentRound?.roundNo, isMeCorrectInCurrentTurn, roomState])
+
+  const isCorrectHighlightActive =
+    roomState === 'RUNNING' &&
+    typeof currentRound?.roundNo === 'number' &&
+    currentRound.roundNo === correctHighlightRoundNo
+
   const isBoardFocusMode = isKeyboardVisible || isChatComposerFocused
   const activeMobilePanel = isBoardFocusMode ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
@@ -256,6 +293,7 @@ export function GamePage() {
           activePaletteColor={activePaletteColor}
           size={size}
           isHost={isHost}
+          isCorrectHighlightActive={isCorrectHighlightActive}
           settingsOpen={settingsOpen}
           settings={settings}
           currentRound={currentRound}
