@@ -3,6 +3,7 @@ import type {
   GeDrawingStartedPayload,
   GeGameResultPayload,
   GeGameStartedPayload,
+  GeHintRevealedPayload,
   GeGuessCorrectPayload,
   GeReturnToLobbyPayload,
   GeRoundStartedPayload,
@@ -167,6 +168,7 @@ export function reduceGeTurnStartedApplied(
         wordChoices: [],
         selectedWord: null,
         answerLength: undefined,
+        hintPattern: undefined,
         canvasStrokes: [],
       },
       chat: [
@@ -250,6 +252,7 @@ export function reduceGeWordChoiceOpenedApplied(
         wordChoices: payload.wordChoices,
         selectedWord: null,
         answerLength: undefined,
+        hintPattern: undefined,
         canvasStrokes: state.room.currentTurn?.canvasStrokes ?? [],
       },
       chat: [
@@ -272,6 +275,8 @@ export function reduceGeDrawingStartedApplied(
   const answerLength =
     payload.answerLength ??
     (selectedWord ? Array.from(selectedWord).length : previousTurn?.answerLength)
+  const hintPattern =
+    payload.hintPattern !== undefined ? payload.hintPattern : previousTurn?.hintPattern
 
   return {
     ...state,
@@ -293,12 +298,35 @@ export function reduceGeDrawingStartedApplied(
         wordChoices: previousTurn?.wordChoices ?? [],
         selectedWord,
         answerLength,
+        hintPattern,
         canvasStrokes: [],
       },
       chat: [
         ...state.room.chat,
         createSystemMessage(`208 GE_DRAWING_STARTED ${payload.drawerSessionId}`),
       ],
+    },
+  }
+}
+
+export function reduceGeHintRevealedApplied(
+  state: AppState,
+  payload: GeHintRevealedPayload,
+): AppState {
+  const currentTurn = state.room.currentTurn
+  if (!currentTurn || currentTurn.turnId !== payload.turnId) {
+    return state
+  }
+
+  return {
+    ...state,
+    room: {
+      ...state.room,
+      gameId: payload.gameId,
+      currentTurn: {
+        ...currentTurn,
+        hintPattern: payload.hintPattern,
+      },
     },
   }
 }
@@ -437,6 +465,7 @@ export function reduceWordChoiceApplied(
         remainingSec: payload.remainingSec,
         deadlineAtMs: createDeadlineAtMs(payload.remainingSec),
         earnedPoints: {},
+        hintPattern: undefined,
       },
       chat: payload.chatMessage
         ? [...state.room.chat, payload.chatMessage]

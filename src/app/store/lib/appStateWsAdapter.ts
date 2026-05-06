@@ -13,6 +13,7 @@ import {
   decodeGeDrawingStartedPayload,
   decodeGeGameResultPayload,
   decodeGeGameStartedPayload,
+  decodeGeHintRevealedPayload,
   decodeGeGuessCorrectPayload,
   decodeGeReturnToLobbyPayload,
   decodeGeRoundStartedPayload,
@@ -121,6 +122,13 @@ export function createServerEnvelopeHandler({
         const drawingStartedPayload = decodeGeDrawingStartedPayload(payload)
         if (drawingStartedPayload) {
           dispatch({ type: 'server/geDrawingStartedApplied', payload: drawingStartedPayload })
+        }
+        return
+      }
+      case 211: {
+        const hintRevealedPayload = decodeGeHintRevealedPayload(payload)
+        if (hintRevealedPayload) {
+          dispatch({ type: 'server/geHintRevealedApplied', payload: hintRevealedPayload })
         }
         return
       }

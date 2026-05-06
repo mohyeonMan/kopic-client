@@ -11,6 +11,7 @@ import type {
   GeDrawingStartedPayload,
   GeGameResultPayload,
   GeGameStartedPayload,
+  GeHintRevealedPayload,
   GeGuessCorrectPayload,
   GeReturnToLobbyPayload,
   GeRoundStartedPayload,
@@ -39,6 +40,7 @@ import {
   reduceGeDrawingStartedApplied,
   reduceGeGameResultApplied,
   reduceGeGameStartedApplied,
+  reduceGeHintRevealedApplied,
   reduceGeGuessCorrectApplied,
   reduceGeReturnToLobbyApplied,
   reduceGeRoundStartedApplied,
@@ -90,6 +92,7 @@ export type AppAction =
   | { type: 'server/geGuessCorrectApplied'; payload: GeGuessCorrectPayload }
   | { type: 'server/geWordChoiceOpenedApplied'; payload: GeWordChoiceOpenedPayload }
   | { type: 'server/geDrawingStartedApplied'; payload: GeDrawingStartedPayload }
+  | { type: 'server/geHintRevealedApplied'; payload: GeHintRevealedPayload }
   | { type: 'server/geTurnEndedApplied'; payload: GeTurnEndedPayload }
   | { type: 'server/geGameResultApplied'; payload: GeGameResultPayload }
   | { type: 'server/geReturnToLobbyApplied'; payload: GeReturnToLobbyPayload }
@@ -149,6 +152,8 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       return reduceGeWordChoiceOpenedApplied(state, action.payload)
     case 'server/geDrawingStartedApplied':
       return reduceGeDrawingStartedApplied(state, action.payload)
+    case 'server/geHintRevealedApplied':
+      return reduceGeHintRevealedApplied(state, action.payload)
     case 'server/geTurnEndedApplied':
       return reduceGeTurnEndedApplied(state, action.payload)
     case 'server/geGameResultApplied':

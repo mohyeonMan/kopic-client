@@ -58,6 +58,7 @@ export type TurnSummary = {
   wordChoices: string[]
   selectedWord: string | null
   answerLength?: number
+  hintPattern?: string | null
   canvasStrokes: CanvasStroke[]
 }
 

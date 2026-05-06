@@ -448,6 +448,12 @@ function normalizeCurrentTurn(
   const answerLength =
     readFiniteNumber(raw.answerLength) ??
     (selectedWord !== null ? Array.from(selectedWord).length : undefined)
+  const hintPattern =
+    raw.hintPattern === null
+      ? null
+      : typeof raw.hintPattern === 'string'
+        ? raw.hintPattern
+        : undefined
 
   return {
     roundNo,
@@ -467,6 +473,7 @@ function normalizeCurrentTurn(
     wordChoices,
     selectedWord,
     answerLength,
+    hintPattern,
     canvasStrokes,
   }
 }

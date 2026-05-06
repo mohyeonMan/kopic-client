@@ -56,6 +56,16 @@ export type GeDrawingStartedPayload = {
   remainingSec: number
   selectedWord: string | null
   answerLength?: number
+  hintPattern?: string | null
+}
+
+export type GeHintRevealedPayload = {
+  gameId: string
+  turnId: string
+  drawerSessionId: string
+  hintPattern: string
+  revealedCount?: number
+  totalRevealCount?: number
 }
 
 export type GeTurnEndedPayload = {

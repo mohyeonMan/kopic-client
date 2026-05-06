@@ -72,7 +72,7 @@ export function BoardCanvas({
           key={
             viewerRole === 'drawer'
               ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
-              : `${currentTurn.turnId}-masked-${currentTurn.answerLength ?? 'unknown'}`
+              : `${currentTurn.turnId}-masked-${currentTurn.hintPattern ?? currentTurn.answerLength ?? 'unknown'}`
           }
           className={
             isSecretWordBannerClosed
@@ -82,7 +82,9 @@ export function BoardCanvas({
         >
           {viewerRole === 'drawer'
             ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
-            : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)}
+            : currentTurn.hintPattern && currentTurn.hintPattern.length > 0
+              ? currentTurn.hintPattern
+              : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)}
         </div>
       ) : null}
     </>

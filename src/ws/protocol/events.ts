@@ -18,6 +18,7 @@ export const serverEventMeta = [
   { code: 208, name: 'GE_DRAWING_STARTED' },
   { code: 209, name: 'GE_TURN_STARTED' },
   { code: 210, name: 'GE_GUESS_CORRECT' },
+  { code: 211, name: 'GE_HINT_REVEALED' },
   { code: 300, name: 'JOIN_ACCEPTED' },
   { code: 301, name: 'ROOM_JOINED' },
   { code: 302, name: 'ROOM_LEFT' },

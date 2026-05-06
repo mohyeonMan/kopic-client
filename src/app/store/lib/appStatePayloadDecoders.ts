@@ -2,6 +2,7 @@ import type {
   GeDrawingStartedPayload,
   GeGameResultPayload,
   GeGameStartedPayload,
+  GeHintRevealedPayload,
   GeGuessCorrectPayload,
   GeReturnToLobbyPayload,
   GeRoundStartedPayload,
@@ -161,6 +162,12 @@ export function decodeGeDrawingStartedPayload(
 
   const selectedWord = payload.answer === null ? null : readNonEmptyString(payload.answer) ?? null
   const answerLength = readFiniteNumber(payload.answerLength)
+  const hintPattern =
+    payload.hintPattern === null
+      ? null
+      : typeof payload.hintPattern === 'string'
+        ? payload.hintPattern
+        : undefined
 
   return {
     gameId,
@@ -168,6 +175,32 @@ export function decodeGeDrawingStartedPayload(
     remainingSec,
     selectedWord,
     answerLength,
+    hintPattern,
+  }
+}
+
+export function decodeGeHintRevealedPayload(
+  payload: unknown,
+): GeHintRevealedPayload | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const turnId = readNonEmptyString(payload.turn) ?? readNonEmptyString(payload.turnId)
+  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
+  const hintPattern = typeof payload.hintPattern === 'string' ? payload.hintPattern : null
+  if (!gameId || !turnId || !drawerSessionId || hintPattern === null) {
+    return null
+  }
+
+  return {
+    gameId,
+    turnId,
+    drawerSessionId,
+    hintPattern,
+    revealedCount: readFiniteNumber(payload.revealedCount),
+    totalRevealCount: readFiniteNumber(payload.totalRevealCount),
   }
 }
 
