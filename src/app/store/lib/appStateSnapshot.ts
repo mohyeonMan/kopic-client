@@ -710,6 +710,12 @@ export function normalizeRoomSnapshotPayload(
             : readNonEmptyString(payload.gameId) ??
               (snapshotGame ? readNonEmptyString(snapshotGame.gid) : undefined) ??
               null,
+      gameStartRemainingSec: undefined,
+      gameStartDeadlineAtMs: undefined,
+      roundStartRemainingSec: undefined,
+      roundStartDeadlineAtMs: undefined,
+      resultRemainingSec: undefined,
+      resultDeadlineAtMs: undefined,
       currentRound,
       currentTurn: normalizedCurrentTurn,
       chat,

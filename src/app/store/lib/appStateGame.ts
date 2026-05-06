@@ -66,6 +66,8 @@ export function reduceGeGameStartedApplied(
   state: AppState,
   payload: GeGameStartedPayload,
 ): AppState {
+  const gameStartSec = payload.gameStartSec ?? 5
+
   return {
     ...state,
     connectionStatus: 'synced',
@@ -73,6 +75,12 @@ export function reduceGeGameStartedApplied(
       ...state.room,
       roomState: 'RUNNING',
       gameId: payload.gameId,
+      gameStartRemainingSec: gameStartSec,
+      gameStartDeadlineAtMs: createDeadlineAtMs(gameStartSec),
+      roundStartRemainingSec: undefined,
+      roundStartDeadlineAtMs: undefined,
+      resultRemainingSec: undefined,
+      resultDeadlineAtMs: undefined,
       currentRound: null,
       currentTurn: null,
       lobbyCanvasStrokes: [],
@@ -85,6 +93,8 @@ export function reduceGeRoundStartedApplied(
   state: AppState,
   payload: GeRoundStartedPayload,
 ): AppState {
+  const roundStartSec = payload.roundStartSec ?? 5
+
   return {
     ...state,
     connectionStatus: 'synced',
@@ -92,6 +102,10 @@ export function reduceGeRoundStartedApplied(
       ...state.room,
       roomState: 'RUNNING',
       gameId: payload.gameId,
+      gameStartRemainingSec: undefined,
+      gameStartDeadlineAtMs: undefined,
+      roundStartRemainingSec: roundStartSec,
+      roundStartDeadlineAtMs: createDeadlineAtMs(roundStartSec),
       currentRound: {
         roundNo: payload.roundNo,
         totalRounds: state.room.settings.roundCount,
@@ -135,6 +149,10 @@ export function reduceGeTurnStartedApplied(
       ...state.room,
       roomState: 'RUNNING',
       gameId: payload.gameId,
+      gameStartRemainingSec: undefined,
+      gameStartDeadlineAtMs: undefined,
+      roundStartRemainingSec: undefined,
+      roundStartDeadlineAtMs: undefined,
       currentRound: nextRound,
       currentTurn: {
         roundNo: payload.roundNo,
@@ -331,8 +349,9 @@ export function reduceGeTurnEndedApplied(
         ...state.room.currentTurn,
         turnId: payload.turnId,
         phase: 'TURN_END',
-        remainingSec: 0,
-        deadlineAtMs: undefined,
+        remainingSec: payload.turnEndSec ?? 5,
+        deadlineAtMs:
+          payload.turnEndSec !== undefined ? createDeadlineAtMs(payload.turnEndSec) : createDeadlineAtMs(5),
         correctSessionIds,
         earnedPoints: payload.earnedPoints,
         selectedWord: answer,
@@ -358,6 +377,8 @@ export function reduceGeGameResultApplied(
       ...state.room,
       roomState: 'RESULT',
       gameId: payload.gameId,
+      resultRemainingSec: payload.resultSec,
+      resultDeadlineAtMs: createDeadlineAtMs(payload.resultSec),
       participants: nextParticipants,
       currentTurn: null,
       chat: [...state.room.chat, createSystemMessage(`206 GE_GAME_RESULT ${payload.resultSec}s`)],
@@ -375,6 +396,12 @@ export function reduceGeReturnToLobbyApplied(
       ...state.room,
       roomState: 'LOBBY',
       gameId: null,
+      gameStartRemainingSec: undefined,
+      gameStartDeadlineAtMs: undefined,
+      roundStartRemainingSec: undefined,
+      roundStartDeadlineAtMs: undefined,
+      resultRemainingSec: undefined,
+      resultDeadlineAtMs: undefined,
       currentRound: null,
       currentTurn: null,
       lobbyCanvasStrokes: [],

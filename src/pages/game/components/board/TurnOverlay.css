@@ -17,6 +17,19 @@
   font-size: clamp(12px, 1.45cqw, 18px);
 }
 
+.board-frame .overlay-countdown-line {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.board-frame .overlay-countdown-line span {
+  color: rgba(255, 250, 240, 0.84);
+  font-size: clamp(0.95rem, 1.8cqw, 1.2rem);
+  line-height: 1;
+}
+
 .board-frame .canvas-full-overlay-panel > strong {
   font-size: clamp(1rem, 3.3cqw, 1.9rem);
 }
@@ -485,6 +498,34 @@
 .overlay-heading {
   display: grid;
   gap: 4px;
+}
+
+.overlay-seconds-only {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 250, 240, 0.16);
+  color: #fffaf0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.overlay-seconds-only-turn-end {
+  justify-self: center;
+}
+
+.overlay-seconds-only-result {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
 }
 
 .overlay-actions {

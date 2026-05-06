@@ -21,12 +21,14 @@ export type ServerGameStartedPayload = {
 
 export type GeGameStartedPayload = {
   gameId: string
+  gameStartSec?: number
 }
 
 export type GeRoundStartedPayload = {
   gameId: string
   roundNo: number
   drawerSessionIds: string[]
+  roundStartSec?: number
 }
 
 export type GeTurnStartedPayload = {
@@ -62,6 +64,7 @@ export type GeTurnEndedPayload = {
   reason: string
   answer: string | null
   earnedPoints: Record<string, number>
+  turnEndSec?: number
 }
 
 export type GeGameResultPayload = {

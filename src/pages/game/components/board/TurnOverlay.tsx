@@ -21,15 +21,21 @@ type TurnOverlayProps = {
   currentTurn: TurnSummary | null
   drawerName: string
   earnedScores: EarnedScore[]
+  gameStartCountdownSec?: number
+  nextTurnCountdownSec?: number
   nextDrawerName: string | null
   onRequestWordChoice: (word: string) => void
   onStageOverlayTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void
   previewMode: OverlayPreview
+  returnToLobbyCountdownSec?: number
   ranking: Participant[]
   roomState: RoomState
+  roundStartCountdownSec?: number
   stageOverlayOpen: boolean
+  turnStartCountdownSec?: number
   turnEndOverlaySnapshot: TurnEndOverlaySnapshot | null
   viewerRole: ViewerRole
+  wordChoiceCountdownSec?: number
 }
 
 function renderOverlayState(
@@ -46,16 +52,41 @@ export function TurnOverlay({
   currentTurn,
   drawerName,
   earnedScores,
+  gameStartCountdownSec,
+  nextTurnCountdownSec,
   nextDrawerName,
   onRequestWordChoice,
   onStageOverlayTransitionEnd,
   previewMode,
+  returnToLobbyCountdownSec,
   ranking,
   roomState,
+  roundStartCountdownSec,
   stageOverlayOpen,
+  turnStartCountdownSec,
   turnEndOverlaySnapshot,
   viewerRole,
+  wordChoiceCountdownSec,
 }: TurnOverlayProps) {
+  const gameStartCountdownText =
+    typeof gameStartCountdownSec === 'number' ? `${Math.max(0, gameStartCountdownSec)}초 후,` : null
+  const roundStartCountdownText =
+    typeof roundStartCountdownSec === 'number'
+      ? `${Math.max(0, roundStartCountdownSec)}초 후,`
+      : null
+  const turnStartCountdownText =
+    typeof turnStartCountdownSec === 'number'
+      ? `${Math.max(0, turnStartCountdownSec)}초 후,`
+      : null
+  const wordChoiceCountdownText =
+    typeof wordChoiceCountdownSec === 'number' ? `${Math.max(0, wordChoiceCountdownSec)}초` : null
+  const nextTurnCountdownText =
+    typeof nextTurnCountdownSec === 'number' ? `${Math.max(0, nextTurnCountdownSec)}초` : null
+  const returnToLobbyCountdownText =
+    typeof returnToLobbyCountdownSec === 'number'
+      ? `${Math.max(0, returnToLobbyCountdownSec)}초`
+      : null
+
   return (
     <>
       {roomState === 'RUNNING' ? (
@@ -68,7 +99,14 @@ export function TurnOverlay({
           aria-hidden={activeStageOverlay !== 'gameStart'}
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
-          <strong>게임을 시작합니다.</strong>
+          {gameStartCountdownText ? (
+            <p className="overlay-countdown-line">
+              <span>{gameStartCountdownText}</span>
+              <strong>게임이 시작됩니다.</strong>
+            </p>
+          ) : (
+            <strong>게임을 시작합니다.</strong>
+          )}
         </div>
       ) : null}
 
@@ -82,7 +120,16 @@ export function TurnOverlay({
           aria-hidden={activeStageOverlay !== 'roundStart'}
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
-          <strong>{currentRound ? `${currentRound.roundNo}라운드` : '1라운드'}</strong>
+          {roundStartCountdownText ? (
+            <p className="overlay-countdown-line">
+              <span>{roundStartCountdownText}</span>
+              <strong>
+                {currentRound ? `${currentRound.roundNo}라운드가 시작됩니다.` : '1라운드가 시작됩니다.'}
+              </strong>
+            </p>
+          ) : (
+            <strong>{currentRound ? `${currentRound.roundNo}라운드` : '1라운드'}</strong>
+          )}
         </div>
       ) : null}
 
@@ -97,6 +144,9 @@ export function TurnOverlay({
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
           <div className="overlay-heading">
+            {wordChoiceCountdownText ? (
+              <p className="overlay-seconds-only">{wordChoiceCountdownText}</p>
+            ) : null}
             <strong>
               {viewerRole === 'drawer' && currentTurn.wordChoices.length > 0
                 ? '제시어를 선택해주세요.'
@@ -132,7 +182,14 @@ export function TurnOverlay({
           aria-hidden={activeStageOverlay !== 'turnStart'}
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
-          <strong>{`${drawerName}님이 그림을 그립니다.`}</strong>
+          {turnStartCountdownText ? (
+            <p className="overlay-countdown-line">
+              <span>{turnStartCountdownText}</span>
+              <strong>{`${drawerName}님이 그림을 그립니다.`}</strong>
+            </p>
+          ) : (
+            <strong>{`${drawerName}님이 그림을 그립니다.`}</strong>
+          )}
           {nextDrawerName ? <span>{`다음은 ${nextDrawerName}님`}</span> : null}
         </div>
       ) : null}
@@ -149,6 +206,11 @@ export function TurnOverlay({
         >
           <div className="canvas-full-overlay-panel">
             <div className="turn-end-summary">
+              {nextTurnCountdownText ? (
+                <p className="overlay-seconds-only overlay-seconds-only-turn-end">
+                  {nextTurnCountdownText}
+                </p>
+              ) : null}
               <p className="turn-end-answer">
                 <span className="turn-end-answer-prefix">정답은</span>
                 <strong className="turn-end-answer-word">
@@ -210,6 +272,11 @@ export function TurnOverlay({
 
       {previewMode === 'gameResult' ? (
         <div className="canvas-result-screen">
+          {returnToLobbyCountdownText ? (
+            <p className="overlay-seconds-only overlay-seconds-only-result">
+              {returnToLobbyCountdownText}
+            </p>
+          ) : null}
           {ranking.map((participant, index) => (
             <div
               key={participant.sessionId}

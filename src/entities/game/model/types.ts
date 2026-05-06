@@ -83,6 +83,12 @@ export type RoomSnapshot = {
   settings: GameSettings
   roomState: RoomState
   gameId: string | null
+  gameStartRemainingSec?: number
+  gameStartDeadlineAtMs?: number
+  roundStartRemainingSec?: number
+  roundStartDeadlineAtMs?: number
+  resultRemainingSec?: number
+  resultDeadlineAtMs?: number
   currentRound: RoundSummary | null
   currentTurn: TurnSummary | null
   chat: ChatMessage[]

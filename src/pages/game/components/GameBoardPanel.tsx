@@ -35,9 +35,11 @@ type GameBoardPanelProps = {
   drawerName: string
   earnedScores: EarnedScore[]
   forcedPaletteColor?: string
+  gameStartCountdownSec?: number
   isHost: boolean
   isSecretWordBannerClosed: boolean
   isSharedDrawingPhase: boolean
+  nextTurnCountdownSec?: number
   nextDrawerName: string | null
   onApplyEndMode: (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => void
   onApplySetting: (key: NumericSettingKey, value: string) => void
@@ -53,17 +55,21 @@ type GameBoardPanelProps = {
   onStartGame: () => void
   onToggleSettings: () => void
   previewMode: OverlayPreview
+  returnToLobbyCountdownSec?: number
   ranking: Participant[]
   revealedHintCount: number
   roomState: RoomState
+  roundStartCountdownSec?: number
   settings: GameSettings
   settingsOpen: boolean
   shouldShowSecretWordBanner: boolean
   size: number
   stageOverlayOpen: boolean
   tool: DrawingTool
+  turnStartCountdownSec?: number
   turnEndOverlaySnapshot: TurnEndOverlaySnapshot | null
   viewerRole: ViewerRole
+  wordChoiceCountdownSec?: number
 }
 
 export function GameBoardPanel({
@@ -78,9 +84,11 @@ export function GameBoardPanel({
   drawerName,
   earnedScores,
   forcedPaletteColor,
+  gameStartCountdownSec,
   isHost,
   isSecretWordBannerClosed,
   isSharedDrawingPhase,
+  nextTurnCountdownSec,
   nextDrawerName,
   onApplyEndMode,
   onApplySetting,
@@ -96,17 +104,21 @@ export function GameBoardPanel({
   onStartGame,
   onToggleSettings,
   previewMode,
+  returnToLobbyCountdownSec,
   ranking,
   revealedHintCount,
   roomState,
+  roundStartCountdownSec,
   settings,
   settingsOpen,
   shouldShowSecretWordBanner,
   size,
   stageOverlayOpen,
   tool,
+  turnStartCountdownSec,
   turnEndOverlaySnapshot,
   viewerRole,
+  wordChoiceCountdownSec,
 }: GameBoardPanelProps) {
   return (
     <section ref={centerPanelRef} className="panel game-center-panel">
@@ -148,15 +160,21 @@ export function GameBoardPanel({
             currentTurn={currentTurn}
             drawerName={drawerName}
             earnedScores={earnedScores}
+            gameStartCountdownSec={gameStartCountdownSec}
+            nextTurnCountdownSec={nextTurnCountdownSec}
             nextDrawerName={nextDrawerName}
             onRequestWordChoice={onRequestWordChoice}
             onStageOverlayTransitionEnd={onStageOverlayTransitionEnd}
             previewMode={previewMode}
+            returnToLobbyCountdownSec={returnToLobbyCountdownSec}
             ranking={ranking}
             roomState={roomState}
+            roundStartCountdownSec={roundStartCountdownSec}
             stageOverlayOpen={stageOverlayOpen}
+            turnStartCountdownSec={turnStartCountdownSec}
             turnEndOverlaySnapshot={turnEndOverlaySnapshot}
             viewerRole={viewerRole}
+            wordChoiceCountdownSec={wordChoiceCountdownSec}
           />
         </div>
 

@@ -18,6 +18,7 @@ import { useChatAutoScroll } from './hooks/useChatAutoScroll'
 import { useGameControls } from './hooks/useGameControls'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
+import { useCountdownSec } from './hooks/useCountdownSec'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
@@ -85,6 +86,26 @@ export function GamePage() {
   const displayedRemainingSec = useTurnTimer({
     currentTurn,
     roomState,
+  })
+  const gameStartRemainingSec = useCountdownSec({
+    active: roomState === 'RUNNING',
+    deadlineAtMs: state.room.gameStartDeadlineAtMs,
+    fallbackSec: state.room.gameStartRemainingSec,
+  })
+  const roundStartRemainingSec = useCountdownSec({
+    active: roomState === 'RUNNING',
+    deadlineAtMs: state.room.roundStartDeadlineAtMs,
+    fallbackSec: state.room.roundStartRemainingSec,
+  })
+  const turnEndRemainingSec = useCountdownSec({
+    active: roomState === 'RUNNING' && currentTurn?.phase === 'TURN_END',
+    deadlineAtMs: currentTurn?.phase === 'TURN_END' ? currentTurn.deadlineAtMs : undefined,
+    fallbackSec: currentTurn?.phase === 'TURN_END' ? currentTurn.remainingSec : 0,
+  })
+  const resultRemainingSec = useCountdownSec({
+    active: roomState === 'RESULT',
+    deadlineAtMs: state.room.resultDeadlineAtMs,
+    fallbackSec: state.room.resultRemainingSec,
   })
   const {
     activeStageOverlay,
@@ -243,6 +264,14 @@ export function GamePage() {
           drawerName={drawerName}
           nextDrawerName={nextDrawerName}
           previewMode={previewMode}
+          gameStartCountdownSec={gameStartRemainingSec}
+          roundStartCountdownSec={roundStartRemainingSec}
+          turnStartCountdownSec={currentTurn?.phase === 'READY' ? displayedRemainingSec : undefined}
+          wordChoiceCountdownSec={
+            currentTurn?.phase === 'WORD_CHOICE' ? displayedRemainingSec : undefined
+          }
+          nextTurnCountdownSec={currentTurn?.phase === 'TURN_END' ? turnEndRemainingSec : undefined}
+          returnToLobbyCountdownSec={roomState === 'RESULT' ? resultRemainingSec : undefined}
           activeStageOverlay={activeStageOverlay}
           stageOverlayOpen={stageOverlayOpen}
           shouldShowSecretWordBanner={shouldShowSecretWordBanner}

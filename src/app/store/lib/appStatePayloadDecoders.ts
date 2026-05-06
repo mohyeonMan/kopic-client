@@ -37,7 +37,11 @@ export function decodeGeGameStartedPayload(payload: unknown): GeGameStartedPaylo
     return null
   }
 
-  return { gameId }
+  return {
+    gameId,
+    gameStartSec:
+      readFiniteNumber(payload.gameStartSec) ?? readFiniteNumber(payload.startSec) ?? undefined,
+  }
 }
 
 export function decodeGeRoundStartedPayload(payload: unknown): GeRoundStartedPayload | null {
@@ -62,6 +66,8 @@ export function decodeGeRoundStartedPayload(payload: unknown): GeRoundStartedPay
     gameId,
     roundNo,
     drawerSessionIds,
+    roundStartSec:
+      readFiniteNumber(payload.roundStartSec) ?? readFiniteNumber(payload.startSec) ?? undefined,
   }
 }
 
@@ -207,6 +213,7 @@ export function decodeGeTurnEndedPayload(payload: unknown): GeTurnEndedPayload |
     reason,
     answer,
     earnedPoints: readPointsMap(payload.earnedPoints),
+    turnEndSec: readFiniteNumber(payload.turnEndSec) ?? readFiniteNumber(payload.remainingSec) ?? undefined,
   }
 }
 
