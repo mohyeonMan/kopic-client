@@ -130,22 +130,30 @@
     box-shadow: 0 8px 20px rgba(32, 50, 71, 0.08);
     font: inherit;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
     transition:
       background 160ms ease,
       color 160ms ease,
-      transform 160ms ease;
+      transform 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  .game-mobile-panel-switcher-button:active {
+    transform: translateY(1px) scale(0.97);
+    box-shadow: 0 4px 12px rgba(32, 50, 71, 0.16);
+  }
+
+  .game-mobile-panel-switcher-button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 8px 20px rgba(32, 50, 71, 0.08),
+      0 0 0 2px rgba(225, 122, 46, 0.34);
   }
 
   .game-mobile-panel-switcher-button-active {
     background: var(--accent);
     color: var(--accent-ink);
-  }
-
-  .gamepage-shell-chat-focus .game-mobile-panel-switcher {
-    opacity: 0;
-    pointer-events: none;
-    height: 0;
-    overflow: hidden;
   }
 
   .gamepage-shell-chat-focus .game-stage-layout {

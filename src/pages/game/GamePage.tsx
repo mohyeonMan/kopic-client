@@ -28,6 +28,8 @@ export function GamePage() {
   const statusBarRef = useRef<HTMLElement | null>(null)
   const stageRef = useRef<HTMLElement | null>(null)
   const centerPanelRef = useRef<HTMLElement | null>(null)
+  const participantPanelRef = useRef<HTMLElement | null>(null)
+  const chatPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
   const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
@@ -261,6 +263,26 @@ export function GamePage() {
       inline: 'nearest',
     })
   }
+  const focusMobilePanel = (panel: 'chat' | 'participants') => {
+    setMobilePanel(panel)
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const panelElement = panel === 'chat' ? chatPanelRef.current : participantPanelRef.current
+
+        if (!panelElement) {
+          return
+        }
+
+        panelElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+          inline: 'nearest',
+        })
+        panelElement.focus({ preventScroll: true })
+      })
+    })
+  }
 
   return (
     <div className={pageClassName}>
@@ -274,6 +296,7 @@ export function GamePage() {
 
       <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
         <ParticipantPanel
+          containerRef={participantPanelRef}
           participantCount={participants.length}
           animatedParticipants={animatedParticipants}
           mySessionId={state.session.sessionId}
@@ -347,7 +370,7 @@ export function GamePage() {
                 ? 'game-mobile-panel-switcher-button game-mobile-panel-switcher-button-active'
                 : 'game-mobile-panel-switcher-button'
             }
-            onClick={() => setMobilePanel('chat')}
+            onClick={() => focusMobilePanel('chat')}
           >
             채팅
           </button>
@@ -360,13 +383,14 @@ export function GamePage() {
                 ? 'game-mobile-panel-switcher-button game-mobile-panel-switcher-button-active'
                 : 'game-mobile-panel-switcher-button'
             }
-            onClick={() => setMobilePanel('participants')}
+            onClick={() => focusMobilePanel('participants')}
           >
             참여자 {participants.length}
           </button>
         </div>
 
         <GameChatPanel
+          containerRef={chatPanelRef}
           visibleChat={visibleChat}
           chatListRef={chatListRef}
           showChatScrollButton={showChatScrollButton}

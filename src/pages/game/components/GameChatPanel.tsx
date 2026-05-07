@@ -4,6 +4,7 @@ import type { ChatMessage } from '../../../entities/game/model'
 import { shouldSkipEnterSubmit } from '../gamePageShared'
 
 type GameChatPanelProps = {
+  containerRef: RefObject<HTMLElement | null>
   visibleChat: ChatMessage[]
   chatListRef: RefObject<HTMLUListElement | null>
   showChatScrollButton: boolean
@@ -19,6 +20,7 @@ type GameChatPanelProps = {
 }
 
 export function GameChatPanel({
+  containerRef,
   visibleChat,
   chatListRef,
   showChatScrollButton,
@@ -52,7 +54,7 @@ export function GameChatPanel({
   }
 
   return (
-    <aside className={asideClassName}>
+    <aside ref={containerRef} className={asideClassName} tabIndex={-1}>
       <div className="section-heading">
         <div>
           <p className="eyebrow">Chat</p>

@@ -3,6 +3,7 @@ import type { AnimationEvent as ReactAnimationEvent, RefObject } from 'react'
 import { getParticipantAccentColor, participantTone, type AnimatedParticipantItem } from '../gamePageShared'
 
 type ParticipantPanelProps = {
+  containerRef: RefObject<HTMLElement | null>
   participantCount: number
   animatedParticipants: AnimatedParticipantItem[]
   mySessionId: string
@@ -19,6 +20,7 @@ type ParticipantPanelProps = {
 }
 
 export function ParticipantPanel({
+  containerRef,
   participantCount,
   animatedParticipants,
   mySessionId,
@@ -35,7 +37,7 @@ export function ParticipantPanel({
     }`
 
   return (
-    <aside className={asideClassName}>
+    <aside ref={containerRef} className={asideClassName} tabIndex={-1}>
       <div className="section-heading participant-heading-compact">
         <h2>참여자</h2>
         <div className="pill participant-count-pill">{participantCount}명</div>
