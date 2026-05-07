@@ -13,6 +13,10 @@
 }
 
 .secret-word-banner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   justify-self: center;
   position: absolute;
   top: 20px;

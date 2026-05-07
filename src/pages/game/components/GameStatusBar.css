@@ -11,6 +11,7 @@
   overflow-y: hidden;
   border-radius: var(--status-radius);
   scrollbar-width: none;
+  scroll-margin-top: calc(env(safe-area-inset-top) + 10px);
 }
 
 .game-status-bar::-webkit-scrollbar {

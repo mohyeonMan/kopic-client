@@ -145,10 +145,12 @@ export function TurnOverlay({
           aria-hidden={activeStageOverlay !== 'wordChoice'}
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
+          {wordChoiceCountdownText ? (
+            <p className="overlay-seconds-only overlay-seconds-only-word-choice">
+              {wordChoiceCountdownText}
+            </p>
+          ) : null}
           <div className="overlay-heading">
-            {wordChoiceCountdownText ? (
-              <p className="overlay-seconds-only">{wordChoiceCountdownText}</p>
-            ) : null}
             <strong>
               {viewerRole === 'drawer' && currentTurn.wordChoices.length > 0
                 ? '제시어를 선택해주세요.'

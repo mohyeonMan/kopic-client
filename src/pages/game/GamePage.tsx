@@ -238,7 +238,8 @@ export function GamePage() {
   const isCorrectHighlightActive =
     roomState === 'RUNNING' &&
     typeof currentRound?.roundNo === 'number' &&
-    currentRound.roundNo === correctHighlightRoundNo
+    currentRound.roundNo === correctHighlightRoundNo &&
+    !isDrawer
 
   const isBoardFocusMode = isKeyboardVisible || isChatComposerFocused
   const activeMobilePanel = isBoardFocusMode ? 'chat' : mobilePanel
