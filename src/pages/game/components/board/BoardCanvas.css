@@ -55,7 +55,28 @@
 }
 
 .secret-word-banner-masked {
-  letter-spacing: 0.22em;
+  letter-spacing: normal;
+}
+
+.secret-word-banner-text {
+  display: inline-block;
+  text-align: center;
+  line-height: 1.15;
+  white-space: pre;
+}
+
+.secret-word-banner-text-masked {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace;
+  letter-spacing: 0.14em;
+  padding-left: 0.14em;
 }
 
 @keyframes secret-word-banner-drop {

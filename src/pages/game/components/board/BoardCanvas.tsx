@@ -40,6 +40,15 @@ export function BoardCanvas({
   tool,
   viewerRole,
 }: BoardCanvasProps) {
+  const secretWordText =
+    !currentTurn
+      ? ''
+      : viewerRole === 'drawer'
+        ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
+        : currentTurn.hintPattern && currentTurn.hintPattern.length > 0
+          ? currentTurn.hintPattern
+          : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)
+
   return (
     <>
       <div className="grid-overlay" />
@@ -80,11 +89,15 @@ export function BoardCanvas({
               : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
           }
         >
-          {viewerRole === 'drawer'
-            ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
-            : currentTurn.hintPattern && currentTurn.hintPattern.length > 0
-              ? currentTurn.hintPattern
-              : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)}
+          <span
+            className={
+              viewerRole === 'drawer'
+                ? 'secret-word-banner-text'
+                : 'secret-word-banner-text secret-word-banner-text-masked'
+            }
+          >
+            {secretWordText}
+          </span>
         </div>
       ) : null}
     </>
