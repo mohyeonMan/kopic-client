@@ -69,14 +69,16 @@ export function TurnOverlay({
   wordChoiceCountdownSec,
 }: TurnOverlayProps) {
   const gameStartCountdownText =
-    typeof gameStartCountdownSec === 'number' ? `${Math.max(0, gameStartCountdownSec)}` : null
+    typeof gameStartCountdownSec === 'number'
+      ? `${Math.max(0, gameStartCountdownSec)}초 후,`
+      : null
   const roundStartCountdownText =
     typeof roundStartCountdownSec === 'number'
-      ? `${Math.max(0, roundStartCountdownSec)}`
+      ? `${Math.max(0, roundStartCountdownSec)}초 후,`
       : null
   const turnStartCountdownText =
     typeof turnStartCountdownSec === 'number'
-      ? `${Math.max(0, turnStartCountdownSec)}`
+      ? `${Math.max(0, turnStartCountdownSec)}초 후,`
       : null
   const wordChoiceCountdownText =
     typeof wordChoiceCountdownSec === 'number' ? `${Math.max(0, wordChoiceCountdownSec)}` : null

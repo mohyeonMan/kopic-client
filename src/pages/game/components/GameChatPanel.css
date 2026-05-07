@@ -274,20 +274,19 @@
   }
 
   .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
+    --mobile-chat-footer-gap: 22px;
     --mobile-chat-dock-clearance: calc(
-      var(--mobile-chat-dock-height) + env(safe-area-inset-bottom) + 14px
+      var(--mobile-chat-dock-height) +
+      env(safe-area-inset-bottom) +
+      var(--mobile-viewport-offset-bottom) +
+      var(--mobile-chat-footer-gap)
     );
     flex: 1 1 auto;
     min-height: 0;
-    height: max(
-      200px,
-      calc(clamp(320px, 42svh, 420px) - var(--mobile-chat-dock-clearance))
-    );
-    max-height: calc(
-      var(--mobile-visual-viewport-height) - 132px - var(--mobile-chat-dock-clearance)
-    );
+    height: clamp(320px, 42svh, 420px);
+    max-height: calc(var(--mobile-visual-viewport-height) - 132px);
     padding: 8px;
-    padding-bottom: 8px;
+    padding-bottom: var(--mobile-chat-dock-clearance);
     border-radius: 18px;
     background: rgba(255, 252, 247, 0.96);
     box-shadow: var(--shadow-soft);
@@ -299,13 +298,8 @@
 
   .gamepage-shell-chat-focus .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
     min-height: 0;
-    height: max(
-      184px,
-      calc(clamp(280px, 38svh, 400px) - var(--mobile-chat-dock-clearance))
-    );
-    max-height: calc(
-      var(--mobile-visual-viewport-height) - 108px - var(--mobile-chat-dock-clearance)
-    );
+    height: clamp(280px, 38svh, 400px);
+    max-height: calc(var(--mobile-visual-viewport-height) - 108px);
   }
 
   .chat-input-dock {
@@ -319,7 +313,7 @@
 
   .chat-input-dock-shell {
     display: grid;
-    padding: 6px;
+    padding: 6px 6px 12px;
     border: 1px solid rgba(32, 50, 71, 0.14);
     border-radius: 20px;
     background: rgba(255, 252, 247, 0.96);
@@ -328,7 +322,7 @@
   }
 
   .chat-scroll-to-bottom-button {
-    bottom: 12px;
+    bottom: var(--mobile-chat-dock-clearance);
     width: 28px;
     height: 28px;
   }
