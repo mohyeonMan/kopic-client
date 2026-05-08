@@ -110,20 +110,15 @@
   }
 
   .game-mobile-panel-switcher {
-    position: fixed;
-    left: 8px;
-    right: 8px;
+    position: sticky;
     bottom: calc(
       env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + var(--mobile-chat-dock-height) + 10px
     );
-    z-index: 24;
+    z-index: 8;
+    order: 2;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
-  }
-
-  .gamepage-shell-mobile-participants .game-mobile-panel-switcher {
-    bottom: calc(env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + 10px);
   }
 
   .game-mobile-panel-switcher-button {
