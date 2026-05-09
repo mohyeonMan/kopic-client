@@ -17,7 +17,7 @@
   min-height: auto;
   aspect-ratio: 4 / 3;
   border-radius: 28px;
-  overflow: hidden;
+  overflow: visible;
   background: #ffffff;
   border: 1px solid var(--panel-border);
   display: grid;
@@ -27,6 +27,10 @@
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.board-frame > .canvas-full-overlay {
+  border-radius: inherit;
 }
 
 .board-frame-correct-highlight {

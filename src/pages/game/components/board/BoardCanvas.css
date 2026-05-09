@@ -1,3 +1,10 @@
+.board-canvas-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
 .grid-overlay {
   position: absolute;
   inset: 0;
@@ -63,13 +70,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  max-width: min(calc(100cqw - 20px), 100%);
 }
 
 .secret-word-banner-text {
   display: inline-block;
   text-align: center;
   line-height: 1.15;
-  white-space: pre;
+  font-size: clamp(0.82rem, 1.6cqw, 0.95rem);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .secret-word-banner-text-masked {
@@ -107,20 +117,23 @@
 
 .secret-word-description-bubble {
   position: absolute;
-  top: calc(100% + 10px);
-  left: calc(100% + 8px);
-  width: min(300px, calc(100vw - 48px));
-  padding: 10px 12px;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100cqw - 24px), calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid rgba(32, 50, 71, 0.16);
   background: rgba(255, 252, 247, 0.98);
   color: var(--ink-strong);
   text-align: left;
-  font-size: 0.84rem;
-  line-height: 1.35;
+  font-size: clamp(0.72rem, 1.28cqw, 0.8rem);
+  line-height: 1.3;
   box-shadow: 0 10px 24px rgba(32, 50, 71, 0.14);
   white-space: normal;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 @keyframes secret-word-banner-drop {

@@ -68,16 +68,18 @@ export function BoardCanvas({
 
   return (
     <>
-      <div className="grid-overlay" />
-      <CanvasBoard
-        strokes={boardStrokes}
-        canDraw={canDraw}
-        tool={tool}
-        color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
-        size={Math.max(2, size * 2)}
-        onSendStrokeChunk={onSendStrokeChunk}
-        onCommitStroke={onCommitStroke}
-      />
+      <div className="board-canvas-clip">
+        <div className="grid-overlay" />
+        <CanvasBoard
+          strokes={boardStrokes}
+          canDraw={canDraw}
+          tool={tool}
+          color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
+          size={Math.max(2, size * 2)}
+          onSendStrokeChunk={onSendStrokeChunk}
+          onCommitStroke={onCommitStroke}
+        />
+      </div>
 
       {roomState === 'LOBBY' ? (
         <button
