@@ -113,9 +113,7 @@
   top: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-  inline-size: max-content;
-  min-inline-size: min(clamp(260px, 42cqw, 420px), calc(100vw - 24px));
-  max-inline-size: min(clamp(340px, 78cqw, 680px), calc(100vw - 24px));
+  inline-size: fit-content;
   max-block-size: min(calc(100cqh - 52px), calc(100vh - 140px));
   padding: 10px 14px;
   border-radius: 12px;
@@ -127,7 +125,7 @@
   line-height: 1.45;
   box-shadow: 0 10px 24px rgba(32, 50, 71, 0.14);
   white-space: normal;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   word-break: keep-all;
   text-wrap: pretty;
   overflow-y: auto;
@@ -158,8 +156,6 @@
 @media (max-width: 980px) {
   .secret-word-description-bubble {
     top: calc(100% + 10px);
-    min-inline-size: min(clamp(220px, 70vw, 300px), calc(100vw - 16px));
-    max-inline-size: calc(100vw - 16px);
     padding: 8px 12px;
     font-size: 0.76rem;
   }

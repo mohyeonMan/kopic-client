@@ -1,5 +1,5 @@
 import './BoardCanvas.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { CanvasStroke, DrawingTool, RoomState, TurnSummary } from '../../../../entities/game/model'
 import { CanvasBoard } from '../../../../features/game-canvas/CanvasBoard'
 import { getMaskedWord, type ViewerRole } from '../../gamePageShared'
@@ -42,6 +42,7 @@ export function BoardCanvas({
   viewerRole,
 }: BoardCanvasProps) {
   const [openedDescriptionKey, setOpenedDescriptionKey] = useState<string | null>(null)
+  const [descriptionBubbleWidth, setDescriptionBubbleWidth] = useState({ min: 220, max: 420 })
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
   const secretWordText =
     !currentTurn
@@ -88,6 +89,57 @@ export function BoardCanvas({
     window.addEventListener('pointerdown', handleDocumentPointerDown)
     return () => window.removeEventListener('pointerdown', handleDocumentPointerDown)
   }, [isDescriptionOpen])
+
+  useEffect(() => {
+    const anchor = descriptionAnchorRef.current
+    if (!anchor) {
+      return
+    }
+
+    const boardFrame = anchor.closest('.board-frame')
+    if (!(boardFrame instanceof HTMLElement)) {
+      return
+    }
+
+    const updateDescriptionBubbleWidth = () => {
+      const boardFrameWidth = boardFrame.getBoundingClientRect().width
+      if (!Number.isFinite(boardFrameWidth) || boardFrameWidth <= 0) {
+        return
+      }
+
+      const nextMin = Math.round(boardFrameWidth * 0.36)
+      const nextMax = Math.round(boardFrameWidth * 0.72)
+
+      setDescriptionBubbleWidth((current) =>
+        current.min === nextMin && current.max === nextMax
+          ? current
+          : {
+              min: nextMin,
+              max: nextMax,
+            },
+      )
+    }
+
+    updateDescriptionBubbleWidth()
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateDescriptionBubbleWidth)
+      resizeObserver.observe(boardFrame)
+    }
+
+    window.addEventListener('resize', updateDescriptionBubbleWidth)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateDescriptionBubbleWidth)
+    }
+  }, [])
+
+  const descriptionBubbleStyle: CSSProperties = {
+    minWidth: `${descriptionBubbleWidth.min}px`,
+    maxWidth: `${descriptionBubbleWidth.max}px`,
+  }
 
   return (
     <>
@@ -155,7 +207,11 @@ export function BoardCanvas({
               </button>
             ) : null}
             {canShowDescriptionButton && isDescriptionOpen ? (
-              <div className="secret-word-description-bubble" role="tooltip">
+              <div
+                className="secret-word-description-bubble"
+                style={descriptionBubbleStyle}
+                role="tooltip"
+              >
                 {selectedWordDescription}
               </div>
             ) : null}
