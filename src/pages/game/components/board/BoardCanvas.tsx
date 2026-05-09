@@ -42,7 +42,11 @@ export function BoardCanvas({
   viewerRole,
 }: BoardCanvasProps) {
   const [openedDescriptionKey, setOpenedDescriptionKey] = useState<string | null>(null)
-  const [descriptionBubbleWidth, setDescriptionBubbleWidth] = useState({ min: 220, max: 420 })
+  const [descriptionBubbleBounds, setDescriptionBubbleBounds] = useState({
+    minWidth: 220,
+    maxWidth: 420,
+    maxHeight: 240,
+  })
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
   const secretWordText =
     !currentTurn
@@ -101,44 +105,55 @@ export function BoardCanvas({
       return
     }
 
-    const updateDescriptionBubbleWidth = () => {
-      const boardFrameWidth = boardFrame.getBoundingClientRect().width
+    const updateDescriptionBubbleBounds = () => {
+      const boardFrameRect = boardFrame.getBoundingClientRect()
+      const boardFrameWidth = boardFrameRect.width
+      const boardFrameHeight = boardFrameRect.height
       if (!Number.isFinite(boardFrameWidth) || boardFrameWidth <= 0) {
         return
       }
 
-      const nextMin = Math.round(boardFrameWidth * 0.36)
-      const nextMax = Math.round(boardFrameWidth * 0.72)
+      if (!Number.isFinite(boardFrameHeight) || boardFrameHeight <= 0) {
+        return
+      }
 
-      setDescriptionBubbleWidth((current) =>
-        current.min === nextMin && current.max === nextMax
+      const nextMinWidth = Math.round(boardFrameWidth * 0.36)
+      const nextMaxWidth = Math.round(boardFrameWidth * 0.8)
+      const nextMaxHeight = Math.round(boardFrameHeight * 0.45)
+
+      setDescriptionBubbleBounds((current) =>
+        current.minWidth === nextMinWidth &&
+        current.maxWidth === nextMaxWidth &&
+        current.maxHeight === nextMaxHeight
           ? current
           : {
-              min: nextMin,
-              max: nextMax,
+              minWidth: nextMinWidth,
+              maxWidth: nextMaxWidth,
+              maxHeight: nextMaxHeight,
             },
       )
     }
 
-    updateDescriptionBubbleWidth()
+    updateDescriptionBubbleBounds()
 
     let resizeObserver: ResizeObserver | null = null
     if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(updateDescriptionBubbleWidth)
+      resizeObserver = new ResizeObserver(updateDescriptionBubbleBounds)
       resizeObserver.observe(boardFrame)
     }
 
-    window.addEventListener('resize', updateDescriptionBubbleWidth)
+    window.addEventListener('resize', updateDescriptionBubbleBounds)
 
     return () => {
       resizeObserver?.disconnect()
-      window.removeEventListener('resize', updateDescriptionBubbleWidth)
+      window.removeEventListener('resize', updateDescriptionBubbleBounds)
     }
   }, [])
 
   const descriptionBubbleStyle: CSSProperties = {
-    minWidth: `${descriptionBubbleWidth.min}px`,
-    maxWidth: `${descriptionBubbleWidth.max}px`,
+    minWidth: `${descriptionBubbleBounds.minWidth}px`,
+    maxWidth: `${descriptionBubbleBounds.maxWidth}px`,
+    maxHeight: `${descriptionBubbleBounds.maxHeight}px`,
   }
 
   return (

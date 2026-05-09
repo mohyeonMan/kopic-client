@@ -114,7 +114,6 @@
   left: 50%;
   transform: translateX(-50%);
   inline-size: fit-content;
-  max-block-size: min(calc(100cqh - 52px), calc(100vh - 140px));
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid rgba(32, 50, 71, 0.16);
