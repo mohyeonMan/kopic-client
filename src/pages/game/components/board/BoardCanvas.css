@@ -117,9 +117,9 @@
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid rgba(32, 50, 71, 0.16);
-  background: rgba(255, 252, 247, 0.98);
+  background: rgba(255, 252, 247, 0.5);
   color: var(--ink-strong);
-  text-align: left;
+  text-align: center;
   font-size: clamp(0.76rem, 1.15vw, 0.86rem);
   line-height: 1.45;
   box-shadow: 0 10px 24px rgba(32, 50, 71, 0.14);
@@ -142,7 +142,7 @@
   height: 14px;
   border-top: 1px solid rgba(32, 50, 71, 0.16);
   border-left: 1px solid rgba(32, 50, 71, 0.16);
-  background: rgba(255, 252, 247, 0.98);
+  background: rgba(255, 252, 247, 0.5);
   transform: rotate(45deg);
 }
 
