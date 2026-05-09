@@ -72,7 +72,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
-  const [qrCodeGenerating, setQrCodeGenerating] = useState(false)
   const [qrCodeError, setQrCodeError] = useState(false)
   const [shellViewportState, setShellViewportState] = useState<ShellViewportState>(() =>
     readShellViewportState(),
@@ -205,7 +204,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     let disposed = false
 
     const generateQrCode = async () => {
-      setQrCodeGenerating(true)
       setQrCodeError(false)
 
       try {
@@ -227,10 +225,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
         if (!disposed) {
           setQrCodeDataUrl(null)
           setQrCodeError(true)
-        }
-      } finally {
-        if (!disposed) {
-          setQrCodeGenerating(false)
         }
       }
     }
@@ -332,7 +326,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     }
 
     setQrCodeDataUrl(null)
-    setQrCodeGenerating(true)
     setQrCodeError(false)
     setQrModalOpen(true)
     setShareMenuOpen(false)
@@ -521,11 +514,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
             aria-label="방 참여 QR 코드"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3>{'QR코드'}</h3>
-            <p className="topbar-qr-modal-description">
-              {'아래 QR코드를 스캔하면 같은 방 링크로 바로 입장할 수 있습니다.'}
-            </p>
-
             <div className="topbar-qr-modal-code-frame">
               {qrCodeDataUrl && !qrCodeError ? (
                 <img
@@ -533,27 +521,10 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                   src={qrCodeDataUrl}
                   alt="방 참여 링크 QR 코드"
                 />
-              ) : qrCodeGenerating ? (
-                <p className="topbar-qr-modal-loading">{'QR코드 생성 중...'}</p>
-              ) : (
-                <p className="topbar-qr-modal-error">
-                  {'QR코드를 불러오지 못했습니다. 링크 복사로 공유해 주세요.'}
-                </p>
-              )}
+              ) : null}
             </div>
 
-            <p className="topbar-qr-modal-url">{inviteUrl}</p>
-
             <div className="topbar-qr-modal-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  void copyInviteLink()
-                }}
-              >
-                {'링크 복사'}
-              </button>
               <button
                 type="button"
                 className="primary-button"
