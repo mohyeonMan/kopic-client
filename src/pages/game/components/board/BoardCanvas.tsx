@@ -1,5 +1,5 @@
 import './BoardCanvas.css'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CanvasStroke, DrawingTool, RoomState, TurnSummary } from '../../../../entities/game/model'
 import { CanvasBoard } from '../../../../features/game-canvas/CanvasBoard'
 import { getMaskedWord, type ViewerRole } from '../../gamePageShared'
@@ -42,6 +42,7 @@ export function BoardCanvas({
   viewerRole,
 }: BoardCanvasProps) {
   const [openedDescriptionKey, setOpenedDescriptionKey] = useState<string | null>(null)
+  const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
   const secretWordText =
     !currentTurn
       ? ''
@@ -66,20 +67,40 @@ export function BoardCanvas({
     openedDescriptionKey !== null &&
     openedDescriptionKey === descriptionKey
 
+  useEffect(() => {
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      if (!isDescriptionOpen) {
+        return
+      }
+
+      const target = event.target
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      if (descriptionAnchorRef.current?.contains(target)) {
+        return
+      }
+
+      setOpenedDescriptionKey(null)
+    }
+
+    window.addEventListener('pointerdown', handleDocumentPointerDown)
+    return () => window.removeEventListener('pointerdown', handleDocumentPointerDown)
+  }, [isDescriptionOpen])
+
   return (
     <>
-      <div className="board-canvas-clip">
-        <div className="grid-overlay" />
-        <CanvasBoard
-          strokes={boardStrokes}
-          canDraw={canDraw}
-          tool={tool}
-          color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
-          size={Math.max(2, size * 2)}
-          onSendStrokeChunk={onSendStrokeChunk}
-          onCommitStroke={onCommitStroke}
-        />
-      </div>
+      <div className="grid-overlay" />
+      <CanvasBoard
+        strokes={boardStrokes}
+        canDraw={canDraw}
+        tool={tool}
+        color={tool === 'ERASER' ? '#ffffff' : activePaletteColor}
+        size={Math.max(2, size * 2)}
+        onSendStrokeChunk={onSendStrokeChunk}
+        onCommitStroke={onCommitStroke}
+      />
 
       {roomState === 'LOBBY' ? (
         <button
@@ -108,7 +129,7 @@ export function BoardCanvas({
               : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
           }
         >
-          <div className="secret-word-banner-content">
+          <div ref={descriptionAnchorRef} className="secret-word-banner-content">
             <span
               className={
                 viewerRole === 'drawer'
