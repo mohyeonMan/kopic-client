@@ -158,6 +158,7 @@
 }
 
 .topbar-qr-modal {
+  --qr-modal-content-width: min(280px, 72vw);
   width: min(420px, 100%);
   display: grid;
   gap: 10px;
@@ -169,7 +170,7 @@
 }
 
 .topbar-qr-modal-code-frame {
-  width: min(280px, 72vw);
+  width: var(--qr-modal-content-width);
   aspect-ratio: 1;
   margin: 0 auto;
   padding: 12px;
@@ -189,6 +190,8 @@
 .topbar-qr-modal-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  width: var(--qr-modal-content-width);
+  margin: 0 auto;
   gap: 10px;
 }
 
@@ -305,6 +308,7 @@
   }
 
   .topbar-qr-modal {
+    --qr-modal-content-width: min(240px, 72vw);
     width: min(360px, 100%);
     gap: 8px;
     padding: 14px;
@@ -312,7 +316,6 @@
   }
 
   .topbar-qr-modal-code-frame {
-    width: min(240px, 72vw);
     padding: 10px;
     border-radius: 12px;
   }
