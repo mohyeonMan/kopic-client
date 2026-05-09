@@ -59,6 +59,8 @@
 }
 
 .secret-word-banner-content {
+  --secret-word-description-button-size: 22px;
+  --secret-word-description-button-gap: 8px;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -92,10 +94,10 @@
 .secret-word-description-button {
   position: absolute;
   top: 50%;
-  left: calc(100% + 8px);
+  left: calc(100% + var(--secret-word-description-button-gap));
   transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  width: var(--secret-word-description-button-size);
+  height: var(--secret-word-description-button-size);
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -110,8 +112,10 @@
 
 .secret-word-description-bubble {
   position: absolute;
-  top: calc(100% + 14px);
-  left: 50%;
+  top: calc(100% + 20px);
+  left: calc(
+    100% + var(--secret-word-description-button-gap) + (var(--secret-word-description-button-size) / 2)
+  );
   transform: translateX(-50%);
   inline-size: fit-content;
   --secret-word-description-bg: rgba(255, 252, 247, 0.3);
@@ -150,19 +154,19 @@
 .secret-word-description-bubble::before {
   content: '';
   position: absolute;
-  top: -10px;
-  left: calc(50% - 8px);
-  width: 16px;
-  height: 16px;
-  border-top: 1px solid rgba(32, 50, 71, 0.26);
-  border-left: 1px solid rgba(32, 50, 71, 0.26);
+  top: -8px;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid rgba(32, 50, 71, 0.2);
+  border-left: 1px solid rgba(32, 50, 71, 0.2);
   background: var(--secret-word-description-bg);
   transform: rotate(45deg);
 }
 
 @media (max-width: 980px) {
   .secret-word-description-bubble {
-    top: calc(100% + 10px);
+    top: calc(100% + 14px);
     padding: 8px 12px;
     font-size: 0.76rem;
   }
