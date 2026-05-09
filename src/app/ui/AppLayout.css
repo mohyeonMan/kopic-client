@@ -207,6 +207,14 @@
   color: var(--ink-muted);
 }
 
+.topbar-qr-modal-loading {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
 .topbar-qr-modal-url {
   margin: 0;
   padding: 8px 10px;

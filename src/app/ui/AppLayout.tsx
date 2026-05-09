@@ -71,7 +71,9 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
-  const [qrImageLoadFailed, setQrImageLoadFailed] = useState(false)
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
+  const [qrCodeGenerating, setQrCodeGenerating] = useState(false)
+  const [qrCodeError, setQrCodeError] = useState(false)
   const [shellViewportState, setShellViewportState] = useState<ShellViewportState>(() =>
     readShellViewportState(),
   )
@@ -82,9 +84,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const canShareRoom = roomCode.length > 0
   const inviteUrl = canShareRoom
     ? new URL(buildInvitePath(roomCode), window.location.origin).toString()
-    : null
-  const qrCodeImageUrl = inviteUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=420x420&ecc=M&margin=8&data=${encodeURIComponent(inviteUrl)}`
     : null
   const supportsNativeShare = typeof navigator.share === 'function'
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
@@ -199,6 +198,51 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   }, [qrModalOpen])
 
   useEffect(() => {
+    if (!qrModalOpen || !inviteUrl) {
+      return
+    }
+
+    let disposed = false
+
+    const generateQrCode = async () => {
+      setQrCodeGenerating(true)
+      setQrCodeError(false)
+
+      try {
+        const { toDataURL } = await import('qrcode')
+        const dataUrl = await toDataURL(inviteUrl, {
+          errorCorrectionLevel: 'M',
+          width: 420,
+          margin: 2,
+          color: {
+            dark: '#203247',
+            light: '#ffffff',
+          },
+        })
+
+        if (!disposed) {
+          setQrCodeDataUrl(dataUrl)
+        }
+      } catch {
+        if (!disposed) {
+          setQrCodeDataUrl(null)
+          setQrCodeError(true)
+        }
+      } finally {
+        if (!disposed) {
+          setQrCodeGenerating(false)
+        }
+      }
+    }
+
+    void generateQrCode()
+
+    return () => {
+      disposed = true
+    }
+  }, [qrModalOpen, inviteUrl])
+
+  useEffect(() => {
     if (!isGameRoute || typeof document === 'undefined') {
       return
     }
@@ -287,7 +331,9 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       return
     }
 
-    setQrImageLoadFailed(false)
+    setQrCodeDataUrl(null)
+    setQrCodeGenerating(true)
+    setQrCodeError(false)
     setQrModalOpen(true)
     setShareMenuOpen(false)
   }
@@ -481,13 +527,14 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
             </p>
 
             <div className="topbar-qr-modal-code-frame">
-              {qrCodeImageUrl && !qrImageLoadFailed ? (
+              {qrCodeDataUrl && !qrCodeError ? (
                 <img
                   className="topbar-qr-modal-image"
-                  src={qrCodeImageUrl}
+                  src={qrCodeDataUrl}
                   alt="방 참여 링크 QR 코드"
-                  onError={() => setQrImageLoadFailed(true)}
                 />
+              ) : qrCodeGenerating ? (
+                <p className="topbar-qr-modal-loading">{'QR코드 생성 중...'}</p>
               ) : (
                 <p className="topbar-qr-modal-error">
                   {'QR코드를 불러오지 못했습니다. 링크 복사로 공유해 주세요.'}
