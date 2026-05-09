@@ -18,7 +18,8 @@ type BoardCanvasProps = {
   revealedHintCount: number
   roomState: RoomState
   settingsOpen: boolean
-  isStartDisabled: boolean
+  shouldShowPrivateStartButton: boolean
+  isStartReady: boolean
   shouldShowSecretWordBanner: boolean
   size: number
   tool: DrawingTool
@@ -39,7 +40,8 @@ export function BoardCanvas({
   revealedHintCount,
   roomState,
   settingsOpen,
-  isStartDisabled,
+  shouldShowPrivateStartButton,
+  isStartReady,
   shouldShowSecretWordBanner,
   size,
   tool,
@@ -183,16 +185,16 @@ export function BoardCanvas({
           >
             {settingsOpen ? '설정 닫기' : isHost ? '설정 열기' : '설정 보기'}
           </button>
-          {isHost ? (
+          {shouldShowPrivateStartButton ? (
             <button
               type="button"
               className={
-                settingsOpen
+                isStartReady
                   ? 'board-start-game-button primary-button board-start-game-button-open'
                   : 'board-start-game-button primary-button board-start-game-button-closed'
               }
               onClick={onStartGame}
-              disabled={isStartDisabled}
+              disabled={!isStartReady}
             >
               게임 시작
             </button>

@@ -313,6 +313,7 @@ export function GamePage() {
 
         <GameBoardPanel
           centerPanelRef={centerPanelRef}
+          participantCount={participants.length}
           isPrivateRoom={isPrivateRoom}
           roomState={roomState}
           boardStrokes={boardStrokes}

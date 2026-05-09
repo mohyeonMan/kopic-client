@@ -15,6 +15,7 @@ type LobbySettingsOverlayProps = {
   onApplyCustomWordsRaw: (value: string) => void
   onApplySetting: (key: NumericSettingKey, value: string) => void
   onCloseSettings: () => void
+  onStartGame: () => void
   roomState: RoomState
   settings: GameSettings
   settingsOpen: boolean
@@ -28,6 +29,7 @@ export function LobbySettingsOverlay({
   onApplyCustomWordsRaw,
   onApplySetting,
   onCloseSettings,
+  onStartGame,
   roomState,
   settings,
   settingsOpen,
@@ -201,7 +203,23 @@ export function LobbySettingsOverlay({
           CUSTOM_ONLY 모드에서는 커스텀 단어를 1개 이상 입력해야 시작할 수 있습니다.
         </p>
       ) : null}
-      <div className="button-row overlay-actions overlay-actions-single">
+      <div
+        className={
+          !isPrivateRoom && isHost
+            ? 'button-row overlay-actions'
+            : 'button-row overlay-actions overlay-actions-single'
+        }
+      >
+        {!isPrivateRoom && isHost ? (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={onStartGame}
+            disabled={isStartDisabled}
+          >
+            게임 시작
+          </button>
+        ) : null}
         <button
           type="button"
           className="secondary-button settings-close-button"

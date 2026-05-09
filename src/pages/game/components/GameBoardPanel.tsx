@@ -30,6 +30,7 @@ type GameBoardPanelProps = {
   canDraw: boolean
   canUseFullPalette: boolean
   centerPanelRef: RefObject<HTMLElement | null>
+  participantCount: number
   currentRound: RoundSummary | null
   currentTurn: TurnSummary | null
   drawerName: string
@@ -83,6 +84,7 @@ export function GameBoardPanel({
   canDraw,
   canUseFullPalette,
   centerPanelRef,
+  participantCount,
   currentRound,
   currentTurn,
   drawerName,
@@ -132,7 +134,9 @@ export function GameBoardPanel({
     !isPrivateRoom &&
     settings.customWordMode === 'CUSTOM_ONLY' &&
     settings.customWordsRaw.trim().length === 0
-  const isStartDisabled = isHost && isCustomOnlyWithoutRaw
+  const hasMinimumParticipants = participantCount >= 2
+  const canStartGame = isHost && hasMinimumParticipants && !isCustomOnlyWithoutRaw
+  const shouldShowPrivateStartButton = isPrivateRoom && isHost
 
   return (
     <section ref={centerPanelRef} className="panel game-center-panel">
@@ -158,7 +162,8 @@ export function GameBoardPanel({
             revealedHintCount={revealedHintCount}
             roomState={roomState}
             settingsOpen={settingsOpen}
-            isStartDisabled={isStartDisabled}
+            shouldShowPrivateStartButton={shouldShowPrivateStartButton}
+            isStartReady={canStartGame}
             shouldShowSecretWordBanner={shouldShowSecretWordBanner}
             size={size}
             tool={tool}
@@ -173,6 +178,7 @@ export function GameBoardPanel({
             onApplyCustomWordsRaw={onApplyCustomWordsRaw}
             onApplySetting={onApplySetting}
             onCloseSettings={onCloseSettings}
+            onStartGame={onStartGame}
             roomState={roomState}
             settings={settings}
             settingsOpen={settingsOpen}
