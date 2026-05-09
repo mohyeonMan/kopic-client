@@ -184,11 +184,15 @@
   }
 }
 
-.board-settings-toggle {
+.board-lobby-actions {
   position: absolute;
   top: 20px;
   right: 20px;
   z-index: 6;
+}
+
+.board-settings-toggle {
+  position: relative;
   transition:
     transform 240ms ease,
     opacity 200ms ease,
@@ -206,8 +210,34 @@
   touch-action: manipulation;
 }
 
-.board-settings-toggle-hidden {
+.board-start-game-button {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  transition:
+    transform 240ms ease,
+    opacity 200ms ease;
+}
+
+.board-start-game-button-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.board-start-game-button-closed {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(calc(-100% - 28px));
+  transform: translateY(calc(-100% - 20px));
+}
+
+@media (max-width: 980px) {
+  .board-lobby-actions {
+    top: 6px;
+    right: 6px;
+  }
+
+  .board-start-game-button {
+    right: calc(100% + 6px);
+  }
 }

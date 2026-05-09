@@ -12,11 +12,13 @@ type BoardCanvasProps = {
   isHost: boolean
   isSecretWordBannerClosed: boolean
   onCommitStroke: (stroke: CanvasStroke) => void
+  onStartGame: () => void
   onSendStrokeChunk: (stroke: CanvasStroke) => void
   onToggleSettings: () => void
   revealedHintCount: number
   roomState: RoomState
   settingsOpen: boolean
+  isStartDisabled: boolean
   shouldShowSecretWordBanner: boolean
   size: number
   tool: DrawingTool
@@ -31,11 +33,13 @@ export function BoardCanvas({
   isHost,
   isSecretWordBannerClosed,
   onCommitStroke,
+  onStartGame,
   onSendStrokeChunk,
   onToggleSettings,
   revealedHintCount,
   roomState,
   settingsOpen,
+  isStartDisabled,
   shouldShowSecretWordBanner,
   size,
   tool,
@@ -171,17 +175,29 @@ export function BoardCanvas({
       />
 
       {roomState === 'LOBBY' ? (
-        <button
-          type="button"
-          className={
-            settingsOpen
-              ? 'board-settings-toggle secondary-button board-settings-toggle-hidden'
-              : 'board-settings-toggle secondary-button'
-          }
-          onClick={onToggleSettings}
-        >
-          {isHost ? '설정 열기' : '설정 보기'}
-        </button>
+        <div className="board-lobby-actions">
+          <button
+            type="button"
+            className="board-settings-toggle secondary-button"
+            onClick={onToggleSettings}
+          >
+            {settingsOpen ? '설정 닫기' : isHost ? '설정 열기' : '설정 보기'}
+          </button>
+          {isHost ? (
+            <button
+              type="button"
+              className={
+                settingsOpen
+                  ? 'board-start-game-button primary-button board-start-game-button-open'
+                  : 'board-start-game-button primary-button board-start-game-button-closed'
+              }
+              onClick={onStartGame}
+              disabled={isStartDisabled}
+            >
+              게임 시작
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {shouldShowSecretWordBanner && currentTurn ? (

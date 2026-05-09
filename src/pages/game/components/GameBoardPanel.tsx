@@ -37,6 +37,7 @@ type GameBoardPanelProps = {
   forcedPaletteColor?: string
   gameStartCountdownSec?: number
   isHost: boolean
+  isPrivateRoom: boolean
   isCorrectHighlightActive: boolean
   isSecretWordBannerClosed: boolean
   isSharedDrawingPhase: boolean
@@ -89,6 +90,7 @@ export function GameBoardPanel({
   forcedPaletteColor,
   gameStartCountdownSec,
   isHost,
+  isPrivateRoom,
   isCorrectHighlightActive,
   isSecretWordBannerClosed,
   isSharedDrawingPhase,
@@ -126,6 +128,12 @@ export function GameBoardPanel({
   viewerRole,
   wordChoiceCountdownSec,
 }: GameBoardPanelProps) {
+  const isCustomOnlyWithoutRaw =
+    !isPrivateRoom &&
+    settings.customWordMode === 'CUSTOM_ONLY' &&
+    settings.customWordsRaw.trim().length === 0
+  const isStartDisabled = isHost && isCustomOnlyWithoutRaw
+
   return (
     <section ref={centerPanelRef} className="panel game-center-panel">
       <div className="board-shell">
@@ -145,10 +153,12 @@ export function GameBoardPanel({
             isSecretWordBannerClosed={isSecretWordBannerClosed}
             onCommitStroke={onCommitStroke}
             onSendStrokeChunk={onSendStrokeChunk}
+            onStartGame={onStartGame}
             onToggleSettings={onToggleSettings}
             revealedHintCount={revealedHintCount}
             roomState={roomState}
             settingsOpen={settingsOpen}
+            isStartDisabled={isStartDisabled}
             shouldShowSecretWordBanner={shouldShowSecretWordBanner}
             size={size}
             tool={tool}
@@ -157,12 +167,12 @@ export function GameBoardPanel({
 
           <LobbySettingsOverlay
             isHost={isHost}
+            isPrivateRoom={isPrivateRoom}
             onApplyEndMode={onApplyEndMode}
             onApplyCustomWordMode={onApplyCustomWordMode}
             onApplyCustomWordsRaw={onApplyCustomWordsRaw}
             onApplySetting={onApplySetting}
             onCloseSettings={onCloseSettings}
-            onStartGame={onStartGame}
             roomState={roomState}
             settings={settings}
             settingsOpen={settingsOpen}

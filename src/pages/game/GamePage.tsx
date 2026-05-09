@@ -36,6 +36,7 @@ export function GamePage() {
   const [correctHighlightRoundNo, setCorrectHighlightRoundNo] = useState<number | null>(null)
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
+  const isPrivateRoom = state.room.roomType === 'PRIVATE'
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
   const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes)
     ? state.room.lobbyCanvasStrokes
@@ -312,6 +313,7 @@ export function GamePage() {
 
         <GameBoardPanel
           centerPanelRef={centerPanelRef}
+          isPrivateRoom={isPrivateRoom}
           roomState={roomState}
           boardStrokes={boardStrokes}
           canDraw={canDraw}
