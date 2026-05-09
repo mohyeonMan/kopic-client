@@ -141,6 +141,8 @@ export function GamePage() {
     activePaletteColor,
     applyEndMode,
     applySetting,
+    applyCustomWordMode,
+    applyCustomWordsRaw,
     canDraw,
     canUseFullPalette,
     guessInput,
@@ -349,6 +351,8 @@ export function GamePage() {
           onCommitStroke={handleCommitStroke}
           onToggleSettings={handleToggleSettings}
           onApplySetting={applySetting}
+          onApplyCustomWordMode={applyCustomWordMode}
+          onApplyCustomWordsRaw={applyCustomWordsRaw}
           onApplyEndMode={applyEndMode}
           onStartGame={handleStartGame}
           onCloseSettings={handleCloseSettings}

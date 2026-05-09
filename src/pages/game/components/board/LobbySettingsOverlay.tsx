@@ -1,6 +1,7 @@
 import './LobbySettingsOverlay.css'
 import type { GameSettings, RoomState } from '../../../../entities/game/model'
 import {
+  CUSTOM_WORD_MODE_OPTIONS,
   END_MODE_OPTIONS,
   SETTING_OPTIONS,
   type NumericSettingKey,
@@ -9,6 +10,8 @@ import {
 type LobbySettingsOverlayProps = {
   isHost: boolean
   onApplyEndMode: (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => void
+  onApplyCustomWordMode: (value: 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM') => void
+  onApplyCustomWordsRaw: (value: string) => void
   onApplySetting: (key: NumericSettingKey, value: string) => void
   onCloseSettings: () => void
   onStartGame: () => void
@@ -20,6 +23,8 @@ type LobbySettingsOverlayProps = {
 export function LobbySettingsOverlay({
   isHost,
   onApplyEndMode,
+  onApplyCustomWordMode,
+  onApplyCustomWordsRaw,
   onApplySetting,
   onCloseSettings,
   onStartGame,
@@ -30,6 +35,11 @@ export function LobbySettingsOverlay({
   if (roomState !== 'LOBBY') {
     return null
   }
+
+  const isCustomOnlyWithoutRaw =
+    settings.customWordMode === 'CUSTOM_ONLY' &&
+    settings.customWordsRaw.trim().length === 0
+  const isStartDisabled = isHost && isCustomOnlyWithoutRaw
 
   return (
     <div
@@ -151,10 +161,48 @@ export function LobbySettingsOverlay({
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>커스텀 단어 모드</span>
+          <select
+            className={!isHost ? 'select-no-caret' : undefined}
+            disabled={!isHost}
+            value={settings.customWordMode}
+            onChange={(event) =>
+              onApplyCustomWordMode(event.target.value as 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM')
+            }
+          >
+            {CUSTOM_WORD_MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field field-wide">
+          <span>커스텀 단어 원문</span>
+          <textarea
+            className="settings-textarea"
+            disabled={!isHost}
+            value={settings.customWordsRaw}
+            onChange={(event) => onApplyCustomWordsRaw(event.target.value)}
+            placeholder="단어|설명,단어,단어|설명"
+            rows={3}
+          />
+        </label>
       </div>
+      {isStartDisabled ? (
+        <p className="settings-validation-text">
+          CUSTOM_ONLY 모드에서는 커스텀 단어를 1개 이상 입력해야 시작할 수 있습니다.
+        </p>
+      ) : null}
       <div className="button-row overlay-actions">
         {isHost ? (
-          <button type="button" className="primary-button" onClick={onStartGame}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={onStartGame}
+            disabled={isStartDisabled}
+          >
             게임 시작
           </button>
         ) : null}

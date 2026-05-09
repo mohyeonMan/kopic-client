@@ -9,6 +9,8 @@ export const defaultSettings: GameSettings = {
   hintLetterCount: 1,
   drawerOrderMode: 'JOIN_ORDER',
   endMode: 'TIME_OR_ALL_CORRECT',
+  customWordMode: 'BASE_PLUS_CUSTOM',
+  customWordsRaw: '',
 }
 
 export const initialAppState: AppState = {

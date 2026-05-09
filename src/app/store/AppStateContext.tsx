@@ -189,18 +189,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           () => server.applyGameStarted(createMockGameStartedPayload(stateRef.current)),
         )
       },
-      requestWordChoice: (word) => {
+      requestWordChoice: (choiceIndex) => {
         const wordChoices = stateRef.current.room.currentTurn?.wordChoices ?? []
-        const choiceIndex = wordChoices.findIndex((candidate) => candidate === word)
+        const normalizedChoiceIndex =
+          Number.isFinite(choiceIndex) && choiceIndex >= 0
+            ? Math.floor(choiceIndex)
+            : 0
+        const selectedWord =
+          wordChoices[normalizedChoiceIndex] ??
+          wordChoices[0] ??
+          ''
 
         sendClientEvent(
           'WORD_CHOICE',
-          { choiceIndex: choiceIndex >= 0 ? choiceIndex : 0 },
+          { choiceIndex: normalizedChoiceIndex },
           () =>
             server.applyWordChoice({
-              selectedWord: word,
+              selectedWord,
               remainingSec: stateRef.current.room.settings.drawSec,
-              chatMessage: createSystemMessage(`310 DRAWING_STARTED (${word})`),
+              chatMessage: createSystemMessage(`310 DRAWING_STARTED (${selectedWord})`),
             }),
         )
       },

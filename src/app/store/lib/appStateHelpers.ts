@@ -12,6 +12,8 @@ type CompactGameSettingsPayload = [
   number,
   number,
   number,
+  number,
+  string,
 ]
 
 const WS_COLOR_PALETTE = [
@@ -98,6 +100,7 @@ export function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload 
 export function encodeCompactGameSettings(settings: GameSettings): CompactGameSettingsPayload {
   const drawerOrderMode = settings.drawerOrderMode === 'RANDOM' ? 1 : 0
   const endMode = settings.endMode === 'TIME_OR_ALL_CORRECT' ? 1 : 0
+  const customWordMode = settings.customWordMode === 'CUSTOM_ONLY' ? 0 : 1
 
   return [
     settings.roundCount,
@@ -108,6 +111,8 @@ export function encodeCompactGameSettings(settings: GameSettings): CompactGameSe
     settings.hintLetterCount,
     drawerOrderMode,
     endMode,
+    customWordMode,
+    settings.customWordsRaw ?? '',
   ]
 }
 

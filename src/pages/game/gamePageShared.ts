@@ -73,6 +73,11 @@ export const END_MODE_OPTIONS = [
   { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
 ] as const
 
+export const CUSTOM_WORD_MODE_OPTIONS = [
+  { value: 'BASE_PLUS_CUSTOM', label: '기본 + 커스텀' },
+  { value: 'CUSTOM_ONLY', label: '커스텀만' },
+] as const
+
 export const STAGE_OVERLAY_PHASES: readonly StageOverlayPhase[] = ['gameStart', 'roundStart', 'turnStart', 'wordChoice', 'turnEnd']
 export const TRANSIENT_STAGE_OVERLAY_MS = 5000
 

@@ -43,11 +43,13 @@ type GameBoardPanelProps = {
   nextTurnCountdownSec?: number
   nextDrawerName: string | null
   onApplyEndMode: (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => void
+  onApplyCustomWordMode: (value: 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM') => void
+  onApplyCustomWordsRaw: (value: string) => void
   onApplySetting: (key: NumericSettingKey, value: string) => void
   onClearCanvas: () => void
   onCloseSettings: () => void
   onCommitStroke: (stroke: CanvasStroke) => void
-  onRequestWordChoice: (word: string) => void
+  onRequestWordChoice: (choiceIndex: number) => void
   onSendStrokeChunk: (stroke: CanvasStroke) => void
   onSetColor: (color: string) => void
   onSetSize: (size: number) => void
@@ -93,6 +95,8 @@ export function GameBoardPanel({
   nextTurnCountdownSec,
   nextDrawerName,
   onApplyEndMode,
+  onApplyCustomWordMode,
+  onApplyCustomWordsRaw,
   onApplySetting,
   onClearCanvas,
   onCloseSettings,
@@ -154,6 +158,8 @@ export function GameBoardPanel({
           <LobbySettingsOverlay
             isHost={isHost}
             onApplyEndMode={onApplyEndMode}
+            onApplyCustomWordMode={onApplyCustomWordMode}
+            onApplyCustomWordsRaw={onApplyCustomWordsRaw}
             onApplySetting={onApplySetting}
             onCloseSettings={onCloseSettings}
             onStartGame={onStartGame}

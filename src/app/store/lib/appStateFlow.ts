@@ -66,6 +66,7 @@ export function createMockTurn(
     earnedPoints,
     wordChoices,
     selectedWord: phase === 'DRAWING' || phase === 'TURN_END' ? wordChoices[0] : null,
+    selectedWordDescription: undefined,
     canvasStrokes: [],
   }
 }
@@ -187,6 +188,7 @@ export function createForcedTurn(
     return {
       ...nextTurn,
       selectedWord: currentTurn.selectedWord ?? currentTurn.wordChoices[0] ?? nextTurn.selectedWord,
+      selectedWordDescription: currentTurn.selectedWordDescription,
       wordChoices: currentTurn.wordChoices,
       earnedPoints: currentTurn.earnedPoints,
       canvasStrokes: currentTurn.canvasStrokes,

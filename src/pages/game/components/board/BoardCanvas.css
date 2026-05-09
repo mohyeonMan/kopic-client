@@ -58,6 +58,13 @@
   letter-spacing: normal;
 }
 
+.secret-word-banner-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .secret-word-banner-text {
   display: inline-block;
   text-align: center;
@@ -77,6 +84,43 @@
     monospace;
   letter-spacing: 0.14em;
   padding-left: 0.14em;
+}
+
+.secret-word-description-button {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 8px);
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(32, 50, 71, 0.24);
+  background: rgba(255, 250, 240, 0.92);
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.secret-word-description-bubble {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: calc(100% + 8px);
+  width: min(300px, calc(100vw - 48px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(32, 50, 71, 0.16);
+  background: rgba(255, 252, 247, 0.98);
+  color: var(--ink-strong);
+  text-align: left;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  box-shadow: 0 10px 24px rgba(32, 50, 71, 0.14);
+  white-space: normal;
+  word-break: break-word;
 }
 
 @keyframes secret-word-banner-drop {

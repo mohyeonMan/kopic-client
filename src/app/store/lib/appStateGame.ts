@@ -167,6 +167,7 @@ export function reduceGeTurnStartedApplied(
         earnedPoints: {},
         wordChoices: [],
         selectedWord: null,
+        selectedWordDescription: undefined,
         answerLength: undefined,
         hintPattern: undefined,
         canvasStrokes: [],
@@ -251,6 +252,7 @@ export function reduceGeWordChoiceOpenedApplied(
         earnedPoints: {},
         wordChoices: payload.wordChoices,
         selectedWord: null,
+        selectedWordDescription: undefined,
         answerLength: undefined,
         hintPattern: undefined,
         canvasStrokes: state.room.currentTurn?.canvasStrokes ?? [],
@@ -272,6 +274,10 @@ export function reduceGeDrawingStartedApplied(
   const turnNo = previousTurn?.turnNo ?? activeRound.turnCursor + 1
   const turnId = previousTurn?.turnId ?? createGeTurnId(payload.gameId, activeRound.roundNo, turnNo)
   const selectedWord = payload.selectedWord ?? previousTurn?.selectedWord ?? null
+  const selectedWordDescription =
+    payload.selectedWordDescription !== undefined
+      ? payload.selectedWordDescription
+      : previousTurn?.selectedWordDescription
   const answerLength =
     payload.answerLength ??
     (selectedWord ? Array.from(selectedWord).length : previousTurn?.answerLength)
@@ -297,6 +303,7 @@ export function reduceGeDrawingStartedApplied(
         earnedPoints: previousTurn?.earnedPoints ?? {},
         wordChoices: previousTurn?.wordChoices ?? [],
         selectedWord,
+        selectedWordDescription,
         answerLength,
         hintPattern,
         canvasStrokes: [],
@@ -383,6 +390,7 @@ export function reduceGeTurnEndedApplied(
         correctSessionIds,
         earnedPoints: payload.earnedPoints,
         selectedWord: answer,
+        selectedWordDescription: state.room.currentTurn.selectedWordDescription,
         answerLength,
       },
       chat: [...state.room.chat, createSystemMessage(`205 GE_TURN_ENDED ${payload.reason}`)],
@@ -462,6 +470,7 @@ export function reduceWordChoiceApplied(
         ...state.room.currentTurn,
         phase: 'DRAWING',
         selectedWord: payload.selectedWord,
+        selectedWordDescription: undefined,
         remainingSec: payload.remainingSec,
         deadlineAtMs: createDeadlineAtMs(payload.remainingSec),
         earnedPoints: {},

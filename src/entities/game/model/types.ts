@@ -23,6 +23,8 @@ export type GameSettings = {
   hintLetterCount: number
   drawerOrderMode: 'JOIN_ORDER' | 'RANDOM'
   endMode: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT'
+  customWordMode: 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM'
+  customWordsRaw: string
 }
 
 export type RoundSummary = {
@@ -57,6 +59,7 @@ export type TurnSummary = {
   earnedPoints: Record<string, number>
   wordChoices: string[]
   selectedWord: string | null
+  selectedWordDescription?: string | null
   answerLength?: number
   hintPattern?: string | null
   canvasStrokes: CanvasStroke[]

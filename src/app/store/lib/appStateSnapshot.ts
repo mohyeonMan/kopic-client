@@ -127,6 +127,33 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
     return current
   }
 
+  const readCustomWordMode = (
+    value: unknown,
+    current: GameSettings['customWordMode'],
+  ): GameSettings['customWordMode'] => {
+    if (value === 'CUSTOM_ONLY' || value === 0) {
+      return 'CUSTOM_ONLY'
+    }
+
+    if (value === 'BASE_PLUS_CUSTOM' || value === 1) {
+      return 'BASE_PLUS_CUSTOM'
+    }
+
+    return current
+  }
+
+  const readCustomWordsRaw = (value: unknown, current: string): string => {
+    if (typeof value === 'string') {
+      return value
+    }
+
+    if (value === null) {
+      return ''
+    }
+
+    return current
+  }
+
   if (Array.isArray(raw)) {
     return {
       roundCount: readInt(raw[0], fallback.roundCount),
@@ -137,6 +164,8 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
       hintLetterCount: readInt(raw[5], fallback.hintLetterCount),
       drawerOrderMode: readDrawerOrderMode(raw[6], fallback.drawerOrderMode),
       endMode: readEndMode(raw[7], fallback.endMode),
+      customWordMode: readCustomWordMode(raw[8], fallback.customWordMode),
+      customWordsRaw: readCustomWordsRaw(raw[9], fallback.customWordsRaw),
     }
   }
 
@@ -146,6 +175,8 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
 
   const drawerOrderMode = readDrawerOrderMode(raw.drawerOrderMode, fallback.drawerOrderMode)
   const endMode = readEndMode(raw.endMode, fallback.endMode)
+  const customWordMode = readCustomWordMode(raw.customWordMode, fallback.customWordMode)
+  const customWordsRaw = readCustomWordsRaw(raw.customWordsRaw, fallback.customWordsRaw)
 
   return {
     roundCount: readInt(raw.roundCount, fallback.roundCount),
@@ -156,6 +187,8 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
     hintLetterCount: readInt(raw.hintLetterCount, fallback.hintLetterCount),
     drawerOrderMode,
     endMode,
+    customWordMode,
+    customWordsRaw,
   }
 }
 
@@ -201,7 +234,9 @@ export function decodeSettingsUpdatePayload(
     Object.prototype.hasOwnProperty.call(rawSettings, 'hintRevealSec') ||
     Object.prototype.hasOwnProperty.call(rawSettings, 'hintLetterCount') ||
     Object.prototype.hasOwnProperty.call(rawSettings, 'drawerOrderMode') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'endMode')
+    Object.prototype.hasOwnProperty.call(rawSettings, 'endMode') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'customWordMode') ||
+    Object.prototype.hasOwnProperty.call(rawSettings, 'customWordsRaw')
 
   if (!hasSettingKeys) {
     return null
@@ -420,12 +455,33 @@ function normalizeCurrentTurn(
         .map(normalizeCanvasStroke)
         .filter((stroke): stroke is CanvasStroke => stroke !== null)
     : []
-  const selectedWord =
-    raw.selectedWord === null || raw.answer === null
+  const answerEntry = isRecord(raw.answerEntry) ? raw.answerEntry : null
+  const answerEntryWord = answerEntry
+    ? answerEntry.word === null
       ? null
-      : readNonEmptyString(raw.selectedWord) ??
+      : readNonEmptyString(answerEntry.word) ?? null
+    : undefined
+  const selectedWord =
+    raw.selectedWord === null || raw.answer === null || answerEntryWord === null
+      ? null
+      : answerEntryWord ??
+        readNonEmptyString(raw.selectedWord) ??
         readNonEmptyString(raw.answer) ??
         null
+  const selectedWordDescription =
+    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'description')
+      ? answerEntry.description === null
+        ? null
+        : typeof answerEntry.description === 'string'
+          ? answerEntry.description
+          : undefined
+      : raw.selectedWordDescription === null || raw.answerDescription === null
+        ? null
+        : typeof raw.selectedWordDescription === 'string'
+          ? raw.selectedWordDescription
+          : typeof raw.answerDescription === 'string'
+            ? raw.answerDescription
+            : undefined
   const roundNo =
     readFiniteNumber(raw.roundNo) ??
     readFiniteNumber(raw.round) ??
@@ -472,6 +528,7 @@ function normalizeCurrentTurn(
     earnedPoints,
     wordChoices,
     selectedWord,
+    selectedWordDescription,
     answerLength,
     hintPattern,
     canvasStrokes,

@@ -55,6 +55,7 @@ export type GeDrawingStartedPayload = {
   drawerSessionId: string
   remainingSec: number
   selectedWord: string | null
+  selectedWordDescription?: string | null
   answerLength?: number
   hintPattern?: string | null
 }
@@ -103,7 +104,7 @@ export type AppActions = {
   clearRoomCache: () => void
   patchLobbySettings: (settings: Partial<GameSettings>) => void
   requestGameStart: () => void
-  requestWordChoice: (word: string) => void
+  requestWordChoice: (choiceIndex: number) => void
   submitGuess: (text: string) => void
   sendCanvasStroke: (stroke: CanvasStroke) => void
   requestCanvasClear: () => void

@@ -160,7 +160,28 @@ export function decodeGeDrawingStartedPayload(
     return null
   }
 
-  const selectedWord = payload.answer === null ? null : readNonEmptyString(payload.answer) ?? null
+  const answerEntry = isRecord(payload.answerEntry) ? payload.answerEntry : null
+  const answerEntryWord = answerEntry
+    ? answerEntry.word === null
+      ? null
+      : readNonEmptyString(answerEntry.word) ?? null
+    : undefined
+  const selectedWord =
+    payload.answer === null || answerEntryWord === null
+      ? null
+      : answerEntryWord ?? readNonEmptyString(payload.answer) ?? null
+  const selectedWordDescription =
+    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'description')
+      ? answerEntry.description === null
+        ? null
+        : typeof answerEntry.description === 'string'
+          ? answerEntry.description
+          : undefined
+      : payload.answerDescription === null
+        ? null
+        : typeof payload.answerDescription === 'string'
+          ? payload.answerDescription
+          : undefined
   const answerLength = readFiniteNumber(payload.answerLength)
   const hintPattern =
     payload.hintPattern === null
@@ -174,6 +195,7 @@ export function decodeGeDrawingStartedPayload(
     drawerSessionId,
     remainingSec,
     selectedWord,
+    selectedWordDescription,
     answerLength,
     hintPattern,
   }

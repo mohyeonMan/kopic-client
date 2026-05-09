@@ -76,6 +76,22 @@ export function useGameControls({
     actions.patchLobbySettings({ endMode: value })
   }
 
+  const applyCustomWordMode = (value: GameSettings['customWordMode']) => {
+    if (!isHost) {
+      return
+    }
+
+    actions.patchLobbySettings({ customWordMode: value })
+  }
+
+  const applyCustomWordsRaw = (value: string) => {
+    if (!isHost) {
+      return
+    }
+
+    actions.patchLobbySettings({ customWordsRaw: value })
+  }
+
   const submitGuess = () => {
     const nextText = guessInput.trim().slice(0, 50)
 
@@ -120,9 +136,9 @@ export function useGameControls({
     actions.requestGameStart()
   }
 
-  const handleRequestWordChoice = (word: string) => {
+  const handleRequestWordChoice = (choiceIndex: number) => {
     onBeforeRequestWordChoice?.()
-    actions.requestWordChoice(word)
+    actions.requestWordChoice(choiceIndex)
   }
 
   const handleToolChange = (nextTool: DrawingTool) => {
@@ -150,6 +166,8 @@ export function useGameControls({
     activePaletteColor,
     applyEndMode,
     applySetting,
+    applyCustomWordMode,
+    applyCustomWordsRaw,
     canDraw,
     canUseFullPalette,
     currentWordChoices,

@@ -54,6 +54,34 @@
   padding-right: clamp(9px, 1.45cqw, 12px);
 }
 
+.board-frame .canvas-overlay-card-settings .field.field-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border-radius: clamp(10px, 1.9cqw, 16px);
+  padding: clamp(7px, 1.15cqw, 10px) clamp(9px, 1.45cqw, 12px);
+  font-size: clamp(0.86rem, 1.55cqw, 0.98rem);
+  line-height: 1.35;
+  border: 1px solid rgba(255, 250, 240, 0.26);
+  background: rgba(255, 250, 240, 0.12);
+  color: #fffaf0;
+}
+
+.settings-textarea::placeholder {
+  color: rgba(255, 250, 240, 0.56);
+}
+
+.settings-validation-text {
+  margin: 2px 0 0;
+  color: rgba(255, 224, 140, 0.94);
+  font-size: clamp(11px, 1.2cqw, 13px);
+  line-height: 1.35;
+}
+
 .board-frame .canvas-overlay-card-settings .overlay-actions {
   gap: clamp(6px, 1cqw, 10px);
 }
@@ -171,6 +199,13 @@
   .board-frame .canvas-overlay-card-settings .field select.select-no-caret {
     background-image: none;
     padding-right: 6px;
+  }
+
+  .settings-textarea {
+    min-height: 58px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    font-size: 0.72rem;
   }
 
   .board-frame .canvas-overlay-card-settings .overlay-actions {

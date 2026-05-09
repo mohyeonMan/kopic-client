@@ -1,4 +1,5 @@
 import './BoardCanvas.css'
+import { useState } from 'react'
 import type { CanvasStroke, DrawingTool, RoomState, TurnSummary } from '../../../../entities/game/model'
 import { CanvasBoard } from '../../../../features/game-canvas/CanvasBoard'
 import { getMaskedWord, type ViewerRole } from '../../gamePageShared'
@@ -40,6 +41,7 @@ export function BoardCanvas({
   tool,
   viewerRole,
 }: BoardCanvasProps) {
+  const [openedDescriptionKey, setOpenedDescriptionKey] = useState<string | null>(null)
   const secretWordText =
     !currentTurn
       ? ''
@@ -48,6 +50,21 @@ export function BoardCanvas({
         : currentTurn.hintPattern && currentTurn.hintPattern.length > 0
           ? currentTurn.hintPattern
           : getMaskedWord(currentTurn.selectedWord, revealedHintCount, currentTurn.answerLength)
+  const selectedWordDescription = currentTurn?.selectedWordDescription
+  const descriptionKey =
+    currentTurn && typeof selectedWordDescription === 'string'
+      ? `${currentTurn.turnId}:${selectedWordDescription}`
+      : null
+  const canShowDescriptionButton =
+    viewerRole === 'drawer' &&
+    typeof selectedWordDescription === 'string' &&
+    selectedWordDescription.length > 0
+  const isDescriptionOpen =
+    canShowDescriptionButton &&
+    shouldShowSecretWordBanner &&
+    !isSecretWordBannerClosed &&
+    openedDescriptionKey !== null &&
+    openedDescriptionKey === descriptionKey
 
   return (
     <>
@@ -89,15 +106,37 @@ export function BoardCanvas({
               : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
           }
         >
-          <span
-            className={
-              viewerRole === 'drawer'
-                ? 'secret-word-banner-text'
-                : 'secret-word-banner-text secret-word-banner-text-masked'
-            }
-          >
-            {secretWordText}
-          </span>
+          <div className="secret-word-banner-content">
+            <span
+              className={
+                viewerRole === 'drawer'
+                  ? 'secret-word-banner-text'
+                  : 'secret-word-banner-text secret-word-banner-text-masked'
+              }
+            >
+              {secretWordText}
+            </span>
+            {canShowDescriptionButton ? (
+              <button
+                type="button"
+                className="secret-word-description-button"
+                onClick={() =>
+                  setOpenedDescriptionKey((current) =>
+                    current === descriptionKey ? null : descriptionKey,
+                  )
+                }
+                aria-label="제시어 설명 보기"
+                aria-expanded={isDescriptionOpen}
+              >
+                ?
+              </button>
+            ) : null}
+            {canShowDescriptionButton && isDescriptionOpen ? (
+              <div className="secret-word-description-bubble" role="tooltip">
+                {selectedWordDescription}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </>

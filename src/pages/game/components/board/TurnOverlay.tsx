@@ -24,7 +24,7 @@ type TurnOverlayProps = {
   gameStartCountdownSec?: number
   nextTurnCountdownSec?: number
   nextDrawerName: string | null
-  onRequestWordChoice: (word: string) => void
+  onRequestWordChoice: (choiceIndex: number) => void
   onStageOverlayTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void
   previewMode: OverlayPreview
   returnToLobbyCountdownSec?: number
@@ -161,12 +161,12 @@ export function TurnOverlay({
             <div
               className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}
             >
-              {currentTurn.wordChoices.map((word) => (
+              {currentTurn.wordChoices.map((word, index) => (
                 <button
-                  key={word}
+                  key={`${currentTurn.turnId}-choice-${index}`}
                   type="button"
                   className="word-choice-button"
-                  onClick={() => onRequestWordChoice(word)}
+                  onClick={() => onRequestWordChoice(index)}
                 >
                   {word}
                 </button>
