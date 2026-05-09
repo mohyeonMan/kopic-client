@@ -70,6 +70,8 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const shellState = useAppShellState()
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [qrImageLoadFailed, setQrImageLoadFailed] = useState(false)
   const [shellViewportState, setShellViewportState] = useState<ShellViewportState>(() =>
     readShellViewportState(),
   )
@@ -80,6 +82,9 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const canShareRoom = roomCode.length > 0
   const inviteUrl = canShareRoom
     ? new URL(buildInvitePath(roomCode), window.location.origin).toString()
+    : null
+  const qrCodeImageUrl = inviteUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=420x420&ecc=M&margin=8&data=${encodeURIComponent(inviteUrl)}`
     : null
   const supportsNativeShare = typeof navigator.share === 'function'
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
@@ -172,6 +177,28 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   }, [])
 
   useEffect(() => {
+    if (!qrModalOpen || typeof document === 'undefined') {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setQrModalOpen(false)
+      }
+    }
+
+    const bodyElement = document.body
+    const previousOverflow = bodyElement.style.overflow
+    bodyElement.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      bodyElement.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [qrModalOpen])
+
+  useEffect(() => {
     if (!isGameRoute || typeof document === 'undefined') {
       return
     }
@@ -232,19 +259,37 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     }, 1400)
   }
 
-  const handleCopyInviteLink = async () => {
+  const copyInviteLink = async () => {
     if (!inviteUrl) {
-      return
+      return false
     }
 
     try {
       await copyText(inviteUrl)
       showShareFeedback('링크 복사됨')
+      return true
     } catch {
       showShareFeedback('복사 실패')
+      return false
+    }
+  }
+
+  const handleCopyInviteLink = async () => {
+    try {
+      await copyInviteLink()
     } finally {
       setShareMenuOpen(false)
     }
+  }
+
+  const handleOpenQrCode = () => {
+    if (!inviteUrl) {
+      return
+    }
+
+    setQrImageLoadFailed(false)
+    setQrModalOpen(true)
+    setShareMenuOpen(false)
   }
 
   const handleCopyRoomCode = async () => {
@@ -376,6 +421,14 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                       type="button"
                       className="topbar-share-menu-item"
                       role="menuitem"
+                      onClick={handleOpenQrCode}
+                    >
+                      QR코드
+                    </button>
+                    <button
+                      type="button"
+                      className="topbar-share-menu-item"
+                      role="menuitem"
                       onClick={handleCopyRoomCode}
                     >
                       방 코드 복사
@@ -408,6 +461,63 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       ) : null}
 
       <main className="page-frame">{children}</main>
+
+      {qrModalOpen && inviteUrl ? (
+        <div
+          className="topbar-qr-modal-backdrop"
+          role="presentation"
+          onClick={() => setQrModalOpen(false)}
+        >
+          <div
+            className="topbar-qr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="방 참여 QR 코드"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>{'QR코드'}</h3>
+            <p className="topbar-qr-modal-description">
+              {'아래 QR코드를 스캔하면 같은 방 링크로 바로 입장할 수 있습니다.'}
+            </p>
+
+            <div className="topbar-qr-modal-code-frame">
+              {qrCodeImageUrl && !qrImageLoadFailed ? (
+                <img
+                  className="topbar-qr-modal-image"
+                  src={qrCodeImageUrl}
+                  alt="방 참여 링크 QR 코드"
+                  onError={() => setQrImageLoadFailed(true)}
+                />
+              ) : (
+                <p className="topbar-qr-modal-error">
+                  {'QR코드를 불러오지 못했습니다. 링크 복사로 공유해 주세요.'}
+                </p>
+              )}
+            </div>
+
+            <p className="topbar-qr-modal-url">{inviteUrl}</p>
+
+            <div className="topbar-qr-modal-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  void copyInviteLink()
+                }}
+              >
+                {'링크 복사'}
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setQrModalOpen(false)}
+              >
+                {'닫기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <footer className="app-footer">
         <p className="app-footer-title">KOPIC</p>
