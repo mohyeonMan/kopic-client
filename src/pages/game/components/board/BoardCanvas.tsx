@@ -154,6 +154,7 @@ export function BoardCanvas({
     minWidth: `${descriptionBubbleBounds.minWidth}px`,
     maxWidth: `${descriptionBubbleBounds.maxWidth}px`,
     maxHeight: `${descriptionBubbleBounds.maxHeight}px`,
+    ['--secret-word-description-max-height' as string]: `${descriptionBubbleBounds.maxHeight}px`,
   }
 
   return (
@@ -227,7 +228,7 @@ export function BoardCanvas({
                 style={descriptionBubbleStyle}
                 role="tooltip"
               >
-                {selectedWordDescription}
+                <span className="secret-word-description-content">{selectedWordDescription}</span>
               </div>
             ) : null}
           </div>

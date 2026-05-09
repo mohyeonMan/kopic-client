@@ -24,16 +24,19 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
   const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
   const joinError = session.joinError
   const connectionError = session.connectionError
+  const normalizeRoomCode = (value: string) => value.toUpperCase()
   const [joinModalOpen, setJoinModalOpen] = useState(() => inviteRoomCode !== null)
   const [joinModalNickname, setJoinModalNickname] = useState(session.nickname)
-  const [joinModalRoomCode, setJoinModalRoomCode] = useState(inviteRoomCode ?? '')
+  const [joinModalRoomCode, setJoinModalRoomCode] = useState(
+    normalizeRoomCode(inviteRoomCode ?? ''),
+  )
   const joinModalNicknameLength = joinModalNickname.trim().length
   const joinModalNicknameValid = joinModalNicknameLength >= 1 && joinModalNicknameLength <= 10
   const joinModalRoomCodeValid = joinModalRoomCode.trim().length > 0
 
   const openJoinModal = () => {
     setJoinModalNickname(session.nickname)
-    setJoinModalRoomCode(inviteRoomCode ?? '')
+    setJoinModalRoomCode(normalizeRoomCode(inviteRoomCode ?? ''))
     setJoinModalOpen(true)
   }
 
@@ -43,7 +46,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
 
   const submitJoinByRoomCode = () => {
     const nextNickname = joinModalNickname.trim()
-    const nextRoomCode = joinModalRoomCode.trim()
+    const nextRoomCode = normalizeRoomCode(joinModalRoomCode.trim())
     if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || session.joinPending) {
       return
     }
@@ -184,7 +187,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
               <span>{'방 코드'}</span>
               <input
                 value={joinModalRoomCode}
-                onChange={(event) => setJoinModalRoomCode(event.target.value)}
+                onChange={(event) => setJoinModalRoomCode(normalizeRoomCode(event.target.value))}
                 placeholder={'방 코드'}
               />
             </label>
