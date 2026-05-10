@@ -42,9 +42,10 @@
   }
 
   .board-frame {
-    width: min(100%, calc((var(--mobile-visual-viewport-height) - 214px) * 4 / 3));
-    max-height: calc(var(--mobile-visual-viewport-height) - 214px);
-    min-height: 260px;
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    min-height: 0;
     border-radius: 20px;
   }
 }
