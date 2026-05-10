@@ -38,7 +38,7 @@ export function LobbySettingsOverlay({
     return null
   }
 
-  const shouldShowCustomSettings = !isPrivateRoom
+  const shouldShowCustomSettings = isPrivateRoom
   const isCustomOnlyWithoutRaw =
     shouldShowCustomSettings &&
     settings.customWordMode === 'CUSTOM_ONLY' &&

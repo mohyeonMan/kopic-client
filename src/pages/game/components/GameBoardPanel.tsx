@@ -131,7 +131,7 @@ export function GameBoardPanel({
   wordChoiceCountdownSec,
 }: GameBoardPanelProps) {
   const isCustomOnlyWithoutRaw =
-    !isPrivateRoom &&
+    isPrivateRoom &&
     settings.customWordMode === 'CUSTOM_ONLY' &&
     settings.customWordsRaw.trim().length === 0
   const hasMinimumParticipants = participantCount >= 2
