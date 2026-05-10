@@ -80,7 +80,7 @@ export type ChatMessage = {
 export type RoomSnapshot = {
   roomId: string
   roomCode: string
-  roomType: 'PRIVATE'
+  roomType: 'PRIVATE' | 'RANDOM'
   hostSessionId: string
   participants: Participant[]
   lobbyCanvasStrokes?: CanvasStroke[]

@@ -43,6 +43,33 @@ function isRoomState(value: unknown): value is RoomState {
   return value === 'LOBBY' || value === 'RUNNING' || value === 'RESULT'
 }
 
+function normalizeSnapshotRoomType(
+  value: unknown,
+  fallback: RoomSnapshot['roomType'],
+): RoomSnapshot['roomType'] {
+  if (value === 'PRIVATE' || value === 'private' || value === 1) {
+    return 'PRIVATE'
+  }
+
+  if (value === 'RANDOM' || value === 'random' || value === 0) {
+    return 'RANDOM'
+  }
+
+  return fallback
+}
+
+function readSnapshotRoomTypeValue(payload: Record<string, unknown>): unknown {
+  if (Object.prototype.hasOwnProperty.call(payload, 'roomType')) {
+    return payload.roomType
+  }
+
+  if (isRecord(payload.room) && Object.prototype.hasOwnProperty.call(payload.room, 'roomType')) {
+    return payload.room.roomType
+  }
+
+  return undefined
+}
+
 function isTurnPhase(value: unknown): value is TurnPhase {
   return value === 'READY' || value === 'WORD_CHOICE' || value === 'DRAWING' || value === 'TURN_END'
 }
@@ -680,9 +707,12 @@ export function normalizeRoomSnapshotPayload(
     return null
   }
 
+  const rawRoom = isRecord(payload.room) ? payload.room : null
   const hostSessionId =
     readNonEmptyString(payload.hostSessionId) ??
+    (rawRoom ? readNonEmptyString(rawRoom.hostSessionId) : undefined) ??
     readNonEmptyString(payload.hostUserId) ??
+    (rawRoom ? readNonEmptyString(rawRoom.hostUserId) : undefined) ??
     ''
   const snapshotGame = isRecord(payload.game) ? payload.game : null
   const roomState = normalizeSnapshotRoomState(payload.roomState, snapshotGame)
@@ -759,8 +789,14 @@ export function normalizeRoomSnapshotPayload(
     roomSnapshot: {
       ...state.room,
       roomId: state.room.roomId,
-      roomCode: readNonEmptyString(payload.roomCode) ?? '',
-      roomType: payload.roomType === 'PRIVATE' ? 'PRIVATE' : 'PRIVATE',
+      roomCode:
+        readNonEmptyString(payload.roomCode) ??
+        (rawRoom ? readNonEmptyString(rawRoom.roomCode) : undefined) ??
+        '',
+      roomType: normalizeSnapshotRoomType(
+        readSnapshotRoomTypeValue(payload),
+        state.room.roomType,
+      ),
       hostSessionId,
       participants: normalizedParticipants,
       lobbyCanvasStrokes,
