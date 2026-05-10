@@ -299,8 +299,7 @@
   }
 
   .game-side-panel-right.game-chat-panel-mobile-active .section-heading {
-    margin-bottom: 0;
-    padding: 0 4px 6px;
+    display: none;
   }
 
   .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
