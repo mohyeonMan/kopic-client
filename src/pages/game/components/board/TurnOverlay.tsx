@@ -156,32 +156,36 @@ export function TurnOverlay({
           aria-hidden={activeStageOverlay !== 'wordChoice'}
           onTransitionEnd={onStageOverlayTransitionEnd}
         >
-          {wordChoiceCountdownText ? (
-            <p className="overlay-seconds-only overlay-seconds-only-word-choice">
-              {wordChoiceCountdownText}
-            </p>
-          ) : null}
-          <div className="overlay-heading">
-            <strong>
-              {viewerRole === 'drawer' && currentTurn.wordChoices.length > 0
-                ? '제시어를 선택해주세요.'
-                : `${drawerName}님이 제시어를 선택중입니다.`}
-            </strong>
+          <div className="word-choice-top">
+            <div className="overlay-heading word-choice-heading">
+              <strong>
+                {viewerRole === 'drawer' && currentTurn.wordChoices.length > 0
+                  ? '제시어를 선택해주세요.'
+                  : `${drawerName}님이 제시어를 선택중입니다.`}
+              </strong>
+            </div>
+            {wordChoiceCountdownText ? (
+              <p className="overlay-seconds-only overlay-seconds-only-word-choice">
+                {wordChoiceCountdownText}
+              </p>
+            ) : null}
           </div>
           {currentTurn.wordChoices.length > 0 ? (
-            <div
-              className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}
-            >
-              {currentTurn.wordChoices.map((word, index) => (
-                <button
-                  key={`${currentTurn.turnId}-choice-${index}`}
-                  type="button"
-                  className="word-choice-button"
-                  onClick={() => onRequestWordChoice(index)}
-                >
-                  {word}
-                </button>
-              ))}
+            <div className="word-choice-body">
+              <div
+                className={`button-row overlay-actions word-choice-actions word-choice-actions-count-${currentTurn.wordChoices.length}`}
+              >
+                {currentTurn.wordChoices.map((word, index) => (
+                  <button
+                    key={`${currentTurn.turnId}-choice-${index}`}
+                    type="button"
+                    className="word-choice-button"
+                    onClick={() => onRequestWordChoice(index)}
+                  >
+                    {word}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>

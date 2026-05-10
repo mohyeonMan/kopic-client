@@ -5,16 +5,16 @@
 }
 
 .board-frame .canvas-full-overlay {
-  gap: clamp(8px, 1.4cqw, 12px);
-  padding: clamp(12px, 2.8cqw, 24px);
+  gap: clamp(8px, 1.4cqmin, 12px);
+  padding: clamp(12px, 2.8cqmin, 24px);
 }
 
 .board-frame .canvas-full-overlay > strong {
-  font-size: clamp(1.15rem, 4.2cqw, 2.35rem);
+  font-size: clamp(1.15rem, 4.2cqmin, 2.35rem);
 }
 
 .board-frame .canvas-full-overlay span {
-  font-size: clamp(12px, 1.45cqw, 18px);
+  font-size: clamp(12px, 1.45cqmin, 18px);
 }
 
 .board-frame .overlay-countdown-line {
@@ -26,84 +26,84 @@
 
 .board-frame .overlay-countdown-line span {
   color: rgba(255, 250, 240, 0.84);
-  font-size: clamp(0.95rem, 1.8cqw, 1.2rem);
+  font-size: clamp(0.95rem, 1.8cqmin, 1.2rem);
   line-height: 1;
 }
 
 .board-frame .canvas-full-overlay-panel > strong {
-  font-size: clamp(1rem, 3.3cqw, 1.9rem);
+  font-size: clamp(1rem, 3.3cqmin, 1.9rem);
 }
 
 .board-frame .canvas-full-overlay-panel {
-  min-height: clamp(120px, 18cqw, 240px);
+  min-height: clamp(120px, 18cqmin, 240px);
 }
 
 .board-frame .word-choice-button {
-  border-radius: clamp(10px, 2.2cqw, 18px);
-  padding: clamp(10px, 2.1cqw, 16px) clamp(10px, 1.9cqw, 14px);
-  font-size: clamp(0.88rem, 2.2cqw, 1.05rem);
+  border-radius: clamp(10px, 2.2cqmin, 18px);
+  padding: clamp(10px, 2.1cqmin, 16px) clamp(10px, 1.9cqmin, 14px);
+  font-size: clamp(0.88rem, 2.2cqmin, 1.05rem);
 }
 
 .board-frame .canvas-result-screen {
-  inset: clamp(10px, 2.2cqw, 24px);
-  gap: clamp(8px, 1.8cqw, 16px);
+  inset: clamp(10px, 2.2cqmin, 24px);
+  gap: clamp(8px, 1.8cqmin, 16px);
 }
 
 .board-frame .canvas-result-panel {
-  width: min(760px, calc(100% - clamp(16px, 4cqw, 40px)));
-  gap: clamp(12px, 2.4cqw, 18px);
-  padding: clamp(16px, 3cqw, 26px) clamp(14px, 3.2cqw, 28px);
-  border-radius: clamp(16px, 2.8cqw, 26px);
+  width: min(760px, calc(100% - clamp(16px, 4cqmin, 40px)));
+  gap: clamp(12px, 2.4cqmin, 18px);
+  padding: clamp(16px, 3cqmin, 26px) clamp(14px, 3.2cqmin, 28px);
+  border-radius: clamp(16px, 2.8cqmin, 26px);
 }
 
 .board-frame .result-title {
-  font-size: clamp(1.2rem, 4.4cqw, 2rem);
+  font-size: clamp(1.2rem, 4.4cqmin, 2rem);
 }
 
 .board-frame .result-ranking-list {
-  gap: clamp(6px, 1.2cqw, 10px);
+  gap: clamp(6px, 1.2cqmin, 10px);
 }
 
 .board-frame .result-ranking-item {
-  padding: clamp(8px, 1.6cqw, 12px) clamp(10px, 2cqw, 16px);
-  border-radius: clamp(10px, 2.2cqw, 16px);
+  padding: clamp(8px, 1.6cqmin, 12px) clamp(10px, 2cqmin, 16px);
+  border-radius: clamp(10px, 2.2cqmin, 16px);
 }
 
 .board-frame .result-rank-badge {
-  width: clamp(22px, 3.2cqw, 30px);
-  height: clamp(22px, 3.2cqw, 30px);
-  font-size: clamp(0.72rem, 1.4cqw, 0.86rem);
+  width: clamp(22px, 3.2cqmin, 30px);
+  height: clamp(22px, 3.2cqmin, 30px);
+  font-size: clamp(0.72rem, 1.4cqmin, 0.86rem);
 }
 
 .board-frame .result-rank-name {
-  font-size: clamp(0.88rem, 2.1cqw, 1.06rem);
+  font-size: clamp(0.88rem, 2.1cqmin, 1.06rem);
 }
 
 .board-frame .result-rank-score {
-  font-size: clamp(0.84rem, 1.9cqw, 1rem);
+  font-size: clamp(0.84rem, 1.9cqmin, 1rem);
 }
 
 .board-frame .earned-score-table-head {
-  font-size: clamp(10px, 1.2cqw, 12px);
+  font-size: clamp(10px, 1.2cqmin, 12px);
 }
 
 .board-frame .canvas-full-overlay-turn-end .earned-score-row {
-  padding: clamp(6px, 1.1cqw, 10px) var(--score-side-pad);
+  padding: clamp(6px, 1.1cqmin, 10px) var(--score-side-pad);
 }
 
 .board-frame .turn-end-summary {
-  width: min(860px, calc(100% - clamp(16px, 4cqw, 40px)));
-  gap: clamp(18px, 2.8cqw, 24px);
-  padding: clamp(18px, 3.4cqw, 28px) clamp(16px, 3.8cqw, 30px);
+  width: min(860px, calc(100% - clamp(16px, 4cqmin, 40px)));
+  gap: clamp(18px, 2.8cqmin, 24px);
+  padding: clamp(18px, 3.4cqmin, 28px) clamp(16px, 3.8cqmin, 30px);
 }
 
 .board-frame .turn-end-answer-prefix,
 .board-frame .turn-end-answer-suffix {
-  font-size: clamp(0.92rem, 2.2cqw, 1.3rem);
+  font-size: clamp(0.92rem, 2.2cqmin, 1.3rem);
 }
 
 .board-frame .turn-end-answer-word {
-  font-size: clamp(2.6rem, 9.4cqw, 5.8rem);
+  font-size: clamp(2.6rem, 9.4cqmin, 5.8rem);
 }
 
 .board-frame .turn-end-earned-score-content {
@@ -111,15 +111,15 @@
 }
 
 .board-frame .earned-score-name {
-  font-size: clamp(0.8rem, 1.55cqw, 0.98rem);
+  font-size: clamp(0.8rem, 1.55cqmin, 0.98rem);
 }
 
 .board-frame .earned-score-role {
-  font-size: clamp(0.66rem, 1.25cqw, 0.8rem);
+  font-size: clamp(0.66rem, 1.25cqmin, 0.8rem);
 }
 
 .board-frame .earned-score-points {
-  font-size: clamp(0.74rem, 1.45cqw, 0.9rem);
+  font-size: clamp(0.74rem, 1.45cqmin, 0.9rem);
 }
 
 .canvas-overlay-card-word-choice {
@@ -141,8 +141,31 @@
     inset 0 0 0 1px rgba(255, 232, 179, 0.08);
 }
 
-.canvas-overlay-card-word-choice .overlay-heading {
-  padding-right: 82px;
+.word-choice-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  width: 100%;
+}
+
+.word-choice-heading {
+  flex: 1 1 210px;
+  min-width: 0;
+}
+
+.word-choice-heading strong {
+  display: block;
+  text-align: left;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+
+.word-choice-body {
+  width: 100%;
+  display: grid;
+  gap: 8px;
 }
 
 .canvas-overlay-card-word-choice-open {
@@ -561,9 +584,10 @@
 }
 
 .overlay-seconds-only-word-choice {
-  position: absolute;
-  top: 12px;
-  right: 14px;
+  position: static;
+  margin-left: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
   z-index: 2;
 }
 
@@ -577,6 +601,7 @@
   justify-content: center;
   align-items: stretch;
   gap: 12px;
+  width: 100%;
 }
 
 .word-choice-button {
@@ -832,7 +857,97 @@
   }
 }
 
+@container (max-height: 560px) {
+  .board-frame .canvas-overlay-card-word-choice {
+    top: 6px;
+    width: calc(100% - 12px);
+    max-height: calc(100% - 12px);
+    overflow: hidden;
+    gap: 8px;
+  }
+
+  .word-choice-top {
+    gap: 6px 8px;
+  }
+
+  .word-choice-heading strong {
+    font-size: clamp(0.86rem, 2.7cqmin, 1rem);
+  }
+
+  .overlay-seconds-only {
+    padding: 4px 10px;
+    font-size: 0.82rem;
+  }
+
+  .board-frame .word-choice-button {
+    padding: 8px 7px;
+    border-radius: 12px;
+    font-size: 0.84rem;
+  }
+
+  .canvas-result-panel {
+    max-height: calc(100% - 10px);
+    gap: 10px;
+    padding: 14px 10px;
+    border-radius: 18px;
+  }
+
+  .turn-end-summary {
+    width: calc(100% - 10px);
+    gap: 14px;
+    padding: 16px 12px;
+    border-radius: 20px;
+  }
+
+  .turn-end-answer-word {
+    font-size: clamp(2.1rem, 9.5cqmin, 4rem);
+  }
+}
+
+@container (max-height: 460px) {
+  .board-frame .canvas-full-overlay {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .word-choice-heading strong {
+    font-size: clamp(0.8rem, 2.5cqmin, 0.92rem);
+  }
+
+  .board-frame .word-choice-button {
+    padding: 7px 6px;
+    font-size: 0.76rem;
+  }
+
+  .turn-end-summary {
+    gap: 10px;
+    padding: 12px 10px;
+  }
+
+  .turn-end-answer-word {
+    font-size: clamp(1.8rem, 8.2cqmin, 3.2rem);
+  }
+
+  .canvas-result-panel {
+    padding: 10px 8px;
+    border-radius: 14px;
+  }
+}
+
 @media (max-width: 980px) {
+  .board-frame .word-choice-top {
+    gap: 5px 6px;
+  }
+
+  .board-frame .word-choice-heading strong {
+    font-size: clamp(0.8rem, 2.4vw, 0.96rem);
+  }
+
+  .board-frame .overlay-seconds-only-word-choice {
+    padding: 3px 8px;
+    font-size: 0.72rem;
+  }
+
   .word-choice-actions {
     display: flex;
     flex-wrap: wrap;

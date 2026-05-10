@@ -9,7 +9,7 @@
 .board-frame {
   position: relative;
   --settings-panel-scale: 1;
-  container-type: inline-size;
+  container-type: size;
   width: 100%;
   max-width: 1240px;
   max-height: min(78vh, 960px);
