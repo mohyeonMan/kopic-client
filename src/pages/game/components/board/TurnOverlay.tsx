@@ -88,6 +88,17 @@ export function TurnOverlay({
     typeof returnToLobbyCountdownSec === 'number'
       ? `${Math.max(0, returnToLobbyCountdownSec)}`
       : null
+  const topScore = ranking.length > 0 ? ranking[0].score : null
+  const winnerCount =
+    topScore === null
+      ? 0
+      : ranking.filter((participant) => participant.score === topScore).length
+  const gameResultHeadline =
+    ranking.length === 0
+      ? '게임 종료'
+      : winnerCount <= 1
+        ? `${ranking[0].nickname}님 우승!`
+        : `${winnerCount}명 공동 우승!`
 
   return (
     <>
@@ -281,14 +292,28 @@ export function TurnOverlay({
               {returnToLobbyCountdownText}
             </p>
           ) : null}
-          {ranking.map((participant, index) => (
-            <div
-              key={participant.sessionId}
-              className={index === 0 ? 'result-rank result-rank-winner' : 'result-rank'}
-            >
-              <strong>{`${index + 1}# ${participant.nickname} ${participant.score} pts`}</strong>
+          <div className="canvas-result-panel">
+            <div className="overlay-heading result-heading">
+              <p className="panel-label">게임 종료</p>
+              <strong className="result-title">{gameResultHeadline}</strong>
             </div>
-          ))}
+            <ol className="result-ranking-list">
+              {ranking.map((participant, index) => (
+                <li
+                  key={participant.sessionId}
+                  className={
+                    index === 0
+                      ? 'result-ranking-item result-ranking-item-winner'
+                      : 'result-ranking-item'
+                  }
+                >
+                  <span className="result-rank-badge">{index + 1}</span>
+                  <span className="result-rank-name">{participant.nickname}</span>
+                  <strong className="result-rank-score">{participant.score} pts</strong>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       ) : null}
     </>
