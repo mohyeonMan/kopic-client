@@ -31,6 +31,7 @@ export function GamePage() {
   const participantPanelRef = useRef<HTMLElement | null>(null)
   const chatPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
+  const isPageAtBottomRef = useRef(false)
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
   const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
   const [correctHighlightRoundNo, setCorrectHighlightRoundNo] = useState<number | null>(null)
@@ -194,6 +195,32 @@ export function GamePage() {
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
   useMobileViewport()
 
+  useEffect(() => {
+    const updatePageAtBottom = () => {
+      const scrollingElement = document.scrollingElement ?? document.documentElement
+      const visualViewport = window.visualViewport
+      const visualViewportBottom =
+        window.scrollY + (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight)
+      const layoutViewportBottom = scrollingElement.scrollTop + scrollingElement.clientHeight
+      const viewportBottom = Math.max(visualViewportBottom, layoutViewportBottom)
+
+      isPageAtBottomRef.current = scrollingElement.scrollHeight - viewportBottom <= 24
+    }
+
+    updatePageAtBottom()
+    window.addEventListener('scroll', updatePageAtBottom, { passive: true })
+    window.addEventListener('resize', updatePageAtBottom)
+    window.visualViewport?.addEventListener('resize', updatePageAtBottom)
+    window.visualViewport?.addEventListener('scroll', updatePageAtBottom)
+
+    return () => {
+      window.removeEventListener('scroll', updatePageAtBottom)
+      window.removeEventListener('resize', updatePageAtBottom)
+      window.visualViewport?.removeEventListener('resize', updatePageAtBottom)
+      window.visualViewport?.removeEventListener('scroll', updatePageAtBottom)
+    }
+  }, [])
+
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
       return 0
@@ -254,37 +281,13 @@ export function GamePage() {
         : null),
     }) as CSSProperties
   const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
-  const isPageScrolledNearBottom = () => {
-    const scrollingElement = document.scrollingElement ?? document.documentElement
-    const visualViewport = window.visualViewport
-    const visualViewportBottom =
-      window.scrollY + (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight)
-    const layoutViewportBottom = scrollingElement.scrollTop + scrollingElement.clientHeight
-    const viewportBottom = Math.max(visualViewportBottom, layoutViewportBottom)
+  const scrollComposerAnchor = (wasPageAtBottom: boolean) => {
+    const targetElement = wasPageAtBottom ? chatPanelRef.current : statusBarRef.current
 
-    return scrollingElement.scrollHeight - viewportBottom <= 24
-  }
-  const scrollToStatusBarAnchor = () => {
-    statusBarRef.current?.scrollIntoView({
+    targetElement?.scrollIntoView({
       block: 'start',
       inline: 'nearest',
     })
-  }
-  const scrollToChatPanelAnchor = () => {
-    chatPanelRef.current?.scrollIntoView({
-      block: 'start',
-      inline: 'nearest',
-    })
-  }
-  const scrollComposerFocusAnchor = (shouldScrollToChatPanel: boolean) => {
-    const scrollTarget = shouldScrollToChatPanel
-      ? scrollToChatPanelAnchor
-      : scrollToStatusBarAnchor
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(scrollTarget)
-    })
-    window.setTimeout(scrollTarget, 160)
   }
   const focusMobilePanel = (panel: 'chat' | 'participants') => {
     setMobilePanel(panel)
@@ -428,11 +431,11 @@ export function GamePage() {
           onChatScroll={handleChatScroll}
           onComposerBlur={() => setIsChatComposerFocused(false)}
           onComposerFocus={() => {
-            const shouldScrollToChatPanel = isPageScrolledNearBottom()
+            const wasPageAtBottom = isPageAtBottomRef.current
 
             setIsChatComposerFocused(true)
             setMobilePanel('chat')
-            scrollComposerFocusAnchor(shouldScrollToChatPanel)
+            window.requestAnimationFrame(() => scrollComposerAnchor(wasPageAtBottom))
           }}
           onScrollToBottom={scrollChatToBottom}
         />
