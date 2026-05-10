@@ -11,10 +11,10 @@
   max-width: 1200px;
   margin: 0 auto;
   min-height: 100svh;
-  height: 100svh;
+  height: auto;
   padding-bottom: 22px;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -204,6 +204,11 @@
   overflow: hidden;
 }
 
+.app-shell-game .page-frame {
+  flex: 1 0 auto;
+  overflow: visible;
+}
+
 .app-footer {
   margin-top: 8px;
   padding: 12px 2px 0;
@@ -233,10 +238,15 @@
 html.app-html-game,
 body.app-body-game {
   min-height: 100%;
-  height: 100%;
+  height: auto;
   overflow-x: hidden;
-  overflow-y: hidden;
-  overscroll-behavior-y: none;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+body.app-body-game #root {
+  min-height: 100svh;
+  background: var(--app-background);
 }
 
 @media (max-width: 980px) {
