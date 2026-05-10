@@ -12,7 +12,7 @@
   margin: 0 auto;
   min-height: 100svh;
   height: 100svh;
-  padding-bottom: calc(22px + var(--game-keyboard-inset, 0px));
+  padding-bottom: 22px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
@@ -247,11 +247,30 @@ body.app-body-game {
   .app-shell-game {
     max-width: none;
     width: 100%;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom) + var(--game-keyboard-inset, 0px));
+    min-height: 100svh;
+    min-height: 100dvh;
+    height: auto;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    overflow: visible;
+    overscroll-behavior-y: contain;
   }
 
   .app-shell-game .page-frame {
     overflow: visible;
+  }
+
+  html.app-html-game,
+  body.app-body-game {
+    height: auto;
+    min-height: 100dvh;
+    background: var(--app-background);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  body.app-body-game #root {
+    min-height: 100dvh;
+    background: var(--app-background);
   }
 
   .app-shell-game .topbar {

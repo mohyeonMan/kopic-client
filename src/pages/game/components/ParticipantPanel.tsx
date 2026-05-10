@@ -42,8 +42,8 @@ export function ParticipantPanel({
         </div>
       </div>
 
-      <div ref={sidePanelScrollRef} className="side-panel-scroll">
-        <div className="side-panel-scroll-inner">
+      <div className="side-panel-scroll">
+        <div ref={sidePanelScrollRef} className="side-panel-scroll-inner">
           <ul className="participant-cards">
             {animatedParticipants.map(({ participant, phase }) => (
               <li

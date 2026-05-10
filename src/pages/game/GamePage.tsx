@@ -19,6 +19,7 @@ import { useGameControls } from './hooks/useGameControls'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
 import { useCountdownSec } from './hooks/useCountdownSec'
+import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
 
@@ -191,6 +192,7 @@ export function GamePage() {
     visibleChat,
   })
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
+  useMobileViewport()
 
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
@@ -244,17 +246,14 @@ export function GamePage() {
     currentRound.roundNo === correctHighlightRoundNo &&
     !isDrawer
 
-  const isBoardFocusMode = isChatComposerFocused
-  const activeMobilePanel = isBoardFocusMode ? 'chat' : mobilePanel
+  const activeMobilePanel = isChatComposerFocused ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
     ({
       ...(sideSyncHeight && sideSyncHeight > 0
         ? { ['--game-side-sync-height' as string]: `${sideSyncHeight}px` }
         : null),
     }) as CSSProperties
-  const pageClassName =
-    `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}` +
-    (isBoardFocusMode ? ' gamepage-shell-chat-focus' : '')
+  const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
   const scrollToStatusBarAnchor = () => {
     statusBarRef.current?.scrollIntoView({
       block: 'start',
@@ -406,8 +405,7 @@ export function GamePage() {
             setIsChatComposerFocused(true)
             setMobilePanel('chat')
             scrollToStatusBarAnchor()
-            window.requestAnimationFrame(scrollToStatusBarAnchor)
-            window.setTimeout(scrollToStatusBarAnchor, 90)
+            window.setTimeout(scrollToStatusBarAnchor, 160)
           }}
           onScrollToBottom={scrollChatToBottom}
         />
