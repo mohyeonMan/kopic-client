@@ -254,11 +254,37 @@ export function GamePage() {
         : null),
     }) as CSSProperties
   const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
+  const isPageScrolledNearBottom = () => {
+    const scrollingElement = document.scrollingElement ?? document.documentElement
+    const visualViewport = window.visualViewport
+    const visualViewportBottom =
+      window.scrollY + (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight)
+    const layoutViewportBottom = scrollingElement.scrollTop + scrollingElement.clientHeight
+    const viewportBottom = Math.max(visualViewportBottom, layoutViewportBottom)
+
+    return scrollingElement.scrollHeight - viewportBottom <= 24
+  }
   const scrollToStatusBarAnchor = () => {
     statusBarRef.current?.scrollIntoView({
       block: 'start',
       inline: 'nearest',
     })
+  }
+  const scrollToChatPanelAnchor = () => {
+    chatPanelRef.current?.scrollIntoView({
+      block: 'start',
+      inline: 'nearest',
+    })
+  }
+  const scrollComposerFocusAnchor = (shouldScrollToChatPanel: boolean) => {
+    const scrollTarget = shouldScrollToChatPanel
+      ? scrollToChatPanelAnchor
+      : scrollToStatusBarAnchor
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(scrollTarget)
+    })
+    window.setTimeout(scrollTarget, 160)
   }
   const focusMobilePanel = (panel: 'chat' | 'participants') => {
     setMobilePanel(panel)
@@ -402,10 +428,11 @@ export function GamePage() {
           onChatScroll={handleChatScroll}
           onComposerBlur={() => setIsChatComposerFocused(false)}
           onComposerFocus={() => {
+            const shouldScrollToChatPanel = isPageScrolledNearBottom()
+
             setIsChatComposerFocused(true)
             setMobilePanel('chat')
-            scrollToStatusBarAnchor()
-            window.setTimeout(scrollToStatusBarAnchor, 160)
+            scrollComposerFocusAnchor(shouldScrollToChatPanel)
           }}
           onScrollToBottom={scrollChatToBottom}
         />

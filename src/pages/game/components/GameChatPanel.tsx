@@ -39,6 +39,7 @@ export function GameChatPanel({
   onScrollToBottom,
 }: GameChatPanelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const handledTouchFocusRef = useRef(false)
   const asideClassName =
     `panel game-side-panel game-side-panel-right${
       isMobileActive ? ' game-chat-panel-mobile-active' : ' game-chat-panel-mobile-inactive'
@@ -52,9 +53,20 @@ export function GameChatPanel({
     }
 
     event.preventDefault()
+    handledTouchFocusRef.current = true
     onComposerFocus()
     onScrollToBottom()
     input.focus({ preventScroll: true })
+  }
+
+  const handleInputFocus = () => {
+    if (handledTouchFocusRef.current) {
+      handledTouchFocusRef.current = false
+      return
+    }
+
+    onComposerFocus()
+    onScrollToBottom()
   }
 
   return (
@@ -118,10 +130,7 @@ export function GameChatPanel({
                 enterKeyHint="send"
                 placeholder="메시지를 입력하세요"
                 onTouchStart={handleInputTouchStart}
-                onFocus={() => {
-                  onComposerFocus()
-                  onScrollToBottom()
-                }}
+                onFocus={handleInputFocus}
                 onBlur={onComposerBlur}
                 onChange={(event) => onGuessInputChange(event.target.value)}
                 onKeyDown={(event) => {
