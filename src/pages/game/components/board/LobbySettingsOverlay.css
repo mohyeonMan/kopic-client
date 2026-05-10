@@ -8,50 +8,51 @@
   min-height: 0;
   height: auto;
   align-content: normal;
-  max-height: calc(100% - clamp(10px, 3cqw, 36px));
+  width: min(clamp(420px, 86cqmin, 940px), calc(100% - clamp(10px, 3cqmin, 36px)));
+  max-height: calc(100% - clamp(10px, 3cqmin, 36px));
   overflow: auto;
   overscroll-behavior: contain;
 }
 
 .board-frame .canvas-overlay-card-settings .overlay-heading {
-  gap: clamp(4px, 0.9cqw, 8px);
+  gap: clamp(4px, 0.9cqmin, 8px);
 }
 
 .board-frame .canvas-overlay-card-settings .panel-label {
-  margin-bottom: clamp(2px, 0.6cqw, 6px);
-  font-size: clamp(10px, 1.2cqw, 12px);
+  margin-bottom: clamp(2px, 0.6cqmin, 6px);
+  font-size: clamp(10px, 1.2cqmin, 12px);
 }
 
 .board-frame .canvas-overlay-card-settings strong {
-  font-size: clamp(0.95rem, 2.8cqw, 1.85rem);
+  font-size: clamp(0.95rem, 2.8cqmin, 1.85rem);
   line-height: 1.2;
 }
 
 .board-frame .canvas-overlay-card-settings .lobby-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(6px, 1.2cqw, 12px);
+  gap: clamp(6px, 1.2cqmin, 12px);
 }
 
 .board-frame .canvas-overlay-card-settings .field {
-  gap: clamp(5px, 0.9cqw, 10px);
+  gap: clamp(5px, 0.9cqmin, 10px);
 }
 
 .board-frame .canvas-overlay-card-settings .field span {
-  font-size: clamp(11px, 1.2cqw, 13px);
+  font-size: clamp(11px, 1.2cqmin, 13px);
   letter-spacing: 0.08em;
 }
 
 .board-frame .canvas-overlay-card-settings .field select {
-  border-radius: clamp(10px, 1.9cqw, 16px);
-  padding: clamp(7px, 1.15cqw, 10px) clamp(9px, 1.45cqw, 12px);
-  padding-right: clamp(28px, 3.2cqw, 36px);
-  font-size: clamp(0.86rem, 1.55cqw, 0.98rem);
+  border-radius: clamp(10px, 1.9cqmin, 16px);
+  padding: clamp(7px, 1.15cqmin, 10px) clamp(9px, 1.45cqmin, 12px);
+  padding-right: clamp(28px, 3.2cqmin, 36px);
+  font-size: clamp(0.86rem, 1.55cqmin, 0.98rem);
   line-height: 1.2;
 }
 
 .board-frame .canvas-overlay-card-settings .field select.select-no-caret {
   background-image: none;
-  padding-right: clamp(9px, 1.45cqw, 12px);
+  padding-right: clamp(9px, 1.45cqmin, 12px);
 }
 
 .board-frame .canvas-overlay-card-settings .field.field-wide {
@@ -62,9 +63,9 @@
   width: 100%;
   min-height: 72px;
   resize: vertical;
-  border-radius: clamp(10px, 1.9cqw, 16px);
-  padding: clamp(7px, 1.15cqw, 10px) clamp(9px, 1.45cqw, 12px);
-  font-size: clamp(0.86rem, 1.55cqw, 0.98rem);
+  border-radius: clamp(10px, 1.9cqmin, 16px);
+  padding: clamp(7px, 1.15cqmin, 10px) clamp(9px, 1.45cqmin, 12px);
+  font-size: clamp(0.86rem, 1.55cqmin, 0.98rem);
   line-height: 1.35;
   border: 1px solid rgba(255, 250, 240, 0.26);
   background: rgba(255, 250, 240, 0.12);
@@ -78,12 +79,12 @@
 .settings-validation-text {
   margin: 2px 0 0;
   color: rgba(255, 224, 140, 0.94);
-  font-size: clamp(11px, 1.2cqw, 13px);
+  font-size: clamp(11px, 1.2cqmin, 13px);
   line-height: 1.35;
 }
 
 .board-frame .canvas-overlay-card-settings .overlay-actions {
-  gap: clamp(6px, 1cqw, 10px);
+  gap: clamp(6px, 1cqmin, 10px);
 }
 
 .board-frame .canvas-overlay-card-settings .overlay-actions.overlay-actions-single {
@@ -92,8 +93,8 @@
 
 .board-frame .canvas-overlay-card-settings .primary-button,
 .board-frame .canvas-overlay-card-settings .secondary-button {
-  padding: clamp(6px, 0.95cqw, 8px) clamp(9px, 1.35cqw, 12px);
-  font-size: clamp(0.82rem, 1.3cqw, 0.92rem);
+  padding: clamp(6px, 0.95cqmin, 8px) clamp(9px, 1.35cqmin, 12px);
+  font-size: clamp(0.82rem, 1.3cqmin, 0.92rem);
 }
 
 .canvas-overlay-card-settings {
@@ -132,38 +133,22 @@
   color: #ffffff;
 }
 
-@container (max-width: 1024px) {
-  .board-frame {
-    --settings-panel-scale: 0.94;
-  }
-}
-
-@container (max-width: 860px) {
-  .board-frame {
-    --settings-panel-scale: 0.88;
-  }
-
+@container (max-width: 900px) {
   .board-frame .canvas-overlay-card-settings .lobby-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@container (max-width: 720px) {
-  .board-frame {
-    --settings-panel-scale: 0.82;
-  }
-}
-
-@media (max-width: 980px) {
-  .lobby-grid {
+@container (max-width: 620px) {
+  .board-frame .canvas-overlay-card-settings .lobby-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .board-frame .canvas-overlay-card-settings {
-    top: 6px;
-    transform: translate(-50%, 0) scale(var(--settings-panel-scale, 1));
+    width: calc(100% - 12px);
     max-height: calc(100% - 12px);
-    overflow: auto;
+    top: 6px;
+    transform: translate(-50%, 0);
   }
 
   .board-frame .canvas-overlay-card-settings-open {
@@ -171,11 +156,95 @@
   }
 
   .board-frame .canvas-overlay-card-settings-closed {
-    transform: translate(-50%, calc(-100% - 16px)) scale(var(--settings-panel-scale, 1));
+    transform: translate(-50%, calc(-100% - 18px)) scale(var(--settings-panel-scale, 1));
+  }
+
+  .board-frame .canvas-overlay-card-settings .overlay-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .board-frame .canvas-overlay-card-settings .overlay-actions.overlay-actions-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .board-frame .canvas-overlay-card-settings .primary-button,
+  .board-frame .canvas-overlay-card-settings .secondary-button {
+    width: 100%;
+    min-height: clamp(30px, 5cqmin, 36px);
+  }
+}
+
+@container (max-height: 620px) {
+  .board-frame .canvas-overlay-card-settings {
+    top: 6px;
+    transform: translate(-50%, 0);
+    max-height: calc(100% - 12px);
+  }
+
+  .board-frame .canvas-overlay-card-settings-open {
+    transform: translate(-50%, 0) scale(var(--settings-panel-scale, 1));
+  }
+
+  .board-frame .canvas-overlay-card-settings-closed {
+    transform: translate(-50%, calc(-100% - 18px)) scale(var(--settings-panel-scale, 1));
+  }
+}
+
+@container (max-height: 520px) {
+  .board-frame .canvas-overlay-card-settings .lobby-grid {
+    gap: 6px;
+  }
+
+  .board-frame .canvas-overlay-card-settings .field {
+    gap: 5px;
+  }
+
+  .board-frame .canvas-overlay-card-settings .field span {
+    font-size: clamp(10px, 1.1cqmin, 12px);
+    letter-spacing: 0.06em;
+  }
+
+  .board-frame .canvas-overlay-card-settings .field select {
+    min-height: clamp(28px, 4.8cqmin, 34px);
+    padding: clamp(5px, 0.9cqmin, 7px) clamp(7px, 1.1cqmin, 9px);
+    padding-right: clamp(20px, 2.6cqmin, 24px);
+    border-radius: 10px;
+    font-size: clamp(0.78rem, 1.15cqmin, 0.86rem);
+    background-size: 5px 5px, 5px 5px;
+    background-position:
+      calc(100% - 14px) calc(50% - 2px),
+      calc(100% - 10px) calc(50% - 2px);
+  }
+
+  .board-frame .canvas-overlay-card-settings .field select.select-no-caret {
+    background-image: none;
+    padding-right: 8px;
+  }
+
+  .settings-textarea {
+    min-height: 60px;
+    padding: 7px 9px;
+    border-radius: 10px;
+    font-size: clamp(0.78rem, 1.15cqmin, 0.86rem);
+  }
+}
+
+@container (max-height: 420px) {
+  .board-frame .canvas-overlay-card-settings .overlay-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 6px;
+  }
+
+  .board-frame .canvas-overlay-card-settings .overlay-actions.overlay-actions-single {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .board-frame .canvas-overlay-card-settings .lobby-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -192,35 +261,17 @@
     min-height: 26px;
     padding: 4px 6px;
     padding-right: 20px;
-    border-radius: 10px;
-    font-size: 0.72rem;
-    background-size: 5px 5px, 5px 5px;
-    background-position:
-      calc(100% - 14px) calc(50% - 2px),
-      calc(100% - 10px) calc(50% - 2px);
+    font-size: 0.74rem;
   }
 
   .board-frame .canvas-overlay-card-settings .field select.select-no-caret {
-    background-image: none;
     padding-right: 6px;
   }
 
   .settings-textarea {
-    min-height: 58px;
+    min-height: 56px;
     padding: 6px 8px;
-    border-radius: 10px;
-    font-size: 0.72rem;
-  }
-
-  .board-frame .canvas-overlay-card-settings .overlay-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-    gap: 6px;
-  }
-
-  .board-frame .canvas-overlay-card-settings .overlay-actions.overlay-actions-single {
-    grid-template-columns: minmax(0, 1fr);
+    font-size: 0.74rem;
   }
 
   .board-frame .canvas-overlay-card-settings .primary-button,
