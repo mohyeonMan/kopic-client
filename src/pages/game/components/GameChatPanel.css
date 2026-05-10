@@ -307,7 +307,7 @@
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: calc(env(safe-area-inset-bottom) + 8px);
+    bottom: calc(env(safe-area-inset-bottom) + var(--chat-input-offset-bottom, 0px) + 8px);
     z-index: 22;
   }
 

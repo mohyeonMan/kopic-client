@@ -1,5 +1,12 @@
 import './GameChatPanel.css'
-import { useRef, type RefObject, type TouchEvent as ReactTouchEvent } from 'react'
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+  type TouchEvent as ReactTouchEvent,
+} from 'react'
 import type { ChatMessage } from '../../../entities/game/model'
 import { shouldSkipEnterSubmit } from '../gamePageShared'
 
@@ -35,10 +42,60 @@ export function GameChatPanel({
   onScrollToBottom,
 }: GameChatPanelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const asideClassName =
     `panel game-side-panel game-side-panel-right${
       isMobileActive ? ' game-chat-panel-mobile-active' : ' game-side-panel-mobile-hidden'
     }${isComposerFocused ? ' game-chat-panel-composer-focused' : ''}`
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const visualViewport = window.visualViewport
+    let frameId = 0
+
+    const readKeyboardInset = () => {
+      const layoutViewportHeight = window.innerHeight
+      const viewportHeight = Math.round(visualViewport?.height ?? layoutViewportHeight)
+      const viewportTop = Math.round(visualViewport?.offsetTop ?? 0)
+      return Math.max(0, layoutViewportHeight - viewportHeight - viewportTop)
+    }
+
+    const updateInset = () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        const nextInset = isComposerFocused ? readKeyboardInset() : 0
+        setKeyboardInset((current) => (Math.abs(current - nextInset) <= 1 ? current : nextInset))
+      })
+    }
+
+    updateInset()
+
+    window.addEventListener('resize', updateInset)
+    window.addEventListener('orientationchange', updateInset)
+    visualViewport?.addEventListener('resize', updateInset)
+    visualViewport?.addEventListener('scroll', updateInset)
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+
+      window.removeEventListener('resize', updateInset)
+      window.removeEventListener('orientationchange', updateInset)
+      visualViewport?.removeEventListener('resize', updateInset)
+      visualViewport?.removeEventListener('scroll', updateInset)
+    }
+  }, [isComposerFocused])
+
+  const chatInputDockStyle: CSSProperties = {
+    ['--chat-input-offset-bottom' as string]: `${keyboardInset}px`,
+  }
 
   const handleInputTouchStart = (event: ReactTouchEvent<HTMLInputElement>) => {
     const input = inputRef.current
@@ -99,7 +156,7 @@ export function GameChatPanel({
           />
         ) : null}
 
-        <div className="chat-input-dock">
+        <div className="chat-input-dock" style={chatInputDockStyle}>
           <div className="chat-input-dock-shell">
             <div className="chat-input-row">
               <input
