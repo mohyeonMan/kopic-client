@@ -185,11 +185,26 @@
     flex-direction: column;
     min-height: 0;
     height: 100%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .game-side-panel-left.game-participant-panel-mobile-active .section-heading {
+    margin-bottom: 0;
+    padding: 0 4px 6px;
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll {
     min-height: 0;
     flex: 1 1 auto;
+    height: clamp(320px, 72vw, 420px);
+    max-height: none;
+    padding: 8px;
+    border-radius: 18px;
+    background: rgba(255, 252, 247, 0.96);
+    box-shadow: var(--shadow-soft);
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll-inner {

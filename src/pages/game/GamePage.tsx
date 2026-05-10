@@ -19,7 +19,6 @@ import { useGameControls } from './hooks/useGameControls'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
 import { useCountdownSec } from './hooks/useCountdownSec'
-import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
 
@@ -192,7 +191,6 @@ export function GamePage() {
     visibleChat,
   })
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
-  const { isKeyboardVisible, keyboardInset, viewportHeight } = useMobileViewport()
 
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
@@ -246,16 +244,13 @@ export function GamePage() {
     currentRound.roundNo === correctHighlightRoundNo &&
     !isDrawer
 
-  const isBoardFocusMode = isKeyboardVisible || isChatComposerFocused
+  const isBoardFocusMode = isChatComposerFocused
   const activeMobilePanel = isBoardFocusMode ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
     ({
       ...(sideSyncHeight && sideSyncHeight > 0
         ? { ['--game-side-sync-height' as string]: `${sideSyncHeight}px` }
         : null),
-      ['--mobile-viewport-offset-bottom' as string]: `${keyboardInset}px`,
-      ['--mobile-visual-viewport-height' as string]:
-        viewportHeight > 0 ? `${viewportHeight}px` : '100svh',
     }) as CSSProperties
   const pageClassName =
     `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}` +

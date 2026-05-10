@@ -283,8 +283,8 @@
     );
     flex: 1 1 auto;
     min-height: 0;
-    height: clamp(320px, 42svh, 420px);
-    max-height: calc(var(--mobile-visual-viewport-height) - 132px);
+    height: clamp(320px, 72vw, 420px);
+    max-height: none;
     padding: 8px;
     padding-bottom: var(--mobile-chat-dock-clearance);
     border-radius: 18px;
@@ -298,8 +298,8 @@
 
   .gamepage-shell-chat-focus .game-side-panel-right.game-chat-panel-mobile-active .chat-panel-box {
     min-height: 0;
-    height: clamp(280px, 38svh, 400px);
-    max-height: calc(var(--mobile-visual-viewport-height) - 108px);
+    height: clamp(280px, 66vw, 400px);
+    max-height: none;
   }
 
   .chat-input-dock {
@@ -307,7 +307,7 @@
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: calc(env(safe-area-inset-bottom) + var(--mobile-viewport-offset-bottom) + 8px);
+    bottom: calc(env(safe-area-inset-bottom) + 8px);
     z-index: 22;
   }
 

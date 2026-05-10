@@ -1,10 +1,8 @@
 import './AppLayout.css'
 import {
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from 'react'
 import { buildInvitePath, routes, type AppRoute } from '../router/routes'
@@ -15,30 +13,6 @@ type AppLayoutProps = {
   currentRoute: AppRoute
   onNavigate: (route: AppRoute) => void
   children: ReactNode
-}
-
-type ShellViewportState = {
-  keyboardInset: number
-  viewportHeight: number
-}
-
-function readShellViewportState(): ShellViewportState {
-  if (typeof window === 'undefined') {
-    return {
-      keyboardInset: 0,
-      viewportHeight: 0,
-    }
-  }
-
-  const layoutViewportHeight = window.innerHeight
-  const visualViewport = window.visualViewport
-  const viewportHeight = Math.round(visualViewport?.height ?? layoutViewportHeight)
-  const viewportTop = Math.round(visualViewport?.offsetTop ?? 0)
-
-  return {
-    keyboardInset: Math.max(0, layoutViewportHeight - viewportHeight - viewportTop),
-    viewportHeight,
-  }
 }
 
 async function copyText(text: string) {
@@ -73,9 +47,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [qrCodeError, setQrCodeError] = useState(false)
-  const [shellViewportState, setShellViewportState] = useState<ShellViewportState>(() =>
-    readShellViewportState(),
-  )
   const shareMenuRef = useRef<HTMLDivElement | null>(null)
   const feedbackTimeoutRef = useRef<number | null>(null)
   const isGameRoute = currentRoute === routes.game
@@ -86,59 +57,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     : null
   const supportsNativeShare = typeof navigator.share === 'function'
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
-  const shellStyle: CSSProperties | undefined = isGameRoute
-    ? ({
-        ['--app-shell-viewport-height' as string]:
-          shellViewportState.viewportHeight > 0
-            ? `${shellViewportState.viewportHeight}px`
-            : '100svh',
-        ['--app-shell-keyboard-inset' as string]: `${shellViewportState.keyboardInset}px`,
-      }) as CSSProperties
-    : undefined
-
-  useLayoutEffect(() => {
-    if (!isGameRoute || typeof window === 'undefined') {
-      return
-    }
-
-    const visualViewport = window.visualViewport
-    let frameId = 0
-
-    const updateViewportState = () => {
-      if (frameId) {
-        window.cancelAnimationFrame(frameId)
-      }
-
-      frameId = window.requestAnimationFrame(() => {
-        setShellViewportState((current) => {
-          const next = readShellViewportState()
-
-          return current.keyboardInset === next.keyboardInset &&
-            current.viewportHeight === next.viewportHeight
-            ? current
-            : next
-        })
-      })
-    }
-
-    updateViewportState()
-
-    window.addEventListener('resize', updateViewportState)
-    window.addEventListener('orientationchange', updateViewportState)
-    visualViewport?.addEventListener('resize', updateViewportState)
-    visualViewport?.addEventListener('scroll', updateViewportState)
-
-    return () => {
-      if (frameId) {
-        window.cancelAnimationFrame(frameId)
-      }
-
-      window.removeEventListener('resize', updateViewportState)
-      window.removeEventListener('orientationchange', updateViewportState)
-      visualViewport?.removeEventListener('resize', updateViewportState)
-      visualViewport?.removeEventListener('scroll', updateViewportState)
-    }
-  }, [isGameRoute])
 
   useEffect(() => {
     if (!shareMenuOpen) {
@@ -418,7 +336,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   }
 
   return (
-    <div className={shellClassName} style={shellStyle}>
+    <div className={shellClassName}>
       {isGameRoute ? (
         <header className="topbar">
           <h1 className="topbar-brand">KOPIC</h1>

@@ -1,7 +1,5 @@
 .gamepage-shell {
   --mobile-chat-dock-height: 58px;
-  --mobile-viewport-offset-bottom: 0px;
-  --mobile-visual-viewport-height: 100svh;
   width: 100%;
   min-height: 0;
   display: grid;

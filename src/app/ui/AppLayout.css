@@ -1,6 +1,4 @@
 .app-shell {
-  --app-shell-viewport-height: 100svh;
-  --app-shell-keyboard-inset: 0px;
   width: 100%;
   min-height: 100svh;
   padding: 22px;
@@ -240,8 +238,8 @@
   .app-shell-game {
     max-width: none;
     width: 100%;
-    min-height: var(--app-shell-viewport-height);
-    height: var(--app-shell-viewport-height);
+    min-height: 100%;
+    height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
