@@ -279,7 +279,8 @@
     --mobile-chat-dock-clearance: calc(
       var(--mobile-chat-dock-height) +
       env(safe-area-inset-bottom) +
-      var(--mobile-chat-footer-gap)
+      var(--mobile-chat-footer-gap) +
+      var(--chat-input-offset-bottom, 0px)
     );
     flex: 1 1 auto;
     min-height: 0;

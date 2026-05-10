@@ -12,6 +12,7 @@
   margin: 0 auto;
   min-height: 100svh;
   height: 100svh;
+  padding-bottom: calc(22px + var(--game-keyboard-inset, 0px));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
@@ -246,6 +247,7 @@ body.app-body-game {
   .app-shell-game {
     max-width: none;
     width: 100%;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom) + var(--game-keyboard-inset, 0px));
   }
 
   .app-shell-game .page-frame {

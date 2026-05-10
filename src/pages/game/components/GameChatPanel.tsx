@@ -93,7 +93,21 @@ export function GameChatPanel({
     }
   }, [isComposerFocused])
 
-  const chatInputDockStyle: CSSProperties = {
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const htmlElement = document.documentElement
+    const nextInset = isMobileActive && isComposerFocused ? keyboardInset : 0
+    htmlElement.style.setProperty('--game-keyboard-inset', `${nextInset}px`)
+
+    return () => {
+      htmlElement.style.setProperty('--game-keyboard-inset', '0px')
+    }
+  }, [isComposerFocused, isMobileActive, keyboardInset])
+
+  const chatPanelStyle: CSSProperties = {
     ['--chat-input-offset-bottom' as string]: `${keyboardInset}px`,
   }
 
@@ -111,7 +125,7 @@ export function GameChatPanel({
   }
 
   return (
-    <aside ref={containerRef} className={asideClassName} tabIndex={-1}>
+    <aside ref={containerRef} className={asideClassName} tabIndex={-1} style={chatPanelStyle}>
       <div className="section-heading">
         <div>
           <p className="eyebrow">Chat</p>
@@ -156,7 +170,7 @@ export function GameChatPanel({
           />
         ) : null}
 
-        <div className="chat-input-dock" style={chatInputDockStyle}>
+        <div className="chat-input-dock">
           <div className="chat-input-dock-shell">
             <div className="chat-input-row">
               <input
