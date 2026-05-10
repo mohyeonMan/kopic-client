@@ -295,7 +295,6 @@ export function GamePage() {
       <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
         <ParticipantPanel
           containerRef={participantPanelRef}
-          participantCount={participants.length}
           animatedParticipants={animatedParticipants}
           mySessionId={state.session.sessionId}
           drawerSessionId={currentTurn?.drawerSessionId}

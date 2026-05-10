@@ -4,7 +4,6 @@ import { getParticipantAccentColor, participantTone, type AnimatedParticipantIte
 
 type ParticipantPanelProps = {
   containerRef: RefObject<HTMLElement | null>
-  participantCount: number
   animatedParticipants: AnimatedParticipantItem[]
   mySessionId: string
   drawerSessionId?: string
@@ -21,7 +20,6 @@ type ParticipantPanelProps = {
 
 export function ParticipantPanel({
   containerRef,
-  participantCount,
   animatedParticipants,
   mySessionId,
   drawerSessionId,
@@ -38,9 +36,10 @@ export function ParticipantPanel({
 
   return (
     <aside ref={containerRef} className={asideClassName} tabIndex={-1}>
-      <div className="section-heading participant-heading-compact">
-        <h2>참여자</h2>
-        <div className="pill participant-count-pill">{participantCount}명</div>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">PARTICIPANTS</p>
+        </div>
       </div>
 
       <div ref={sidePanelScrollRef} className="side-panel-scroll">

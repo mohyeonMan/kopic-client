@@ -1,21 +1,9 @@
-.participant-heading-compact {
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.participant-heading-compact h2 {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.1;
-}
-
-.participant-count-pill {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
 .game-side-panel-left {
   z-index: 2;
+}
+
+.game-side-panel-left .eyebrow {
+  margin-bottom: 0;
 }
 
 .participant-cards {
@@ -205,11 +193,36 @@
     border-radius: 18px;
     background: rgba(255, 252, 247, 0.96);
     box-shadow: var(--shadow-soft);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(32, 50, 71, 0.35) transparent;
   }
 
   .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll-inner {
-    height: 100%;
+    min-height: 100%;
+    height: auto;
     max-height: none;
+    overflow: visible;
+  }
+
+  .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll::-webkit-scrollbar-thumb {
+    background: rgba(32, 50, 71, 0.28);
+    border-radius: 999px;
+  }
+
+  .game-side-panel-left.game-participant-panel-mobile-active .side-panel-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(32, 50, 71, 0.4);
   }
 
   .gamepage-shell-chat-focus .game-side-panel-left {
