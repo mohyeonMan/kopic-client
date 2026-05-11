@@ -23,6 +23,8 @@
   left: 50%;
   z-index: 4;
   transform: translate3d(-50%, 0, 0);
+  box-sizing: border-box;
+  max-width: calc(100% - 40px);
   transition:
     transform 240ms ease,
     opacity 240ms ease;
@@ -65,30 +67,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  max-width: min(calc(100cqw - 20px), 100%);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .secret-word-banner-text {
   display: inline-block;
+  max-width: 100%;
   text-align: center;
   line-height: 1.15;
-  font-size: clamp(0.82rem, 1.6cqw, 0.95rem);
+  font-size: clamp(0.82rem, 1.1vw, 0.95rem);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .secret-word-banner-text-masked {
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    'Liberation Mono',
-    'Courier New',
-    monospace;
-  letter-spacing: 0.14em;
-  padding-left: 0.14em;
+  font-family: inherit;
+  letter-spacing: 0;
+  padding-left: 0;
 }
 
 .secret-word-description-button {
