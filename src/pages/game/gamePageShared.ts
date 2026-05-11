@@ -64,7 +64,7 @@ export const SETTING_OPTIONS = {
   drawSec: [20, 30, 40, 50, 60],
   wordChoiceSec: [5, 7, 10, 12, 15],
   wordChoiceCount: [3, 4, 5],
-  hintRevealSec: [5, 7, 10, 12, 15],
+  hintRevealSec: [10, 15, 20, 25, 30],
   hintLetterCount: [1, 2, 3],
 } as const
 
