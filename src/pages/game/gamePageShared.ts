@@ -35,7 +35,7 @@ export const TOOL_COLORS = [
   '#8d6e63',
   '#6f5a4b',
   '#9aa5b1',
-  '#ffffff',
+  '#cfd8dce1',
 ] as const
 
 function toGrayscaleHex(hexColor: string) {
