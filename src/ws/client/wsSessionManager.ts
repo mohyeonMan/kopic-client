@@ -12,7 +12,7 @@ const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
 const WS_MAX_RECONNECT_ATTEMPTS = 3
-const WS_GE_ID = 'ge-local'
+const WS_GE_ID = resolveGeId()
 const WS_BASE_PATH = resolveWsBasePath()
 
 let ws: WebSocket | null = null
@@ -62,6 +62,10 @@ function resolveWsBasePath() {
 
   const trimmed = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
+
+function resolveGeId() {
+  return import.meta.env.VITE_GE_ID?.trim() || 'ge-local'
 }
 
 function resolveWsPath() {
