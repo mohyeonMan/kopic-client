@@ -34,7 +34,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
           tags: |
-            type=sha
+            type=sha,prefix=${{ github.ref_name }}-sha-
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
 
@@ -44,9 +44,17 @@ jobs:
           case "${GITHUB_REF_NAME}" in
             dev)
               echo "environment=dev" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path=/kopic-dev/" >> "${GITHUB_OUTPUT}"
+              echo "ws_path=/kopic-dev/ws" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path_nginx=/kopic-dev" >> "${GITHUB_OUTPUT}"
+              echo "image_tag=dev-sha-${GITHUB_SHA::7}" >> "${GITHUB_OUTPUT}"
               ;;
             prod)
               echo "environment=prod" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path=/kopic/" >> "${GITHUB_OUTPUT}"
+              echo "ws_path=/kopic/ws" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path_nginx=/kopic" >> "${GITHUB_OUTPUT}"
+              echo "image_tag=prod-sha-${GITHUB_SHA::7}" >> "${GITHUB_OUTPUT}"
               ;;
             *)
               echo "unsupported branch: ${GITHUB_REF_NAME}" >&2
@@ -87,8 +95,7 @@ jobs:
             exit 0
           fi
 
-          SHORT_SHA="${GITHUB_SHA::7}"
-          yq -i ".images[0].newTag = \"sha-${SHORT_SHA}\"" "${TARGET_FILE}"
+          yq -i ".images[0].newTag = \"${{ steps.deploy.outputs.image_tag }}\"" "${TARGET_FILE}"
 
       - name: Commit and push
         run: |
@@ -101,12 +108,12 @@ jobs:
             exit 0
           fi
 
-          SHORT_SHA="${GITHUB_SHA::7}"
+          IMAGE_TAG="${{ steps.deploy.outputs.image_tag }}"
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add "${TARGET_FILE}"
-          git commit -m "deployment(${DEPLOY_ENV}): ${REPO_NAME} image tag [sha-${SHORT_SHA}]" || exit 0
+          git commit -m "deployment(${DEPLOY_ENV}): ${REPO_NAME} image tag [${IMAGE_TAG}]" || exit 0
           git push
