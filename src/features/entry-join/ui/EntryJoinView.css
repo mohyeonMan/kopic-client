@@ -84,6 +84,11 @@
   background: #fffdf8;
 }
 
+.entry-join__field input:focus {
+  outline: 2px solid rgba(225, 122, 46, 0.35);
+  outline-offset: 2px;
+}
+
 .entry-join__actions,
 .entry-join__dialog-actions {
   display: flex;
@@ -99,6 +104,15 @@
   padding: 0 14px;
   font-weight: 800;
   cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background 160ms ease;
+}
+
+.entry-join__primary:not(:disabled):hover,
+.entry-join__secondary:not(:disabled):hover {
+  transform: translateY(-1px);
 }
 
 .entry-join__primary {
@@ -162,4 +176,3 @@
     grid-template-columns: 1fr;
   }
 }
-

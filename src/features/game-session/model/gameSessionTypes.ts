@@ -41,6 +41,7 @@ import type {
 
 export type GameSessionEvent =
   | { type: 'connected' }
+  | { type: 'reconnecting' }
   | { type: 'session-synced'; payload: JoinSessionAccepted & { roomSnapshot: RoomSnapshot } }
   | { type: 'participant-joined'; payload: RoomPresencePayload }
   | { type: 'participant-left'; payload: RoomLeftPayload }

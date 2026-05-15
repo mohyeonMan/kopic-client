@@ -30,7 +30,7 @@ export function useGameChat() {
   const sessionId = useSessionStore((state) => state.sessionId)
   const roomState = useGameStore((state) => state.room.roomState)
   const currentTurn = useGameStore((state) => state.room.currentTurn)
-  const messages = useGameStore((state) => state.room.chat)
+  const messages = useGameStore((state) => state.room.chat.filter((message) => message.tone !== 'system'))
   const hasCorrectAnswer =
     sessionId !== null ? currentTurn?.correctSessionIds.includes(sessionId) : false
   const canSubmitGuess =
@@ -41,11 +41,11 @@ export function useGameChat() {
 
   const submitGuess = () => {
     const text = input.trim().slice(0, MAX_GUESS_LENGTH)
-    if (!text || !canSubmitGuess) {
+    if (!text) {
       return
     }
 
-    appendChatMessage(createLocalGuessMessage(text, nickname, sessionId))
+    appendChatMessage(createLocalGuessMessage(text, nickname, sessionId, currentTurn))
     gameSessionCommands.sendGuess(text)
     setInput('')
   }

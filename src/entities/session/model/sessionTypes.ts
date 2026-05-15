@@ -17,7 +17,12 @@
  * - sessionStore
  */
 export type SessionStatus = 'idle' | 'joining' | 'joined' | 'disconnected'
-export type SessionConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected'
+export type SessionConnectionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'disconnected'
 export type JoinActionCode = 0 | 1
 
 export type SessionError = {

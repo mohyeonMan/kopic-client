@@ -25,6 +25,15 @@ export function bindGameSessionConnection(connection: GameSessionConnection | nu
 }
 
 export const gameSessionCommands = {
+  disconnect() {
+    if (!activeConnection) {
+      return false
+    }
+
+    activeConnection.close()
+    activeConnection = null
+    return true
+  },
   sendCanvasClear() {
     return activeConnection?.sendCanvasClear() ?? false
   },

@@ -22,16 +22,20 @@ export function useRoomLobbyControls() {
   const patchSettings = useGameStore((state) => state.patchSettings)
   const settings = useGameStore((state) => state.room.settings)
 
-  const applyNumericSetting = (key: keyof Pick<
-    GameSettings,
-    'drawSec' | 'hintRevealSec' | 'roundCount' | 'wordChoiceSec'
-  >, value: number) => {
+  const applySetting = <Key extends keyof GameSettings>(key: Key, value: GameSettings[Key]) => {
     const nextSettings = {
       ...settings,
       [key]: value,
     }
-    patchSettings({ [key]: value })
+    patchSettings({ [key]: value } as Partial<GameSettings>)
     gameSessionCommands.sendSettingsUpdate(nextSettings)
+  }
+
+  const applyNumericSetting = (key: keyof Pick<
+    GameSettings,
+    'drawSec' | 'hintLetterCount' | 'hintRevealSec' | 'roundCount' | 'wordChoiceCount' | 'wordChoiceSec'
+  >, value: number) => {
+    applySetting(key, value)
   }
 
   const startGame = () => {
@@ -39,6 +43,7 @@ export function useRoomLobbyControls() {
   }
 
   return {
+    applySetting,
     applyNumericSetting,
     startGame,
   }

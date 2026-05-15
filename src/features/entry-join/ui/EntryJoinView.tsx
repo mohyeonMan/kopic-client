@@ -17,6 +17,7 @@
  * 사용 위치:
  * - EntryPage
  */
+import { useEffect } from 'react'
 import type { SessionError, SessionStatus } from '@/entities/session/model/sessionTypes'
 import { useEntryJoinForm } from '@/features/entry-join/model/useEntryJoinForm'
 import type { EntryJoinSubmitPayload } from '@/features/entry-join/model/entryJoinTypes'
@@ -49,6 +50,14 @@ export function EntryJoinView({
     onSubmit,
   })
   const submitting = status === 'joining'
+
+  useEffect(() => {
+    if (!joinError && !connectionError) {
+      return
+    }
+
+    form.closeJoinDialog()
+  }, [connectionError, form, joinError])
 
   return (
     <section className="entry-join">
@@ -189,4 +198,3 @@ function EntryJoinErrorDialog({ title, error, onDismiss }: EntryJoinErrorDialogP
     </div>
   )
 }
-

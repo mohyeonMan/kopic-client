@@ -1,0 +1,268 @@
+/**
+ * GameStageOverlay styles
+ *
+ * 책임:
+ * - board surface 위 stage overlay presentation
+ *
+ * 하지 않는 것:
+ * - canvas drawing implementation
+ * - page-level layout
+ */
+.game-stage-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  color: #fffdf8;
+  background: rgba(23, 32, 42, 0.76);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+  transition:
+    transform 320ms ease,
+    opacity 240ms ease;
+}
+
+.game-stage-overlay--open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.game-stage-overlay--closed {
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+
+.game-stage-overlay__panel {
+  width: min(620px, 100%);
+  max-height: 100%;
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(36, 48, 61, 0.96), rgba(23, 32, 42, 0.94)),
+    #17202a;
+  box-shadow: 0 24px 48px rgba(23, 32, 42, 0.24);
+}
+
+.game-stage-overlay__eyebrow {
+  margin: 0;
+  color: rgba(255, 253, 248, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.game-stage-overlay__title,
+.game-stage-overlay__transient-title {
+  color: #fffdf8;
+  font-size: clamp(1.25rem, 3.2vw, 2.1rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.game-stage-overlay__transient-title {
+  text-align: center;
+}
+
+.game-stage-overlay--transient {
+  gap: 8px;
+  text-align: center;
+}
+
+.game-stage-overlay--transient span {
+  color: rgba(255, 253, 248, 0.78);
+  font-weight: 800;
+}
+
+.game-stage-overlay--word-choice {
+  place-items: start center;
+  padding-top: 20px;
+  background: linear-gradient(180deg, rgba(23, 32, 42, 0.86), rgba(23, 32, 42, 0.28));
+}
+
+.game-stage-overlay--word-choice.game-stage-overlay--closed {
+  transform: translateY(calc(-100% - 24px));
+}
+
+.game-stage-overlay--word-choice .game-stage-overlay__panel {
+  width: min(560px, 100%);
+}
+
+.game-stage-overlay__word-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.game-stage-overlay__word-actions button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 253, 248, 0.2);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #f0c15a;
+  color: #17202a;
+  font-weight: 900;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease;
+}
+
+.game-stage-overlay__word-actions button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(23, 32, 42, 0.22);
+}
+
+.game-stage-overlay__word-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.game-stage-overlay__answer {
+  color: #fffdf8;
+  font-size: clamp(2.2rem, 7vw, 4.8rem);
+  line-height: 0.96;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.game-stage-overlay__score-list,
+.game-stage-overlay__ranking {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.game-stage-overlay__ranking {
+  list-style: none;
+}
+
+.game-stage-overlay__score-row,
+.game-stage-overlay__ranking li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 253, 248, 0.08);
+}
+
+.game-stage-overlay__ranking li {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+}
+
+.game-stage-overlay__score-row span,
+.game-stage-overlay__ranking span {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.14);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.game-stage-overlay__score-row strong,
+.game-stage-overlay__ranking strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.game-stage-overlay__score-row em,
+.game-stage-overlay__ranking em,
+.game-stage-overlay__score-row b {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.game-stage-overlay__score-row--correct {
+  background: rgba(93, 189, 129, 0.18);
+}
+
+.game-stage-overlay__score-row--drawer {
+  background: rgba(240, 193, 90, 0.16);
+}
+
+.game-stage-overlay--result {
+  animation: result-screen-shutter-rise 360ms ease both, result-screen-border-flash 1.2s ease-in-out 2;
+}
+
+.game-stage-overlay--result .game-stage-overlay__panel {
+  border-color: rgba(240, 193, 90, 0.5);
+}
+
+.game-stage-overlay--result .game-stage-overlay__ranking li:first-child {
+  border-color: rgba(240, 193, 90, 0.56);
+  background: rgba(240, 193, 90, 0.18);
+}
+
+@keyframes game-stage-overlay-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes result-screen-shutter-rise {
+  from {
+    clip-path: inset(100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes result-screen-border-flash {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(240, 193, 90, 0);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 4px rgba(240, 193, 90, 0.72);
+  }
+}
+
+@media (max-width: 640px) {
+  .game-stage-overlay {
+    padding: 10px;
+  }
+
+  .game-stage-overlay__panel {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .game-stage-overlay__score-row,
+  .game-stage-overlay__ranking li {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
+
+  .game-stage-overlay__score-row b {
+    grid-column: 2 / -1;
+  }
+}

@@ -500,6 +500,14 @@ export function normalizeRoomSnapshotPayload(
       ? payload.chat
           .map((item) =>
             normalizeChatMessage({
+              currentTurn:
+                roomState === 'RUNNING' && currentTurn
+                  ? {
+                      ...currentTurn,
+                      canvasStrokes:
+                        currentTurn.canvasStrokes.length > 0 ? currentTurn.canvasStrokes : currentCanvas,
+                    }
+                  : null,
               ownSessionId: resolveOwnSessionId(payload, participants),
               participants,
               payload: item,

@@ -21,14 +21,25 @@
 import { AppLayout } from '@/app/layout/AppLayout'
 import { useAppRouter } from '@/app/router/useAppRouter'
 import { routes } from '@/app/router/routes'
+import { useGameStore } from '@/entities/game/model/gameStore'
 import { useSessionStore } from '@/entities/session/model/sessionStore'
+import { gameSessionCommands } from '@/features/game-session/model/gameSessionCommandGateway'
 import { EntryPage } from '@/pages/entry/EntryPage'
 import { GamePage } from '@/pages/game/GamePage'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 
 export function AppRouter() {
   const { navigate, route } = useAppRouter()
   const joined = useSessionStore((state) => state.status === 'joined')
+  const resetSession = useSessionStore((state) => state.resetSession)
+  const resetRoom = useGameStore((state) => state.resetRoom)
+
+  const handleLeaveGame = useCallback(() => {
+    gameSessionCommands.disconnect()
+    resetRoom()
+    resetSession()
+    navigate(routes.main, { replace: true })
+  }, [navigate, resetRoom, resetSession])
 
   useEffect(() => {
     if (route !== routes.game || joined) {
@@ -39,7 +50,7 @@ export function AppRouter() {
   }, [joined, navigate, route])
 
   return (
-    <AppLayout currentRoute={route}>
+    <AppLayout currentRoute={route} onLeaveGame={handleLeaveGame}>
       {route === routes.game && joined ? <GamePage /> : <EntryPage onNavigate={navigate} />}
     </AppLayout>
   )

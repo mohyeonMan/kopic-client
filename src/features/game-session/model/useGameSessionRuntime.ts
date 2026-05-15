@@ -12,9 +12,16 @@
  *
  * side effect:
  * - active join request 발생 시 WebSocket 연결 생성
+ * - session 상태가 joined/joining이 아니면 runtime connection 정리
  * - runtime unmount 시 WebSocket 연결 해제
  */
 import { useEffect, useRef } from 'react'
+import {
+  createCorrectAnswerAlertMessage,
+  createHostChangedMessage,
+  createPresenceMessage,
+  resolveChatMessageForViewer,
+} from '@/entities/game/model/chatMessages'
 import { useGameStore } from '@/entities/game/model/gameStore'
 import { useSessionStore } from '@/entities/session/model/sessionStore'
 import { openGameSession } from '@/features/game-session/api/gameSessionApi'
@@ -27,6 +34,7 @@ function createJoinRequestKey(request: NonNullable<ReturnType<typeof useSessionS
 
 export function useGameSessionRuntime() {
   const activeJoinRequest = useSessionStore((state) => state.activeJoinRequest)
+  const sessionStatus = useSessionStore((state) => state.status)
   const acceptJoin = useSessionStore((state) => state.acceptJoin)
   const failJoin = useSessionStore((state) => state.failJoin)
   const reportConnectionError = useSessionStore((state) => state.reportConnectionError)
@@ -51,6 +59,21 @@ export function useGameSessionRuntime() {
   const requestKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (sessionStatus === 'joining' || sessionStatus === 'joined') {
+      return
+    }
+
+    if (!connectionRef.current && requestKeyRef.current === null) {
+      return
+    }
+
+    connectionRef.current?.close()
+    bindGameSessionConnection(null)
+    connectionRef.current = null
+    requestKeyRef.current = null
+  }, [sessionStatus])
+
+  useEffect(() => {
     if (!activeJoinRequest) {
       return
     }
@@ -68,6 +91,11 @@ export function useGameSessionRuntime() {
       onEvent: (event) => {
         if (event.type === 'connected') {
           setConnectionStatus('connected')
+          return
+        }
+
+        if (event.type === 'reconnecting') {
+          setConnectionStatus('reconnecting')
           return
         }
 
@@ -91,7 +119,15 @@ export function useGameSessionRuntime() {
         }
 
         if (event.type === 'chat-message') {
-          appendChatMessage(event.payload)
+          const { room } = useGameStore.getState()
+          appendChatMessage(
+            resolveChatMessageForViewer(
+              event.payload,
+              room.participants,
+              room.currentTurn,
+              useSessionStore.getState().sessionId,
+            ),
+          )
           return
         }
 
@@ -121,7 +157,15 @@ export function useGameSessionRuntime() {
         }
 
         if (event.type === 'guess-correct') {
+          const { room } = useGameStore.getState()
+          const alreadyCorrect = room.currentTurn?.correctSessionIds.includes(event.payload.sessionId)
           applyGuessCorrect(event.payload)
+          if (!alreadyCorrect) {
+            const correctNickname =
+              room.participants.find((participant) => participant.sessionId === event.payload.sessionId)
+                ?.nickname ?? '참여자'
+            appendChatMessage(createCorrectAnswerAlertMessage(correctNickname))
+          }
           return
         }
 
@@ -142,11 +186,28 @@ export function useGameSessionRuntime() {
 
         if (event.type === 'participant-joined') {
           applyParticipantJoined(event.payload)
+          appendChatMessage(createPresenceMessage(event.payload.nickname, true))
           return
         }
 
         if (event.type === 'participant-left') {
+          const { room } = useGameStore.getState()
+          const leftNickname =
+            room.participants.find((participant) => participant.sessionId === event.payload.sessionId)
+              ?.nickname ?? '참여자'
+          const previousHostSessionId = room.hostSessionId
           applyParticipantLeft(event.payload)
+          appendChatMessage(createPresenceMessage(leftNickname, false))
+
+          const nextHostSessionId = useGameStore.getState().room.hostSessionId
+          if (nextHostSessionId && nextHostSessionId !== previousHostSessionId) {
+            const nextHostNickname =
+              useGameStore
+                .getState()
+                .room.participants.find((participant) => participant.sessionId === nextHostSessionId)
+                ?.nickname ?? '참여자'
+            appendChatMessage(createHostChangedMessage(nextHostNickname))
+          }
           return
         }
 

@@ -2,27 +2,29 @@
  * AppLayout styles
  *
  * 책임:
- * - app shell의 최소 frame 스타일
+ * - route-aware app shell frame과 topbar 스타일 정의
  *
  * 하지 않는 것:
- * - page/feature 전용 스타일 포함
- * - legacy layout class 재사용
+ * - feature panel(board/chat/participants) 내부 스타일 조정
+ * - room-lobby/game-board 고유 스타일 소유
  */
 .app-layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: radial-gradient(circle at 20% -10%, rgba(255, 226, 186, 0.28), transparent 58%), #f7f2e9;
 }
 
 .app-layout__header {
-  height: 56px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 0 24px;
   border-bottom: 1px solid rgba(23, 32, 42, 0.12);
-  background: rgba(255, 252, 247, 0.86);
+  background: rgba(255, 252, 247, 0.9);
+  backdrop-filter: blur(3px);
 }
 
 .app-layout__brand {
@@ -35,6 +37,42 @@
   font-size: 0.82rem;
 }
 
+.app-layout__game-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-layout__room-code {
+  min-width: 0;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 999px;
+  padding: 0 10px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: #2f261d;
+  background: rgba(255, 248, 237, 0.92);
+}
+
+.app-layout__leave-button {
+  min-height: 32px;
+  border: 1px solid rgba(23, 32, 42, 0.26);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #2f261d;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.app-layout__leave-button:hover {
+  background: #ffffff;
+}
+
 .app-layout__main {
   width: 100%;
   max-width: 1120px;
@@ -42,18 +80,54 @@
   padding: 40px 24px 56px;
 }
 
+.app-layout--game .app-layout__main {
+  max-width: 1700px;
+  padding: 22px 14px 32px;
+}
+
+@media (max-width: 980px) {
+  .app-layout--game .app-layout__main {
+    padding: 10px 8px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .app-layout__header--game {
+    min-height: 48px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .app-layout__header--game .app-layout__brand {
+    font-size: 0.92rem;
+  }
+
+  .app-layout__room-code {
+    max-width: 48vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-height: 28px;
+    font-size: 0.76rem;
+  }
+
+  .app-layout__leave-button {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 0.78rem;
+  }
+}
+
 @media (max-width: 640px) {
   .app-layout__header {
-    height: auto;
     min-height: 56px;
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
     padding: 12px 18px;
+  }
+
+  .app-layout__header--game {
+    min-height: 48px;
+    padding: 8px;
   }
 
   .app-layout__main {
     padding: 28px 18px 40px;
   }
 }
-

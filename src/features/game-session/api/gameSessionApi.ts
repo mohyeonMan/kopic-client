@@ -57,6 +57,7 @@ type ServerEnvelope = {
 }
 
 const HEARTBEAT_INTERVAL_MS = 10_000
+const MAX_RECONNECT_ATTEMPTS = 3
 
 function readNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') {
@@ -625,63 +626,150 @@ function createClientEnvelope(code: number, payload: unknown) {
 
 export function openGameSession({ request, onEvent }: OpenGameSessionArgs): GameSessionConnection {
   let heartbeatId: number | null = null
-  const transport = createWsTransportConnection({
-    url: resolveJoinUrl(request),
-    onEvent: (event) => {
-      if (event.type === 'open') {
-        onEvent({ type: 'connected' })
-        heartbeatId = window.setInterval(() => {
-          transport.send('{"e":1}')
-        }, HEARTBEAT_INTERVAL_MS)
-        return
-      }
+  let reconnectTimerId: number | null = null
+  let reconnectAttempt = 0
+  let transport: GameSessionConnection | null = null
+  let closedByClient = false
 
-      if (event.type === 'message') {
-        const envelope = decodeEnvelope(event.data)
-        if (envelope) {
-          emitEnvelopeEvent(envelope, onEvent)
-        }
-        return
-      }
+  const clearHeartbeat = () => {
+    if (heartbeatId !== null) {
+      window.clearInterval(heartbeatId)
+      heartbeatId = null
+    }
+  }
 
-      if (event.type === 'error') {
-        onEvent({
-          type: 'connection-error',
-          error: {
-            reason: 'CONNECTION_ERROR',
-            message: '서버 연결 중 오류가 발생했습니다.',
-          },
-        })
-        return
-      }
+  const clearReconnectTimer = () => {
+    if (reconnectTimerId !== null) {
+      window.clearTimeout(reconnectTimerId)
+      reconnectTimerId = null
+    }
+  }
 
-      onEvent({
-        type: 'disconnected',
-        error: {
-          reason: event.opened ? 'SESSION_DISCONNECTED' : 'CONNECTION_FAILED',
-          message: event.opened ? '세션 연결이 끊겼습니다.' : '서버와 연결할 수 없습니다.',
+  const handleConnectionFailed = () => {
+    clearHeartbeat()
+    clearReconnectTimer()
+    reconnectAttempt = 0
+    onEvent({
+      type: 'disconnected',
+      error: {
+        reason: 'CONNECTION_FAILED',
+        message: '서버와 연결할 수 없습니다.',
+      },
+    })
+  }
+
+  const connect = () => {
+    if (closedByClient) {
+      return
+    }
+
+    let nextTransport: ReturnType<typeof createWsTransportConnection>
+
+    try {
+      nextTransport = createWsTransportConnection({
+        url: resolveJoinUrl(request),
+        onEvent: (event) => {
+          if (event.type === 'open') {
+            reconnectAttempt = 0
+            onEvent({ type: 'connected' })
+            clearHeartbeat()
+            heartbeatId = window.setInterval(() => {
+              nextTransport.send('{"e":1}')
+            }, HEARTBEAT_INTERVAL_MS)
+            return
+          }
+
+          if (event.type === 'message') {
+            const envelope = decodeEnvelope(event.data)
+            if (envelope) {
+              emitEnvelopeEvent(envelope, onEvent)
+            }
+            return
+          }
+
+          if (event.type === 'error') {
+            return
+          }
+
+          clearHeartbeat()
+
+          if (closedByClient) {
+            return
+          }
+
+          if (event.opened) {
+            onEvent({
+              type: 'disconnected',
+              error: {
+                reason: 'SESSION_DISCONNECTED',
+                message: '세션 연결이 끊겼습니다.',
+              },
+            })
+            return
+          }
+
+          if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+            handleConnectionFailed()
+            return
+          }
+
+          onEvent({ type: 'reconnecting' })
+          const delayMs = Math.min(1000 * 2 ** reconnectAttempt, 5000)
+          reconnectAttempt += 1
+          reconnectTimerId = window.setTimeout(() => {
+            reconnectTimerId = null
+            connect()
+          }, delayMs)
         },
       })
-    },
-  })
+    } catch {
+      if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+        handleConnectionFailed()
+        return
+      }
+
+      onEvent({ type: 'reconnecting' })
+      const delayMs = Math.min(1000 * 2 ** reconnectAttempt, 5000)
+      reconnectAttempt += 1
+      reconnectTimerId = window.setTimeout(() => {
+        reconnectTimerId = null
+        connect()
+      }, delayMs)
+      return
+    }
+
+    transport = {
+      close: nextTransport.close,
+      sendCanvasClear: () => nextTransport.send(createClientEnvelope(201, CANVAS_CLEAR_MARKER)),
+      sendCanvasStroke: (stroke: CanvasStroke) =>
+        nextTransport.send(createClientEnvelope(201, encodeCompactStroke(stroke))),
+      sendGameStart: () => nextTransport.send(createClientEnvelope(200, {})),
+      sendGuess: (text: string) => nextTransport.send(createClientEnvelope(204, { t: text })),
+      sendSettingsUpdate: (settings: GameSettings) =>
+        nextTransport.send(createClientEnvelope(107, encodeCompactGameSettings(settings))),
+      sendWordChoice: (choiceIndex: number) =>
+        nextTransport.send(createClientEnvelope(203, { choiceIndex })),
+    }
+  }
+
+  connect()
 
   return {
     close: () => {
-      if (heartbeatId !== null) {
-        window.clearInterval(heartbeatId)
-        heartbeatId = null
-      }
-
-      transport.close()
+      closedByClient = true
+      clearHeartbeat()
+      clearReconnectTimer()
+      transport?.close()
+      transport = null
     },
-    sendCanvasClear: () => transport.send(createClientEnvelope(201, CANVAS_CLEAR_MARKER)),
+    sendCanvasClear: () => transport?.sendCanvasClear() ?? false,
     sendCanvasStroke: (stroke: CanvasStroke) =>
-      transport.send(createClientEnvelope(201, encodeCompactStroke(stroke))),
-    sendGameStart: () => transport.send(createClientEnvelope(200, {})),
-    sendGuess: (text: string) => transport.send(createClientEnvelope(204, { t: text })),
+      transport?.sendCanvasStroke(stroke) ?? false,
+    sendGameStart: () => transport?.sendGameStart() ?? false,
+    sendGuess: (text: string) => transport?.sendGuess(text) ?? false,
     sendSettingsUpdate: (settings: GameSettings) =>
-      transport.send(createClientEnvelope(107, encodeCompactGameSettings(settings))),
+      transport?.sendSettingsUpdate(settings) ?? false,
     sendWordChoice: (choiceIndex: number) =>
-      transport.send(createClientEnvelope(203, { choiceIndex })),
+      transport?.sendWordChoice(choiceIndex) ?? false,
   }
 }

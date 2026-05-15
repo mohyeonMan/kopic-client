@@ -1,0 +1,143 @@
+/**
+ * RoomInviteShareMenu styles
+ *
+ * 책임:
+ * - room invite 공유 메뉴와 QR modal presentation
+ *
+ * 하지 않는 것:
+ * - app header 전체 배치
+ * - game page layout 조정
+ */
+.room-invite-share {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.room-invite-share__trigger,
+.room-invite-share__menu-item,
+.room-invite-share__qr-close {
+  border: 1px solid rgba(23, 32, 42, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #2f261d;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.room-invite-share__trigger {
+  min-width: 58px;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.room-invite-share__trigger--open {
+  background: #fff8ed;
+  border-color: rgba(126, 67, 20, 0.32);
+}
+
+.room-invite-share__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: max-content;
+  min-width: 160px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 252, 247, 0.98);
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.room-invite-share__menu--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.room-invite-share__menu-item {
+  min-height: 36px;
+  border-radius: 6px;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.room-invite-share__menu-item:hover,
+.room-invite-share__qr-close:hover {
+  background: #fff8ed;
+}
+
+.room-invite-share__qr-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 31, 44, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.room-invite-share__qr-modal {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(23, 32, 42, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 252, 247, 0.99);
+  box-shadow: 0 18px 48px rgba(23, 32, 42, 0.24);
+}
+
+.room-invite-share__qr-frame {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(23, 32, 42, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+  color: #695f55;
+  font-weight: 800;
+}
+
+.room-invite-share__qr-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.room-invite-share__qr-close {
+  min-height: 38px;
+  border-radius: 6px;
+  padding: 0 12px;
+}
+
+@media (max-width: 980px) {
+  .room-invite-share__trigger {
+    min-width: 52px;
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 0.78rem;
+  }
+
+  .room-invite-share__menu {
+    min-width: 146px;
+    padding: 6px;
+  }
+
+  .room-invite-share__menu-item {
+    min-height: 34px;
+    font-size: 0.78rem;
+  }
+}

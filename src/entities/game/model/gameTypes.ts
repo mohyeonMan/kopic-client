@@ -43,6 +43,7 @@ export type ChatMessage = {
   nickname: string
   text: string
   tone: ChatMessageTone
+  privilegedVisible?: boolean
   senderSessionId?: string
   mine?: boolean
   createdAt: number

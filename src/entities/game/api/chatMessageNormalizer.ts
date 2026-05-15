@@ -17,7 +17,8 @@
  * - gameSessionApi
  * - roomSnapshotNormalizer
  */
-import type { ChatMessage, ChatMessageTone, Participant } from '@/entities/game/model/gameTypes'
+import type { ChatMessage, ChatMessageTone, Participant, TurnSummary } from '@/entities/game/model/gameTypes'
+import { resolvePrivilegedChatVisibility } from '@/entities/game/model/chatMessages'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -51,12 +52,14 @@ function resolveTone(rawTone: unknown, sealed: unknown): ChatMessageTone {
 }
 
 type NormalizeChatMessageArgs = {
+  currentTurn?: TurnSummary | null
   ownSessionId?: string | null
   participants?: Participant[]
   payload: unknown
 }
 
 export function normalizeChatMessage({
+  currentTurn = null,
   ownSessionId,
   participants = [],
   payload,
@@ -78,11 +81,17 @@ export function normalizeChatMessage({
     ? participants.find((participant) => participant.sessionId === senderSessionId)?.nickname
     : undefined
 
+  const tone = resolveTone(payload.tone, payload.sealed)
+
   return {
     id: readNonEmptyString(payload.id) ?? createMessageId(),
     nickname: senderNickname ?? readNonEmptyString(payload.nickname) ?? '알수없음',
     text: text.slice(0, 80),
-    tone: resolveTone(payload.tone, payload.sealed),
+    tone,
+    privilegedVisible:
+      typeof payload.privilegedVisible === 'boolean'
+        ? payload.privilegedVisible
+        : resolvePrivilegedChatVisibility(tone, currentTurn, ownSessionId ?? null, senderSessionId),
     senderSessionId,
     mine: senderSessionId !== undefined && senderSessionId === ownSessionId,
     createdAt:
@@ -92,15 +101,20 @@ export function normalizeChatMessage({
   }
 }
 
-export function createLocalGuessMessage(text: string, nickname: string, sessionId: string | null): ChatMessage {
+export function createLocalGuessMessage(
+  text: string,
+  nickname: string,
+  sessionId: string | null,
+  currentTurn?: TurnSummary | null,
+): ChatMessage {
   return {
     id: createMessageId(),
     nickname: nickname || '나',
     text,
     tone: 'guess',
+    privilegedVisible: resolvePrivilegedChatVisibility('guess', currentTurn ?? null, sessionId, sessionId ?? undefined),
     senderSessionId: sessionId ?? undefined,
     mine: true,
     createdAt: Date.now(),
   }
 }
-

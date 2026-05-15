@@ -5,7 +5,7 @@
 - board interaction surface
 - drawing toolbar orchestration
 - lobby canvas drawing command boundary
-- later: word/turn board overlays
+- word/turn/result board overlays
 
 ## Uses
 

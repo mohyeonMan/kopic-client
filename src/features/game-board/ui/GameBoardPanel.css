@@ -42,8 +42,7 @@
 }
 
 .game-board-panel__clear,
-.game-board-panel__tool,
-.game-board-panel__choice-actions button {
+.game-board-panel__tool {
   min-height: 36px;
   border: 1px solid rgba(23, 32, 42, 0.14);
   border-radius: 6px;
@@ -56,14 +55,12 @@
 
 .game-board-panel__clear:disabled,
 .game-board-panel__tool:disabled,
-.game-board-panel__choice-actions button:disabled,
 .game-board-panel__color:disabled,
 .game-board-panel__size input:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.game-board-panel__choice,
 .game-board-panel__turn-info {
   border: 1px solid rgba(23, 32, 42, 0.12);
   border-radius: 8px;
@@ -71,23 +68,10 @@
   background: #fff8ed;
 }
 
-.game-board-panel__choice p,
 .game-board-panel__turn-info span {
   margin: 0;
   color: #3a3027;
   font-weight: 900;
-}
-
-.game-board-panel__choice-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.game-board-panel__choice-actions button {
-  background: #17202a;
-  color: #fff8ed;
 }
 
 .game-board-panel__surface {
@@ -103,6 +87,16 @@
     #ffffff;
   background-size: 24px 24px;
   box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.game-board-panel__surface--correct {
+  border-color: #2ba95d;
+  box-shadow:
+    0 0 0 3px rgba(43, 169, 93, 0.44),
+    0 0 0 7px rgba(43, 169, 93, 0.16);
 }
 
 .game-board-panel__toolbar {
@@ -155,8 +149,152 @@
   box-shadow: 0 0 0 3px rgba(23, 32, 42, 0.1);
 }
 
+.game-board-panel__secret-word {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  z-index: 4;
+  max-width: calc(100% - 40px);
+  display: inline-flex;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.9);
+  color: #211a14;
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.12);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    transform 240ms ease,
+    opacity 240ms ease;
+  animation: secret-word-banner-drop 720ms cubic-bezier(0.18, 0.82, 0.24, 1);
+}
+
+.game-board-panel__secret-word--open {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0);
+}
+
+.game-board-panel__secret-word--masked {
+  letter-spacing: normal;
+}
+
+.game-board-panel__secret-word-content {
+  --secret-word-description-button-size: 22px;
+  --secret-word-description-button-gap: 8px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.game-board-panel__secret-word-text {
+  display: inline-block;
+  max-width: 100%;
+  text-align: center;
+  line-height: 1.15;
+  font-size: clamp(0.82rem, 1.1vw, 0.95rem);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.game-board-panel__secret-word-help {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--secret-word-description-button-gap));
+  transform: translateY(-50%);
+  width: var(--secret-word-description-button-size);
+  height: var(--secret-word-description-button-size);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(32, 50, 71, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.92);
+  color: #211a14;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.game-board-panel__secret-word-description {
+  position: absolute;
+  top: calc(100% + 20px);
+  left: calc(
+    100% + var(--secret-word-description-button-gap) + (var(--secret-word-description-button-size) / 2)
+  );
+  z-index: 8;
+  inline-size: fit-content;
+  --secret-word-description-bg: rgba(255, 252, 247, 0.92);
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border: 1px solid rgba(32, 50, 71, 0.16);
+  border-radius: 12px;
+  background: var(--secret-word-description-bg);
+  color: #211a14;
+  text-align: center;
+  font-size: clamp(0.76rem, 1.15vw, 0.86rem);
+  line-height: 1.45;
+  box-shadow: 0 10px 24px rgba(32, 50, 71, 0.14);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.game-board-panel__secret-word-description span {
+  display: block;
+  max-block-size: calc(var(--secret-word-description-max-height, 240px) - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.game-board-panel__secret-word-description span::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.game-board-panel__secret-word-description::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid rgba(32, 50, 71, 0.2);
+  border-left: 1px solid rgba(32, 50, 71, 0.2);
+  background: var(--secret-word-description-bg);
+  transform: rotate(45deg);
+}
+
+@keyframes secret-word-banner-drop {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-100% - 28px), 0) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+}
+
 @media (max-width: 720px) {
   .game-board-panel__toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .game-board-panel__secret-word-description {
+    top: calc(100% + 14px);
+    padding: 8px 12px;
+    font-size: 0.76rem;
   }
 }

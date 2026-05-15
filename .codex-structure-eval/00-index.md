@@ -28,10 +28,19 @@ Working rule: keep each note scoped to one domain/flow branch. Use these notes a
 8. `08-game-runtime-and-status-migration.md`
    - Scope: GE lifecycle events, current round/turn state, word choice/drawing/result projection, status strip, participant score panel.
    - Status: implemented.
+9. `09-layout-responsive-flow-migration.md`
+   - Scope: game route responsive layout orchestration, mobile panel switch, route-aware game topbar/leave action, runtime disconnect cleanup.
+   - Status: implemented.
+10. `10-room-invite-share-migration.md`
+    - Scope: room invite share menu, clipboard/native share fallback, QR modal, AppLayout composition boundary.
+    - Status: implemented.
+11. `11-game-stage-overlay-migration.md`
+    - Scope: board stage overlays for game/round/turn start, word choice, turn end score, and result ranking.
+    - Status: implemented.
 
 ## Next Candidate Branches
 
-- `layout-responsive-flow`: read legacy `AppLayout`, `GamePage.css`, mobile behavior before rebuilding game layout.
+- `secret-word-and-hint-flow`: migrate drawer secret-word banner and guesser hint projection without moving turn policy into `GamePage`.
 
 ## Validation Notes
 
@@ -42,3 +51,6 @@ Working rule: keep each note scoped to one domain/flow branch. Use these notes a
 - `entry-join` first feature migration implemented after bootstrap.
 - `game-session` runtime and `room-lobby` migration implemented; validation passed.
 - `game-board`, `game-chat`, `game-progress`, and `participants` migrated through running-game lifecycle; validation passed.
+- `layout-responsive-flow` migrated: desktop 3-column game layout, mobile panel switch, game-route leave action, runtime cleanup for rejoin with same request key.
+- `room-invite-share` migrated: AppLayout builds the invite URL, `features/room-invite` owns clipboard/native share/QR UI state.
+- `game-stage-overlay` migrated: `features/game-board` owns board overlays and drawer/guesser word choice affordance.
