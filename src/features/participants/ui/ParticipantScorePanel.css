@@ -1,0 +1,92 @@
+/**
+ * ParticipantScorePanel styles
+ *
+ * 책임:
+ * - participants feature의 score panel presentation
+ *
+ * 하지 않는 것:
+ * - room-lobby settings styling
+ * - app/page grid ownership
+ */
+.participant-score-panel {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(255, 252, 247, 0.86);
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+}
+
+.participant-score-panel__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.participant-score-panel__eyebrow {
+  margin: 0 0 4px;
+  color: #a85f22;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.participant-score-panel h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.participant-score-panel__header > span {
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.participant-score-panel__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.participant-score-panel__item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(23, 32, 42, 0.1);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fffdf8;
+}
+
+.participant-score-panel__item--me {
+  border-color: rgba(168, 95, 34, 0.34);
+  background: #fff4e3;
+}
+
+.participant-score-panel__item div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.participant-score-panel__item strong,
+.participant-score-panel__item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.participant-score-panel__item span {
+  color: #695f55;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.participant-score-panel__empty {
+  margin: 0;
+  color: #695f55;
+}

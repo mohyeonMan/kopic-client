@@ -1,0 +1,157 @@
+/**
+ * RoomLobbyView styles
+ *
+ * 책임:
+ * - room lobby feature presentation만 담당
+ *
+ * 하지 않는 것:
+ * - app shell layout 조정
+ * - board/chat/participant panel 최종 game layout 선점
+ */
+.room-lobby {
+  display: grid;
+  gap: 24px;
+}
+
+.room-lobby__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.room-lobby__eyebrow {
+  margin: 0 0 8px;
+  color: #a85f22;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.room-lobby h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+  line-height: 0.96;
+}
+
+.room-lobby__summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.room-lobby__summary span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(255, 252, 247, 0.82);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.room-lobby__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr);
+  gap: 16px;
+}
+
+.room-lobby__panel {
+  min-width: 0;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(255, 252, 247, 0.82);
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+}
+
+.room-lobby__panel--wide {
+  grid-column: 1 / -1;
+}
+
+.room-lobby__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.room-lobby__panel h2 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.room-lobby__panel-header h2 {
+  margin: 0;
+}
+
+.room-lobby__start-button {
+  min-height: 36px;
+  border: 1px solid rgba(126, 67, 20, 0.25);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #df8f4e;
+  color: #1f1309;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.room-lobby__details,
+.room-lobby__settings {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.room-lobby__settings {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.room-lobby__details div,
+.room-lobby__settings div {
+  min-width: 0;
+}
+
+.room-lobby__details dt,
+.room-lobby__settings dt {
+  color: #695f55;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.room-lobby__details dd,
+.room-lobby__settings dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.room-lobby__settings select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(23, 32, 42, 0.16);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: #fffdf8;
+  font-weight: 800;
+}
+
+@media (max-width: 820px) {
+  .room-lobby__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .room-lobby__summary {
+    justify-content: flex-start;
+  }
+
+  .room-lobby__grid,
+  .room-lobby__settings {
+    grid-template-columns: 1fr;
+  }
+}

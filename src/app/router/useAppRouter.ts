@@ -1,76 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
-import { isAppRoute, normalizeRoutePath, routes, type AppRoute } from './routes'
-import { wsSessionManager, wsSessionOwner } from '../../ws/client/wsSessionManager'
-import { useAppActions } from '../store/useAppActions'
-import { useAppSessionState } from '../store/useAppSessionState'
+/**
+ * useAppRouter
+ *
+ * 책임:
+ * - browser history와 React route state를 동기화
+ * - app route 변경 API 제공
+ *
+ * 하지 않는 것:
+ * - WebSocket 연결 생명주기 관리
+ * - session 상태 변경
+ * - feature 권한 판단
+ *
+ * side effect:
+ * - popstate listener 등록/해제
+ *
+ * 사용 위치:
+ * - AppRouter
+ */
+import { useEffect, useState } from 'react'
+import { resolveRoute, type AppRoute } from '@/app/router/routes'
 
-function getCurrentRoute(): AppRoute {
-  const pathname = normalizeRoutePath(window.location.pathname)
-  return isAppRoute(pathname) ? pathname : routes.main
+function getCurrentRoute() {
+  return resolveRoute(window.location.pathname)
 }
 
 export function useAppRouter() {
   const [route, setRoute] = useState<AppRoute>(getCurrentRoute)
-  const actions = useAppActions()
-  const session = useAppSessionState()
-  const previousRouteRef = useRef<AppRoute>(route)
-  const shouldKeepGameSession = session.joinPending || session.joinAccepted
-  const joinRoomCode = session.joinPending ? session.joinRoomCode ?? null : undefined
-  const joinAction = session.joinPending ? session.joinAction ?? 0 : undefined
-
-  useEffect(() => {
-    if (!shouldKeepGameSession) {
-      return
-    }
-
-    wsSessionManager.acquire(wsSessionOwner.game, session.nickname, joinRoomCode, joinAction)
-  }, [joinAction, joinRoomCode, session.nickname, shouldKeepGameSession])
-
-  useEffect(() => {
-    if (!session.joinAccepted) {
-      return
-    }
-
-    wsSessionManager.clearJoinConnectParams()
-  }, [session.joinAccepted])
-
-  useEffect(() => {
-    if (route === routes.game) {
-      return
-    }
-
-    if (previousRouteRef.current !== routes.game) {
-      return
-    }
-
-    actions.clearRoomCache()
-  }, [actions, route])
-
-  useEffect(() => {
-    if (shouldKeepGameSession) {
-      return
-    }
-
-    wsSessionManager.clearJoinConnectParams()
-    wsSessionManager.release(wsSessionOwner.game)
-  }, [shouldKeepGameSession])
-
-  useEffect(() => {
-    if (route !== routes.game) {
-      return
-    }
-
-    if (session.joinAccepted) {
-      return
-    }
-
-    window.history.replaceState({}, '', routes.main)
-    setRoute(routes.main)
-  }, [route, session.joinAccepted])
-
-  useEffect(() => {
-    previousRouteRef.current = route
-  }, [route])
 
   useEffect(() => {
     const handlePopState = () => {
@@ -78,23 +32,27 @@ export function useAppRouter() {
     }
 
     window.addEventListener('popstate', handlePopState)
+
     return () => {
       window.removeEventListener('popstate', handlePopState)
-      wsSessionManager.release(wsSessionOwner.game)
     }
   }, [])
 
-  const navigate = (nextRoute: AppRoute) => {
+  const navigate = (nextRoute: AppRoute, options?: { replace?: boolean }) => {
     if (nextRoute === route) {
       return
     }
 
-    window.history.pushState({}, '', nextRoute)
+    if (options?.replace) {
+      window.history.replaceState({}, '', nextRoute)
+    } else {
+      window.history.pushState({}, '', nextRoute)
+    }
     setRoute(nextRoute)
   }
 
   return {
-    route,
     navigate,
+    route,
   }
 }

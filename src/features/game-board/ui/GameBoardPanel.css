@@ -1,0 +1,162 @@
+/**
+ * GameBoardPanel styles
+ *
+ * 책임:
+ * - game-board feature layout과 toolbar presentation
+ *
+ * 하지 않는 것:
+ * - page grid layout
+ * - participant/chat final game layout
+ */
+.game-board-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.game-board-panel__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-board-panel__eyebrow {
+  margin: 0 0 4px;
+  color: #a85f22;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.game-board-panel h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.game-board-panel__status {
+  margin: 6px 0 0;
+  color: #6a5a4a;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.game-board-panel__clear,
+.game-board-panel__tool,
+.game-board-panel__choice-actions button {
+  min-height: 36px;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #fff8ed;
+  color: #2e2822;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.game-board-panel__clear:disabled,
+.game-board-panel__tool:disabled,
+.game-board-panel__choice-actions button:disabled,
+.game-board-panel__color:disabled,
+.game-board-panel__size input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.game-board-panel__choice,
+.game-board-panel__turn-info {
+  border: 1px solid rgba(23, 32, 42, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff8ed;
+}
+
+.game-board-panel__choice p,
+.game-board-panel__turn-info span {
+  margin: 0;
+  color: #3a3027;
+  font-weight: 900;
+}
+
+.game-board-panel__choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.game-board-panel__choice-actions button {
+  background: #17202a;
+  color: #fff8ed;
+}
+
+.game-board-panel__surface {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border: 1px solid rgba(23, 32, 42, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(29, 53, 87, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 53, 87, 0.045) 1px, transparent 1px),
+    #ffffff;
+  background-size: 24px 24px;
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+}
+
+.game-board-panel__toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.game-board-panel__tools,
+.game-board-panel__colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-board-panel__tool--active {
+  background: #df8f4e;
+  border-color: rgba(126, 67, 20, 0.28);
+  color: #1f1309;
+}
+
+.game-board-panel__size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4f463d;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.game-board-panel__size input {
+  width: 100%;
+}
+
+.game-board-panel__colors {
+  grid-column: 1 / -1;
+}
+
+.game-board-panel__color {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(23, 32, 42, 0.14);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.game-board-panel__color--active {
+  border-color: #17202a;
+  box-shadow: 0 0 0 3px rgba(23, 32, 42, 0.1);
+}
+
+@media (max-width: 720px) {
+  .game-board-panel__toolbar {
+    grid-template-columns: 1fr;
+  }
+}

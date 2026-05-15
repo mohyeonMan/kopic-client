@@ -1,0 +1,67 @@
+/**
+ * GameStatusStrip styles
+ *
+ * 책임:
+ * - game-progress feature의 compact status layout
+ *
+ * 하지 않는 것:
+ * - game page grid ownership
+ * - board/chat/room-lobby styling
+ */
+.game-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 0.18fr)) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.game-status-strip__chip,
+.game-status-strip__order {
+  min-width: 0;
+  border: 1px solid rgba(23, 32, 42, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 252, 247, 0.86);
+}
+
+.game-status-strip__chip,
+.game-status-strip__order {
+  display: grid;
+  gap: 4px;
+}
+
+.game-status-strip span {
+  color: #695f55;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.game-status-strip strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #211a14;
+  font-weight: 900;
+}
+
+.game-status-strip__order div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.game-status-strip__order strong {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff4e3;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 860px) {
+  .game-status-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .game-status-strip__order {
+    grid-column: 1 / -1;
+  }
+}

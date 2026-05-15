@@ -1,181 +1,35 @@
-.gamepage-shell {
-  --mobile-chat-dock-height: 76px;
-  --mobile-side-panel-padding: 8px;
-  --mobile-side-panel-border-width: 1px;
-  --mobile-side-panel-content-height: clamp(220px, 48vw, 300px);
-  --mobile-side-panel-height: calc(
-    var(--mobile-side-panel-content-height) +
-    var(--mobile-side-panel-padding) +
-    var(--mobile-side-panel-padding) +
-    var(--mobile-side-panel-border-width) +
-    var(--mobile-side-panel-border-width)
-  );
-  --mobile-viewport-offset-bottom: var(--app-mobile-viewport-offset-bottom, 0px);
-  width: 100%;
-  min-height: 0;
+/**
+ * GamePage styles
+ *
+ * 책임:
+ * - game route의 feature-level layout 조립
+ *
+ * 하지 않는 것:
+ * - room-lobby feature 스타일 정의
+ * - legacy game layout 복제
+ */
+.game-page {
   display: grid;
-  align-content: start;
-  grid-auto-rows: max-content;
-  gap: 10px;
-  padding-bottom: 24px;
+  gap: 28px;
 }
 
-.game-mobile-panel-switcher {
-  display: none;
+.game-page__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+  gap: 18px;
+  align-items: stretch;
 }
 
-.game-stage-layout {
-  --side-gap: 12px;
-  width: 100%;
-  max-width: 1680px;
-  margin: 0 auto;
-  min-height: 0;
-  position: relative;
+.game-page__side {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 5fr) minmax(0, 3fr);
-  gap: var(--side-gap);
+  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
 }
 
-.game-side-panel,
-.game-center-panel {
-  min-height: 0;
-}
-
-.game-side-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 10px 12px;
-  overflow: hidden;
-  position: static;
-}
-
-.game-center-panel {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 1;
-}
-
-.side-panel-scroll {
-  min-height: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-}
-
-.side-panel-scroll-inner {
-  min-height: 0;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(32, 50, 71, 0.35) transparent;
-}
-
-.side-panel-scroll-inner::-webkit-scrollbar {
-  width: 8px;
-}
-
-.side-panel-scroll-inner::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.side-panel-scroll-inner::-webkit-scrollbar-thumb {
-  background: rgba(32, 50, 71, 0.28);
-  border-radius: 999px;
-}
-
-.side-panel-scroll-inner::-webkit-scrollbar-thumb:hover {
-  background: rgba(32, 50, 71, 0.4);
-}
-
 @media (max-width: 980px) {
-  .game-stage-layout {
-    position: static;
-    grid-template-columns: minmax(0, 1fr);
-    padding-left: 0;
-    padding-right: 0;
-    display: grid;
-    gap: 8px;
-  }
-
-  .gamepage-shell {
-    gap: 6px;
-    padding-bottom: calc(var(--mobile-chat-dock-height) + env(safe-area-inset-bottom) + 10px);
-  }
-
-  .game-side-panel {
-    position: static;
-    width: auto;
-    max-height: none;
-    min-height: 0;
-    overflow: hidden;
-    padding: 8px;
-  }
-
-  .game-center-panel {
-    order: 1;
-  }
-
-  .game-mobile-panel-switcher {
-    position: static;
-    order: 2;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .game-mobile-panel-switcher-button {
-    min-height: 34px;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(255, 252, 247, 0.92);
-    color: var(--ink-soft);
-    box-shadow: 0 8px 20px rgba(32, 50, 71, 0.08);
-    font: inherit;
-    cursor: pointer;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    transition:
-      background 160ms ease,
-      color 160ms ease,
-      transform 120ms ease,
-      box-shadow 120ms ease;
-  }
-
-  .game-mobile-panel-switcher-button:active {
-    transform: translateY(1px) scale(0.97);
-    box-shadow: 0 4px 12px rgba(32, 50, 71, 0.16);
-  }
-
-  .game-mobile-panel-switcher-button:focus-visible {
-    outline: none;
-    box-shadow:
-      0 8px 20px rgba(32, 50, 71, 0.08),
-      0 0 0 2px rgba(225, 122, 46, 0.34);
-  }
-
-  .game-mobile-panel-switcher-button-active {
-    background: var(--accent);
-    color: var(--accent-ink);
-  }
-
-  .game-chat-panel-mobile-active,
-  .game-participant-panel-mobile-active {
-    min-height: 0;
-  }
-}
-
-@media (min-width: 981px) {
-  .game-side-panel {
-    height: var(--game-side-sync-height, auto);
-    max-height: var(--game-side-sync-height, none);
-    overflow: hidden;
-  }
-
-  .game-side-panel .side-panel-scroll {
-    flex: 1 1 0;
-    min-height: 0;
+  .game-page__main,
+  .game-page__side {
+    grid-template-columns: 1fr;
   }
 }

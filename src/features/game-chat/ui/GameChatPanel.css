@@ -1,0 +1,122 @@
+/**
+ * GameChatPanel styles
+ *
+ * 책임:
+ * - game-chat feature presentation
+ *
+ * 하지 않는 것:
+ * - page-level grid layout
+ * - participant/board style 조정
+ */
+.game-chat-panel {
+  min-height: 420px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  border: 1px solid rgba(23, 32, 42, 0.14);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 252, 247, 0.84);
+  box-shadow: 0 18px 42px rgba(23, 32, 42, 0.08);
+}
+
+.game-chat-panel__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-chat-panel__eyebrow {
+  margin: 0 0 4px;
+  color: #a85f22;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.game-chat-panel h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.game-chat-panel__header span {
+  color: #695f55;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.game-chat-panel__list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.game-chat-panel__message {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(23, 32, 42, 0.1);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fffdf8;
+}
+
+.game-chat-panel__message--mine {
+  background: #fff4e3;
+  border-color: rgba(168, 95, 34, 0.28);
+}
+
+.game-chat-panel__message--alert,
+.game-chat-panel__message--alert-success {
+  background: #eef7ef;
+}
+
+.game-chat-panel__message strong {
+  font-size: 0.76rem;
+}
+
+.game-chat-panel__message p,
+.game-chat-panel__empty {
+  margin: 0;
+  color: #3c352f;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.game-chat-panel__empty {
+  color: #695f55;
+}
+
+.game-chat-panel__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.game-chat-panel__form input {
+  min-width: 0;
+  height: 40px;
+  border: 1px solid rgba(23, 32, 42, 0.16);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #fffdf8;
+}
+
+.game-chat-panel__form button {
+  min-height: 40px;
+  border: 1px solid rgba(126, 67, 20, 0.25);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #df8f4e;
+  color: #1f1309;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.game-chat-panel__form input:disabled,
+.game-chat-panel__form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

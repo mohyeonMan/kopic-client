@@ -1,3 +1,22 @@
+/**
+ * routes
+ *
+ * 책임:
+ * - 앱에서 허용하는 route path를 한 곳에 선언
+ * - Vite base path와 무관하게 route 비교 기준을 안정화
+ *
+ * 하지 않는 것:
+ * - navigation side effect 수행
+ * - route별 component import
+ * - feature 권한 판단
+ *
+ * 의존:
+ * - Vite env BASE_URL
+ *
+ * 사용 위치:
+ * - AppRouter
+ * - useAppRouter
+ */
 function normalizeBasePath(baseUrl: string) {
   if (!baseUrl || baseUrl === '/') {
     return ''
@@ -24,11 +43,6 @@ export const routes = {
 
 export type AppRoute = (typeof routes)[keyof typeof routes]
 
-export function isAppRoute(pathname: string): pathname is AppRoute {
-  const normalized = normalizeRoutePath(pathname)
-  return Object.values(routes).includes(normalized as AppRoute)
-}
-
 export function buildInvitePath(roomCode: string) {
   const normalizedRoomCode = roomCode.trim()
 
@@ -41,16 +55,15 @@ export function buildInvitePath(roomCode: string) {
 }
 
 export function readInviteRoomCode(pathname: string) {
-  const normalizedPath = String(normalizeRoutePath(pathname))
-  const inviteBase: string = routeBase
+  const normalizedPath = normalizeRoutePath(pathname)
 
   if (normalizedPath === routes.main || normalizedPath === routes.game) {
     return null
   }
 
-  if (inviteBase) {
-    const invitePrefix = `${inviteBase}/`
-    if (normalizedPath.indexOf(invitePrefix) !== 0) {
+  if (routeBase) {
+    const invitePrefix = `${routeBase}/`
+    if (!normalizedPath.startsWith(invitePrefix)) {
       return null
     }
 
@@ -62,10 +75,20 @@ export function readInviteRoomCode(pathname: string) {
     return decodeURIComponent(relativePath)
   }
 
-  const relativePath = normalizedPath.charAt(0) === '/' ? normalizedPath.slice(1) : normalizedPath
+  const relativePath = normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath
   if (!relativePath || relativePath.includes('/')) {
     return null
   }
 
   return decodeURIComponent(relativePath)
+}
+
+export function resolveRoute(pathname: string): AppRoute {
+  const normalized = normalizeRoutePath(pathname)
+
+  if (normalized === routes.game) {
+    return routes.game
+  }
+
+  return routes.main
 }

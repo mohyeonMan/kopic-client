@@ -1,274 +1,70 @@
-import './EntryPage.css'
-import { useEffect, useState } from 'react'
-import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
-import { useAppActions } from '../../app/store/useAppActions'
-import { useAppSessionState } from '../../app/store/useAppSessionState'
+/**
+ * EntryPage
+ *
+ * 책임:
+ * - entry route에서 entry-join feature와 session command boundary를 조립
+ * - invite route/search parameter를 feature 초기값으로 전달
+ * - session joined 상태가 되면 game route로 이동
+ *
+ * 하지 않는 것:
+ * - entry form UI 구현
+ * - WebSocket API 직접 호출
+ * - session store 내부 mutation 규칙 소유
+ *
+ * 의존:
+ * - entry-join feature
+ * - session entity store
+ *
+ * 사용 위치:
+ * - AppRouter
+ */
+import { useEffect, useMemo } from 'react'
+import type { AppRoute } from '@/app/router/routes'
+import { readInviteRoomCode, routes } from '@/app/router/routes'
+import { useSessionStore } from '@/entities/session/model/sessionStore'
+import { EntryJoinView } from '@/features/entry-join/ui/EntryJoinView'
 
 type EntryPageProps = {
-  onNavigate: (route: AppRoute) => void
+  onNavigate: (route: AppRoute, options?: { replace?: boolean }) => void
 }
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
-  const actions = useAppActions()
-  const session = useAppSessionState()
-  const inviteRoomCodeFromPath = readInviteRoomCode(window.location.pathname)
-  const inviteRoomCodeFromSearch =
-    new URLSearchParams(window.location.search).get('roomCode')?.trim() ?? null
-  const inviteRoomCode =
-    inviteRoomCodeFromPath && inviteRoomCodeFromPath.length > 0
-      ? inviteRoomCodeFromPath
-      : inviteRoomCodeFromSearch && inviteRoomCodeFromSearch.length > 0
-        ? inviteRoomCodeFromSearch
+  const status = useSessionStore((state) => state.status)
+  const nickname = useSessionStore((state) => state.nickname)
+  const joinError = useSessionStore((state) => state.joinError)
+  const connectionError = useSessionStore((state) => state.connectionError)
+  const startJoin = useSessionStore((state) => state.startJoin)
+  const dismissJoinError = useSessionStore((state) => state.dismissJoinError)
+  const dismissConnectionError = useSessionStore((state) => state.dismissConnectionError)
+  const initialRoomCode = useMemo(() => {
+    const pathRoomCode = readInviteRoomCode(window.location.pathname)
+    const searchRoomCode = new URLSearchParams(window.location.search).get('roomCode')?.trim() ?? null
+
+    return pathRoomCode && pathRoomCode.length > 0
+      ? pathRoomCode
+      : searchRoomCode && searchRoomCode.length > 0
+        ? searchRoomCode
         : null
-  const nicknameLength = session.nickname.trim().length
-  const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
-  const joinError = session.joinError
-  const connectionError = session.connectionError
-  const normalizeRoomCode = (value: string) => value.toUpperCase()
-  const [joinModalOpen, setJoinModalOpen] = useState(() => inviteRoomCode !== null)
-  const [joinModalNickname, setJoinModalNickname] = useState(session.nickname)
-  const [joinModalRoomCode, setJoinModalRoomCode] = useState(
-    normalizeRoomCode(inviteRoomCode ?? ''),
-  )
-  const joinModalNicknameLength = joinModalNickname.trim().length
-  const joinModalNicknameValid = joinModalNicknameLength >= 1 && joinModalNicknameLength <= 10
-  const joinModalRoomCodeValid = joinModalRoomCode.trim().length > 0
-
-  const openJoinModal = () => {
-    setJoinModalNickname(session.nickname)
-    setJoinModalRoomCode(normalizeRoomCode(inviteRoomCode ?? ''))
-    setJoinModalOpen(true)
-  }
-
-  const closeJoinModal = () => {
-    setJoinModalOpen(false)
-  }
-
-  const submitJoinByRoomCode = () => {
-    const nextNickname = joinModalNickname.trim()
-    const nextRoomCode = normalizeRoomCode(joinModalRoomCode.trim())
-    if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || session.joinPending) {
-      return
-    }
-
-    actions.updateNickname(nextNickname)
-    actions.requestJoin({ roomCode: nextRoomCode, action: 0 })
-    setJoinModalOpen(false)
-  }
-
-  const handleMainNicknameChange = (value: string) => {
-    actions.updateNickname(value.slice(0, 10))
-  }
-
-  const handleJoinModalNicknameChange = (value: string) => {
-    setJoinModalNickname(value.slice(0, 10))
-  }
+  }, [])
 
   useEffect(() => {
-    if (!session.joinAccepted) {
+    if (status !== 'joined') {
       return
     }
 
-    onNavigate(routes.game)
-  }, [onNavigate, session.joinAccepted])
-
-  useEffect(() => {
-    if (!joinError && !connectionError) {
-      return
-    }
-
-    setJoinModalOpen(false)
-  }, [connectionError, joinError])
+    onNavigate(routes.game, { replace: true })
+  }, [onNavigate, status])
 
   return (
-    <div className="page-grid entry-grid">
-      <section className="entry-main-panel">
-        <h1 className="entry-logo">KOPIC</h1>
-        <p className="entry-tagline">
-          {'그림으로 맞히는 실시간 퀴즈 게임'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 닉네임만 입력하면 바로 시작할 수 있어요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 방을 만들고 링크를 공유해서 친구들과 함께 즐길 수 있어요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 한 사람이 그림을 그리면, 다른 플레이어는 채팅으로 정답을 맞혀요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 먼저 맞힐수록 더 높은 점수를 얻을 수 있어요.'}
-        </p>
-        <p className="entry-tagline entry-rule-label">{'게임 규칙'}</p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 닉네임과 채팅에는 욕설, 비하 표현, 성적인 표현을 쓰지 말아주세요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 모두가 함께 즐길 수 있도록 도배나 분위기를 해치는 행동은 삼가주세요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 정답자가 없으면 출제자도 점수를 얻을 수 없어요. 최선을 다해 그려주세요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 너무 직접적인 힌트는 게임의 재미를 떨어뜨릴 수 있어요.'}
-        </p>
-        <p className="entry-description entry-description-sub entry-description-dash">
-          {'- 정답을 맞힌 뒤 보낸 채팅은 정답자와 출제자에게만 전달돼요.'}
-        </p>
-
-        <label className="field entry-nickname-field">
-          <span>{'닉네임'}</span>
-          <input
-            value={session.nickname}
-            onChange={(event) => handleMainNicknameChange(event.target.value)}
-            placeholder={'닉네임은 10자 이내로 입력해주세요.'}
-            maxLength={10}
-          />
-        </label>
-
-        <div className="button-row entry-actions">
-          <button
-            type="button"
-            className="primary-button entry-action-quick"
-            disabled={!nicknameValid || session.joinPending}
-            onClick={() => {
-              actions.requestJoin({ action: 0 })
-            }}
-          >
-            {session.joinPending ? '입장 중...' : '빠른 입장'}
-          </button>
-          <div className="entry-actions-secondary">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={!nicknameValid || session.joinPending}
-              onClick={() => {
-                actions.requestJoin({ action: 1 })
-              }}
-            >
-              {'방 만들기'}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={session.joinPending}
-              onClick={openJoinModal}
-            >
-              {'방 참여'}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {joinModalOpen ? (
-        <div
-          className="entry-join-modal-backdrop"
-          role="presentation"
-          onClick={closeJoinModal}
-        >
-          <div
-            className="entry-join-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="방 참여"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>{'방 참여'}</h3>
-            <label className="field">
-              <span>{'닉네임'}</span>
-              <input
-                value={joinModalNickname}
-                onChange={(event) => handleJoinModalNicknameChange(event.target.value)}
-                placeholder={'닉네임은 10자 이내로 입력해주세요.'}
-                maxLength={10}
-              />
-            </label>
-            <label className="field">
-              <span>{'방 코드'}</span>
-              <input
-                value={joinModalRoomCode}
-                onChange={(event) => setJoinModalRoomCode(normalizeRoomCode(event.target.value))}
-                placeholder={'방 코드'}
-              />
-            </label>
-            <div className="entry-join-modal-actions entry-join-modal-actions-single">
-              <button
-                type="button"
-                className="primary-button"
-                disabled={!joinModalNicknameValid || !joinModalRoomCodeValid || session.joinPending}
-                onClick={submitJoinByRoomCode}
-              >
-                {'참가'}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={closeJoinModal}
-              >
-                {'닫기'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {joinError ? (
-        <div
-          className="entry-join-modal-backdrop"
-          role="presentation"
-          onClick={() => actions.dismissJoinError()}
-        >
-          <div
-            className="entry-join-modal entry-error-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="입장 실패"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>{'입장 실패'}</h3>
-            <p className="entry-error-message">{joinError.message}</p>
-            <p className="entry-error-reason">{`사유: ${joinError.reason}`}</p>
-            <div className="entry-join-modal-actions">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => actions.dismissJoinError()}
-              >
-                {'확인'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {!joinError && connectionError ? (
-        <div
-          className="entry-join-modal-backdrop"
-          role="presentation"
-          onClick={() => actions.dismissConnectionError()}
-        >
-          <div
-            className="entry-join-modal entry-error-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="연결 실패"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>{'연결 실패'}</h3>
-            <p className="entry-error-message">{connectionError.message}</p>
-            <p className="entry-error-reason">{`사유: ${connectionError.reason}`}</p>
-            <div className="entry-join-modal-actions">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => actions.dismissConnectionError()}
-              >
-                {'확인'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <EntryJoinView
+      connectionError={connectionError}
+      initialNickname={nickname}
+      initialRoomCode={initialRoomCode}
+      joinError={joinError}
+      status={status}
+      onDismissConnectionError={dismissConnectionError}
+      onDismissJoinError={dismissJoinError}
+      onSubmit={startJoin}
+    />
   )
 }
