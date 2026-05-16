@@ -321,7 +321,7 @@ export function reduceGeHintRevealedApplied(
   payload: GeHintRevealedPayload,
 ): AppState {
   const currentTurn = state.room.currentTurn
-  if (!currentTurn || currentTurn.turnId !== payload.turnId) {
+  if (!currentTurn) {
     return state
   }
 

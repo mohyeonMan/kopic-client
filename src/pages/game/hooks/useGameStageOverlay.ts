@@ -74,10 +74,16 @@ export function useGameStageOverlay({
     (previewMode !== 'wordChoice' || Boolean(currentTurn))
       ? (previewMode as StageOverlayPhase)
       : null
+  const hasHintPattern =
+    typeof currentTurn?.hintPattern === 'string' && currentTurn.hintPattern.length > 0
+  const hasSecretWordBannerText =
+    Boolean(currentTurn?.selectedWord) ||
+    typeof currentTurn?.answerLength === 'number' ||
+    hasHintPattern
   const shouldShowSecretWordBanner =
     roomState === 'RUNNING' &&
-    (Boolean(currentTurn?.selectedWord) || typeof currentTurn?.answerLength === 'number') &&
-    (isDrawer || currentTurn?.phase === 'DRAWING' || previewMode === 'turnEnd')
+    hasSecretWordBannerText &&
+    (isDrawer || currentTurn?.phase === 'DRAWING' || previewMode === 'turnEnd' || hasHintPattern)
   const isSecretWordBannerClosed = previewMode === 'turnEnd'
 
   useEffect(() => {
