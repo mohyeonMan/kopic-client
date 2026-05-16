@@ -58,6 +58,8 @@ import {
   reduceRoomSnapshotApplied,
 } from './appStateRoom'
 import {
+  reduceActionErrorDismissed,
+  reduceActionErrorReported,
   reduceConnectionErrorDismissed,
   reduceConnectionErrorReported,
   reduceConnectionStatusChanged,
@@ -79,6 +81,8 @@ export type AppAction =
   | { type: 'local/joinErrorDismissed' }
   | { type: 'local/connectionErrorReported'; payload: { reason: string; message: string } }
   | { type: 'local/connectionErrorDismissed' }
+  | { type: 'local/actionErrorReported'; payload: { reason: string; message: string; code?: number } }
+  | { type: 'local/actionErrorDismissed' }
   | { type: 'local/roomCacheCleared' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'local/guessSubmitted'; payload: string }
@@ -124,6 +128,10 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       return reduceConnectionErrorReported(state, action.payload)
     case 'local/connectionErrorDismissed':
       return reduceConnectionErrorDismissed(state)
+    case 'local/actionErrorReported':
+      return reduceActionErrorReported(state, action.payload)
+    case 'local/actionErrorDismissed':
+      return reduceActionErrorDismissed(state)
     case 'local/roomCacheCleared':
       return reduceRoomCacheCleared(state)
     case 'local/lobbySettingsPatched':

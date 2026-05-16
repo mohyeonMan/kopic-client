@@ -105,6 +105,7 @@ export type AppActions = {
   requestJoin: (options?: { roomCode?: string; action?: 0 | 1 }) => void
   dismissJoinError: () => void
   dismissConnectionError: () => void
+  dismissActionError: () => void
   clearRoomCache: () => void
   patchLobbySettings: (settings: Partial<GameSettings>) => void
   requestGameStart: () => void

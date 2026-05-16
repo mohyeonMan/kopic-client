@@ -112,6 +112,12 @@ export type SessionState = {
   connectionError?: {
     reason: string
     message: string
+    code?: number
+  }
+  actionError?: {
+    reason: string
+    message: string
+    code?: number
   }
 }
 

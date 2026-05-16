@@ -47,6 +47,7 @@ export function reduceJoinRequested(
       joinAction: payload?.action ?? 0,
       joinError: undefined,
       connectionError: undefined,
+      actionError: undefined,
     },
     room: createClearedRoomState(state),
   }
@@ -61,6 +62,7 @@ export function reduceJoinAccepted(state: AppState): AppState {
       joinAccepted: true,
       joinError: undefined,
       connectionError: undefined,
+      actionError: undefined,
     },
   }
 }
@@ -79,6 +81,7 @@ export function reduceJoinFailed(
       joinAction: undefined,
       joinError: payload,
       connectionError: state.session.connectionError,
+      actionError: undefined,
     },
     room: createClearedRoomState(state),
   }
@@ -107,6 +110,7 @@ export function reduceConnectionErrorReported(
       joinRoomCode: undefined,
       joinAction: undefined,
       connectionError: payload,
+      actionError: undefined,
     },
     room: createClearedRoomState(state),
   }
@@ -122,6 +126,29 @@ export function reduceConnectionErrorDismissed(state: AppState): AppState {
   }
 }
 
+export function reduceActionErrorReported(
+  state: AppState,
+  payload: { reason: string; message: string; code?: number },
+): AppState {
+  return {
+    ...state,
+    session: {
+      ...state.session,
+      actionError: payload,
+    },
+  }
+}
+
+export function reduceActionErrorDismissed(state: AppState): AppState {
+  return {
+    ...state,
+    session: {
+      ...state.session,
+      actionError: undefined,
+    },
+  }
+}
+
 export function reduceRoomCacheCleared(state: AppState): AppState {
   return {
     ...state,
@@ -133,6 +160,7 @@ export function reduceRoomCacheCleared(state: AppState): AppState {
       joinAction: undefined,
       joinError: undefined,
       connectionError: state.session.connectionError,
+      actionError: undefined,
     },
     room: createClearedRoomState(state),
   }
@@ -161,6 +189,7 @@ export function reduceConnectionStatusChanged(
         joinAction: undefined,
         joinError: state.session.joinError,
         connectionError: state.session.connectionError,
+        actionError: undefined,
       },
       room: createClearedRoomState(state),
     }

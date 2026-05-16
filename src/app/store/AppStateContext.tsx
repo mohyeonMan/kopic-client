@@ -164,6 +164,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       dismissConnectionError: () => {
         dispatch({ type: 'local/connectionErrorDismissed' })
       },
+      dismissActionError: () => {
+        dispatch({ type: 'local/actionErrorDismissed' })
+      },
       clearRoomCache: () => {
         clearInboundStrokeQueue()
         dispatch({ type: 'local/roomCacheCleared' })

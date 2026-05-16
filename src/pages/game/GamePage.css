@@ -24,6 +24,55 @@
   display: none;
 }
 
+.game-action-error-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 31, 44, 0.46);
+  backdrop-filter: blur(2px);
+}
+
+.game-action-error-modal {
+  width: min(380px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.98);
+  border: 1px solid rgba(32, 50, 71, 0.2);
+  box-shadow: 0 16px 48px rgba(25, 36, 52, 0.24);
+}
+
+.game-action-error-modal h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.game-action-error-message {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.game-action-error-reason {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.game-action-error-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
 .game-stage-layout {
   --side-gap: 12px;
   width: 100%;

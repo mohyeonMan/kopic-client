@@ -430,33 +430,28 @@ export function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload |
   }
 }
 
-export function decodeJoinFailedPayload(payload: unknown): { reason: string; message: string } {
+export type ServerErrorPayload = {
+  reason: string
+  message: string
+  code: number
+}
+
+export function decodeServerErrorPayload(
+  payload: unknown,
+  eventCode: number,
+): ServerErrorPayload {
   if (!isRecord(payload)) {
     return {
-      reason: 'JOIN_FAILED',
-      message: '방 입장에 실패했습니다.',
-    }
-  }
-
-  const reason = readNonEmptyString(payload.reason) ?? 'JOIN_FAILED'
-  const rawMessage = readNonEmptyString(payload.message)
-  if (rawMessage) {
-    return {
-      reason,
-      message: rawMessage,
-    }
-  }
-
-  if (reason === 'ROOM_NOT_FOUND') {
-    return {
-      reason,
-      message: '입력한 방 코드를 찾을 수 없습니다.',
+      reason: `ERROR_${eventCode}`,
+      message: '요청을 처리할 수 없습니다.',
+      code: eventCode,
     }
   }
 
   return {
-    reason,
-    message: '방 입장에 실패했습니다.',
+    reason: readNonEmptyString(payload.reason) ?? `ERROR_${eventCode}`,
+    message: readNonEmptyString(payload.message) ?? '요청을 처리할 수 없습니다.',
+    code: eventCode,
   }
 }
 

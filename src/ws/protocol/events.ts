@@ -36,6 +36,16 @@ export const serverEventMeta = [
   { code: 404, name: 'GUESS_CORRECT' },
   { code: 406, name: 'WORD_CHOICES' },
   { code: 408, name: 'GAME_SNAPSHOT' },
+  { code: 1901, name: 'MISSING_ENVELOPE' },
+  { code: 1902, name: 'UNSUPPORTED_EVENT' },
+  { code: 1903, name: 'INVALID_REQUEST' },
+  { code: 1910, name: 'ROOM_NOT_FOUND' },
+  { code: 1911, name: 'ROOM_FULL' },
+  { code: 1920, name: 'FORBIDDEN' },
+  { code: 1930, name: 'CONFLICT' },
+  { code: 1940, name: 'MAILBOX_FULL' },
+  { code: 1941, name: 'ACTOR_INACTIVE' },
+  { code: 1999, name: 'UNKNOWN_ERROR' },
 ] as const
 
 export type ClientEventCode = (typeof clientEventMeta)[number]['code']

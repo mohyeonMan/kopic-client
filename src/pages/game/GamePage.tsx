@@ -36,6 +36,7 @@ export function GamePage() {
   const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
+  const actionError = state.session.actionError
   const isPrivateRoom = state.room.roomType === 'PRIVATE'
   const participants = Array.isArray(state.room.participants) ? state.room.participants : []
   const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes)
@@ -294,6 +295,35 @@ export function GamePage() {
         displayedRemainingSec={displayedRemainingSec}
         visibleOrderEntries={visibleOrderEntries}
       />
+
+      {actionError ? (
+        <div
+          className="game-action-error-modal-backdrop"
+          role="presentation"
+          onClick={() => actions.dismissActionError()}
+        >
+          <div
+            className="game-action-error-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="요청 실패"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3>요청 실패</h3>
+            <p className="game-action-error-message">{actionError.message}</p>
+            <p className="game-action-error-reason">{`사유: ${actionError.reason}`}</p>
+            <div className="game-action-error-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => actions.dismissActionError()}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
         <ParticipantPanel

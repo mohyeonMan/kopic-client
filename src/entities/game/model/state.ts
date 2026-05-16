@@ -23,6 +23,7 @@ export const initialAppState: AppState = {
     joinAction: undefined,
     joinError: undefined,
     connectionError: undefined,
+    actionError: undefined,
   },
   connectionStatus: 'idle',
   room: {

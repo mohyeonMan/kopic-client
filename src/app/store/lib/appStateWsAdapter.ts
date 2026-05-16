@@ -20,9 +20,9 @@ import {
   decodeGeTurnEndedPayload,
   decodeGeTurnStartedPayload,
   decodeGeWordChoiceOpenedPayload,
-  decodeJoinFailedPayload,
   decodeRoomJoinedPayload,
   decodeRoomLeftPayload,
+  decodeServerErrorPayload,
   isCanvasClearPayload,
 } from './appStatePayloadDecoders'
 import {
@@ -42,6 +42,12 @@ type EnvelopeHandlerOptions = {
   enqueueInboundStroke: (stroke: CanvasStroke) => void
   server: AppStateContextValue['server']
   stateRef: StateRef
+}
+
+const SERVER_ERROR_EVENT_CODES = new Set([1901, 1902, 1903, 1910, 1911, 1920, 1930, 1940, 1941, 1999])
+
+function isFatalRoomErrorCode(eventCode: number) {
+  return eventCode === 1910 || eventCode === 1941
 }
 
 export function decodeInboundEnvelope(raw: unknown): Envelope<unknown, number> | null {
@@ -81,6 +87,23 @@ export function createServerEnvelopeHandler({
 }: EnvelopeHandlerOptions) {
   return (envelope: Envelope<unknown, number>) => {
     const payload = envelope.p
+    if (SERVER_ERROR_EVENT_CODES.has(envelope.e)) {
+      const errorPayload = decodeServerErrorPayload(payload, envelope.e)
+      if (stateRef.current.session.joinPending && !stateRef.current.session.joinAccepted) {
+        clearInboundStrokeQueue()
+        dispatch({ type: 'local/joinFailed', payload: errorPayload })
+        return
+      }
+
+      if (isFatalRoomErrorCode(envelope.e)) {
+        clearInboundStrokeQueue()
+        dispatch({ type: 'local/connectionErrorReported', payload: errorPayload })
+        return
+      }
+
+      dispatch({ type: 'local/actionErrorReported', payload: errorPayload })
+      return
+    }
 
     switch (envelope.e) {
       case 200: {
@@ -209,10 +232,6 @@ export function createServerEnvelopeHandler({
         if (payload && typeof payload === 'object') {
           server.applyWordChoice(payload as ServerWordChoicePayload)
         }
-        return
-      case 1999:
-        clearInboundStrokeQueue()
-        dispatch({ type: 'local/joinFailed', payload: decodeJoinFailedPayload(payload) })
         return
       case 204: {
         const guessMessage = decodeGuessSubmittedMessage(payload)
