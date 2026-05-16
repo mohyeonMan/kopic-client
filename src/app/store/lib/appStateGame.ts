@@ -22,7 +22,6 @@ import {
   applyEarnedPointsToParticipants,
   createDeadlineAtMs,
   createForcedTurn,
-  createGeTurnId,
   createMockTurn,
   resetParticipantsForLobby,
   resolveDrawerTurnCursor,
@@ -184,7 +183,7 @@ export function reduceGeGuessCorrectApplied(
   state: AppState,
   payload: GeGuessCorrectPayload,
 ): AppState {
-  if (!state.room.currentTurn) {
+  if (!state.room.currentTurn || state.room.currentTurn.turnId !== payload.turnId) {
     return state
   }
 
@@ -216,6 +215,21 @@ export function reduceGeWordChoiceOpenedApplied(
   state: AppState,
   payload: GeWordChoiceOpenedPayload,
 ): AppState {
+  if (
+    state.room.currentTurn &&
+    state.room.currentTurn.turnId !== payload.turnId &&
+    state.room.currentTurn.phase !== 'TURN_END'
+  ) {
+    return state
+  }
+
+  if (
+    state.room.currentTurn?.turnId === payload.turnId &&
+    (state.room.currentTurn.phase === 'DRAWING' || state.room.currentTurn.phase === 'TURN_END')
+  ) {
+    return state
+  }
+
   const activeRound = resolveRunningRoundSummary(state)
   const nextTurnCursor = resolveDrawerTurnCursor(
     activeRound.drawerOrder,
@@ -227,23 +241,19 @@ export function reduceGeWordChoiceOpenedApplied(
     turnCursor: nextTurnCursor,
   }
   const turnNo = nextTurnCursor + 1
-  const turnId =
-    state.room.currentTurn &&
-    state.room.currentTurn.roundNo === nextRound.roundNo &&
-    state.room.currentTurn.turnNo === turnNo
-      ? state.room.currentTurn.turnId
-      : createGeTurnId(state.room.gameId, nextRound.roundNo, turnNo)
+  const sameTurn = state.room.currentTurn?.turnId === payload.turnId
 
   return {
     ...state,
     room: {
       ...state.room,
       roomState: 'RUNNING',
+      gameId: payload.gameId ?? state.room.gameId,
       currentRound: nextRound,
       currentTurn: {
         roundNo: nextRound.roundNo,
         turnNo,
-        turnId,
+        turnId: payload.turnId,
         drawerSessionId: payload.drawerSessionId,
         phase: 'WORD_CHOICE',
         remainingSec: payload.remainingSec,
@@ -255,7 +265,7 @@ export function reduceGeWordChoiceOpenedApplied(
         selectedWordDescription: undefined,
         answerLength: undefined,
         hintPattern: undefined,
-        canvasStrokes: state.room.currentTurn?.canvasStrokes ?? [],
+        canvasStrokes: sameTurn ? state.room.currentTurn?.canvasStrokes ?? [] : [],
       },
       chat: [
         ...state.room.chat,
@@ -271,18 +281,41 @@ export function reduceGeDrawingStartedApplied(
 ): AppState {
   const activeRound = resolveRunningRoundSummary(state)
   const previousTurn = state.room.currentTurn
-  const turnNo = previousTurn?.turnNo ?? activeRound.turnCursor + 1
-  const turnId = previousTurn?.turnId ?? createGeTurnId(payload.gameId, activeRound.roundNo, turnNo)
-  const selectedWord = payload.selectedWord ?? previousTurn?.selectedWord ?? null
+  if (previousTurn && previousTurn.turnId !== payload.turnId && previousTurn.phase !== 'TURN_END') {
+    return state
+  }
+
+  if (previousTurn?.turnId === payload.turnId && previousTurn.phase === 'TURN_END') {
+    return state
+  }
+
+  const sameTurn = previousTurn?.turnId === payload.turnId
+  const turnNo =
+    sameTurn && previousTurn
+      ? previousTurn.turnNo
+      : previousTurn?.phase === 'TURN_END'
+        ? previousTurn.turnNo + 1
+        : activeRound.turnCursor + 1
+  const selectedWord = payload.selectedWord ?? (sameTurn ? previousTurn?.selectedWord : null) ?? null
   const selectedWordDescription =
     payload.selectedWordDescription !== undefined
       ? payload.selectedWordDescription
-      : previousTurn?.selectedWordDescription
+      : sameTurn
+        ? previousTurn?.selectedWordDescription
+        : undefined
   const answerLength =
     payload.answerLength ??
-    (selectedWord ? Array.from(selectedWord).length : previousTurn?.answerLength)
+    (selectedWord
+      ? Array.from(selectedWord).length
+      : sameTurn
+        ? previousTurn?.answerLength
+        : undefined)
   const hintPattern =
-    payload.hintPattern !== undefined ? payload.hintPattern : previousTurn?.hintPattern
+    payload.hintPattern !== undefined
+      ? payload.hintPattern
+      : sameTurn
+        ? previousTurn?.hintPattern
+        : undefined
 
   return {
     ...state,
@@ -294,14 +327,14 @@ export function reduceGeDrawingStartedApplied(
       currentTurn: {
         roundNo: activeRound.roundNo,
         turnNo,
-        turnId,
+        turnId: payload.turnId,
         drawerSessionId: payload.drawerSessionId,
         phase: 'DRAWING',
         remainingSec: payload.remainingSec,
         deadlineAtMs: createDeadlineAtMs(payload.remainingSec),
-        correctSessionIds: previousTurn?.correctSessionIds ?? [],
-        earnedPoints: previousTurn?.earnedPoints ?? {},
-        wordChoices: previousTurn?.wordChoices ?? [],
+        correctSessionIds: sameTurn ? previousTurn?.correctSessionIds ?? [] : [],
+        earnedPoints: sameTurn ? previousTurn?.earnedPoints ?? {} : {},
+        wordChoices: sameTurn ? previousTurn?.wordChoices ?? [] : [],
         selectedWord,
         selectedWordDescription,
         answerLength,
@@ -342,7 +375,7 @@ export function reduceGeTurnEndedApplied(
   state: AppState,
   payload: GeTurnEndedPayload,
 ): AppState {
-  if (!state.room.currentTurn) {
+  if (!state.room.currentTurn || state.room.currentTurn.turnId !== payload.turnId) {
     return state
   }
 

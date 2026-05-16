@@ -235,12 +235,18 @@ export function GamePage() {
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const drawerName = drawer?.nickname ?? '출제자'
+  const currentTurnId = currentTurn?.turnId ?? null
   const isMeCorrectInCurrentTurn =
-    currentTurn !== null
+    currentTurn !== null && currentTurn.phase === 'DRAWING'
       ? currentTurn.correctSessionIds.includes(state.session.sessionId) &&
         state.session.sessionId !== currentTurn.drawerSessionId
       : false
-  const isCorrectHighlightActive = roomState === 'RUNNING' && isMeCorrectInCurrentTurn && !isDrawer
+  const correctHighlightTurnId = isMeCorrectInCurrentTurn ? currentTurnId : null
+  const isCorrectHighlightActive =
+    roomState === 'RUNNING' &&
+    currentTurnId !== null &&
+    currentTurnId === correctHighlightTurnId &&
+    !isDrawer
 
   const activeMobilePanel = isChatComposerFocused ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =

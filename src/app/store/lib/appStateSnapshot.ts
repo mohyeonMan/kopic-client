@@ -542,6 +542,7 @@ function normalizeCurrentTurn(
     roundNo,
     turnNo,
     turnId:
+      readNonEmptyString(raw.tid) ??
       readNonEmptyString(raw.turnId) ??
       readNonEmptyString(raw.turn) ??
       `turn-r${roundNo}-${turnNo}`,

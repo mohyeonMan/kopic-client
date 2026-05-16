@@ -41,10 +41,13 @@ export type GeTurnStartedPayload = {
 
 export type GeGuessCorrectPayload = {
   gameId: string
+  turnId: string
   sessionId: string
 }
 
 export type GeWordChoiceOpenedPayload = {
+  gameId?: string
+  turnId: string
   drawerSessionId: string
   remainingSec: number
   wordChoices: string[]
@@ -52,6 +55,7 @@ export type GeWordChoiceOpenedPayload = {
 
 export type GeDrawingStartedPayload = {
   gameId: string
+  turnId: string
   drawerSessionId: string
   remainingSec: number
   selectedWord: string | null
