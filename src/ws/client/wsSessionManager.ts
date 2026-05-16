@@ -74,16 +74,37 @@ function resolveWsPath() {
     return configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`
   }
 
-  return `${WS_BASE_PATH}/ws` || '/ws'
+  return `${WS_BASE_PATH}/ws`
+}
+
+function createBrowserWsUrl() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+
+  if (import.meta.env.DEV) {
+    const url = new URL(window.location.href)
+    url.protocol = protocol
+    url.port = import.meta.env.VITE_WS_PORT?.trim() || '8080'
+    url.pathname = resolveWsPath()
+    url.search = ''
+    url.hash = ''
+    return url
+  }
+
+  return new URL(`${protocol}//${window.location.host}${resolveWsPath()}`)
 }
 
 function resolveWsUrl() {
-  if (typeof window === 'undefined' || import.meta.env.DEV) {
-    return 'ws://localhost:8080/ws'
+  const configuredUrl = import.meta.env.VITE_WS_URL?.trim()
+  const url = configuredUrl
+    ? new URL(configuredUrl)
+    : typeof window === 'undefined'
+      ? new URL('ws://localhost:8080/ws')
+      : createBrowserWsUrl()
+
+  if (typeof window === 'undefined') {
+    return url.toString()
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = new URL(`${protocol}://${window.location.host}${resolveWsPath()}`)
   const queryToken = new URLSearchParams(window.location.search).get('token')
   const storageToken =
     window.localStorage.getItem('token') ??

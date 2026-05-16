@@ -34,7 +34,6 @@ export function GamePage() {
   const isPageAtBottomRef = useRef(false)
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
   const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
-  const [correctHighlightRoundNo, setCorrectHighlightRoundNo] = useState<number | null>(null)
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const isPrivateRoom = state.room.roomType === 'PRIVATE'
@@ -241,37 +240,7 @@ export function GamePage() {
       ? currentTurn.correctSessionIds.includes(state.session.sessionId) &&
         state.session.sessionId !== currentTurn.drawerSessionId
       : false
-
-  useEffect(() => {
-    if (roomState !== 'RUNNING') {
-      setCorrectHighlightRoundNo(null)
-      return
-    }
-
-    const roundNo = currentRound?.roundNo
-    if (typeof roundNo !== 'number') {
-      return
-    }
-
-    if (isMeCorrectInCurrentTurn) {
-      setCorrectHighlightRoundNo((previous) => (previous === roundNo ? previous : roundNo))
-      return
-    }
-
-    setCorrectHighlightRoundNo((previous) => {
-      if (previous === null) {
-        return null
-      }
-
-      return previous !== roundNo ? null : previous
-    })
-  }, [currentRound?.roundNo, isMeCorrectInCurrentTurn, roomState])
-
-  const isCorrectHighlightActive =
-    roomState === 'RUNNING' &&
-    typeof currentRound?.roundNo === 'number' &&
-    currentRound.roundNo === correctHighlightRoundNo &&
-    !isDrawer
+  const isCorrectHighlightActive = roomState === 'RUNNING' && isMeCorrectInCurrentTurn && !isDrawer
 
   const activeMobilePanel = isChatComposerFocused ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
