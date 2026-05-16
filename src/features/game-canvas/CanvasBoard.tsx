@@ -268,6 +268,10 @@ export function CanvasBoard({
   strokesRef.current = strokes
 
   useEffect(() => {
+    if (!canDraw) {
+      return
+    }
+
     const canvas = draftCanvasRef.current
     if (!canvas) {
       return
@@ -446,7 +450,6 @@ export function CanvasBoard({
     clearTextSelection()
 
     if (!canDraw) {
-      event.preventDefault()
       return
     }
 
