@@ -15,7 +15,7 @@
  * - submit 시 gameSession command 호출
  * - submit 시 local optimistic chat message 저장
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createLocalGuessMessage } from '@/entities/game/api/chatMessageNormalizer'
 import { useGameStore } from '@/entities/game/model/gameStore'
 import { useSessionStore } from '@/entities/session/model/sessionStore'
@@ -30,7 +30,11 @@ export function useGameChat() {
   const sessionId = useSessionStore((state) => state.sessionId)
   const roomState = useGameStore((state) => state.room.roomState)
   const currentTurn = useGameStore((state) => state.room.currentTurn)
-  const messages = useGameStore((state) => state.room.chat.filter((message) => message.tone !== 'system'))
+  const chat = useGameStore((state) => state.room.chat)
+  const messages = useMemo(
+    () => chat.filter((message) => message.tone !== 'system'),
+    [chat],
+  )
   const hasCorrectAnswer =
     sessionId !== null ? currentTurn?.correctSessionIds.includes(sessionId) : false
   const canSubmitGuess =

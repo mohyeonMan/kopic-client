@@ -255,6 +255,32 @@ function decodeJoinFailed(payload: unknown): SessionError {
   }
 }
 
+function resolveSyncedSessionId(
+  synced: NonNullable<ReturnType<typeof normalizeSnapshotEnvelopePayload>>,
+  request: OpenGameSessionArgs['request'],
+) {
+  const explicitSessionId = readNonEmptyString(synced.ownSessionId)
+  if (explicitSessionId) {
+    return explicitSessionId
+  }
+
+  const sameNicknameParticipants = synced.roomSnapshot.participants.filter(
+    (participant) => participant.nickname === request.nickname,
+  )
+  if (sameNicknameParticipants.length === 1) {
+    return sameNicknameParticipants[0].sessionId
+  }
+
+  return synced.roomSnapshot.participants[0]?.sessionId
+}
+
+function resolveSyncedRoomCode(
+  synced: NonNullable<ReturnType<typeof normalizeSnapshotEnvelopePayload>>,
+  request: OpenGameSessionArgs['request'],
+) {
+  return readNonEmptyString(synced.roomSnapshot.roomCode) ?? readNonEmptyString(request.roomCode) ?? ''
+}
+
 function decodeGameStarted(payload: unknown): GameStartedPayload | null {
   if (!isRecord(payload)) {
     return null
@@ -481,7 +507,11 @@ function normalizeColorIndex(value: unknown) {
   return colorIndex !== null && colorIndex >= 1 && colorIndex <= 20 ? colorIndex : undefined
 }
 
-function emitEnvelopeEvent(envelope: ServerEnvelope, emit: (event: GameSessionEvent) => void) {
+function emitEnvelopeEvent(
+  envelope: ServerEnvelope,
+  request: OpenGameSessionArgs['request'],
+  emit: (event: GameSessionEvent) => void,
+) {
   if (envelope.e === 2) {
     return
   }
@@ -493,13 +523,22 @@ function emitEnvelopeEvent(envelope: ServerEnvelope, emit: (event: GameSessionEv
 
   if (envelope.e === 300 || envelope.e === 408) {
     const synced = normalizeSnapshotEnvelopePayload(envelope.p)
-    if (synced && synced.ownSessionId && synced.roomSnapshot.roomCode) {
+    if (synced) {
+      const sessionId = resolveSyncedSessionId(synced, request)
+      if (!sessionId) {
+        return
+      }
+
+      const roomCode = resolveSyncedRoomCode(synced, request)
       emit({
         type: 'session-synced',
         payload: {
-          sessionId: synced.ownSessionId,
-          roomCode: synced.roomSnapshot.roomCode,
-          roomSnapshot: synced.roomSnapshot,
+          sessionId,
+          roomCode,
+          roomSnapshot: {
+            ...synced.roomSnapshot,
+            roomCode,
+          },
         },
       })
     }
@@ -682,7 +721,7 @@ export function openGameSession({ request, onEvent }: OpenGameSessionArgs): Game
           if (event.type === 'message') {
             const envelope = decodeEnvelope(event.data)
             if (envelope) {
-              emitEnvelopeEvent(envelope, onEvent)
+              emitEnvelopeEvent(envelope, request, onEvent)
             }
             return
           }
