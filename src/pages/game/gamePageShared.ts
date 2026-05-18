@@ -61,10 +61,10 @@ export const TOOL_COLORS_GRAYSCALE = TOOL_COLORS.map((color) => toGrayscaleHex(c
 
 export const SETTING_OPTIONS = {
   roundCount: [3, 4, 5, 6, 7, 8, 9, 10],
-  drawSec: [20, 30, 40, 50, 60],
+  drawSec: [20, 30, 40, 50, 60, 70, 80],
   wordChoiceSec: [5, 7, 10, 12, 15],
   wordChoiceCount: [3, 4, 5],
-  hintRevealSec: [30, 25, 20, 15, 10],
+  hintRevealSec: [75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10],
   hintLetterCount: [1, 2, 3],
 } as const
 
