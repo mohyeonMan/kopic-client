@@ -84,7 +84,7 @@ export function reduceGeGameStartedApplied(
       currentRound: null,
       currentTurn: null,
       lobbyCanvasStrokes: [],
-      chat: [...state.room.chat, createSystemMessage(`200 GE_GAME_STARTED ${payload.gameId}`)],
+      chat: [...state.room.chat, createSystemMessage(`400 GE_GAME_STARTED ${payload.gameId}`)],
     },
   }
 }
@@ -114,7 +114,7 @@ export function reduceGeRoundStartedApplied(
       },
       currentTurn: null,
       lobbyCanvasStrokes: [],
-      chat: [...state.room.chat, createSystemMessage(`202 GE_ROUND_STARTED R${payload.roundNo}`)],
+      chat: [...state.room.chat, createSystemMessage(`401 GE_ROUND_STARTED R${payload.roundNo}`)],
     },
   }
 }
@@ -173,7 +173,7 @@ export function reduceGeTurnStartedApplied(
       },
       chat: [
         ...state.room.chat,
-        createSystemMessage(`209 GE_TURN_STARTED ${payload.drawerSessionId}`),
+        createSystemMessage(`402 GE_TURN_STARTED ${payload.drawerSessionId}`),
       ],
     },
   }
@@ -269,7 +269,7 @@ export function reduceGeWordChoiceOpenedApplied(
       },
       chat: [
         ...state.room.chat,
-        createSystemMessage(`203 GE_WORD_CHOICE_OPEN ${payload.drawerSessionId}`),
+        createSystemMessage(`403 GE_WORD_CHOICE_OPEN ${payload.drawerSessionId}`),
       ],
     },
   }
@@ -343,7 +343,7 @@ export function reduceGeDrawingStartedApplied(
       },
       chat: [
         ...state.room.chat,
-        createSystemMessage(`208 GE_DRAWING_STARTED ${payload.drawerSessionId}`),
+        createSystemMessage(`404 GE_DRAWING_STARTED ${payload.drawerSessionId}`),
       ],
     },
   }
@@ -426,7 +426,7 @@ export function reduceGeTurnEndedApplied(
         selectedWordDescription: state.room.currentTurn.selectedWordDescription,
         answerLength,
       },
-      chat: [...state.room.chat, createSystemMessage(`205 GE_TURN_ENDED ${payload.reason}`)],
+      chat: [...state.room.chat, createSystemMessage(`410 GE_TURN_ENDED ${payload.reason}`)],
     },
   }
 }
@@ -450,7 +450,7 @@ export function reduceGeGameResultApplied(
       resultDeadlineAtMs: createDeadlineAtMs(payload.resultSec),
       participants: nextParticipants,
       currentTurn: null,
-      chat: [...state.room.chat, createSystemMessage(`206 GE_GAME_RESULT ${payload.resultSec}s`)],
+      chat: [...state.room.chat, createSystemMessage(`411 GE_GAME_RESULT ${payload.resultSec}s`)],
     },
   }
 }
@@ -479,8 +479,8 @@ export function reduceGeReturnToLobbyApplied(
         ...state.room.chat,
         createSystemMessage(
           payload.restartSec !== undefined
-            ? `207 GE_RETURN_TO_LOBBY ${payload.reason} ${payload.restartSec}s`
-            : `207 GE_RETURN_TO_LOBBY ${payload.reason}`,
+            ? `412 GE_RETURN_TO_LOBBY ${payload.reason} ${payload.restartSec}s`
+            : `412 GE_RETURN_TO_LOBBY ${payload.reason}`,
         ),
       ],
     },
@@ -523,7 +523,7 @@ export function reduceGameEndedApplied(state: AppState): AppState {
       ...state.room,
       roomState: 'RESULT',
       currentTurn: null,
-      chat: [...state.room.chat, createSystemMessage('307 GAME_ENDED')],
+      chat: [...state.room.chat, createSystemMessage('413 GAME_ENDED')],
     },
   }
 }
@@ -613,8 +613,8 @@ export function reduceMockFlowAdvanced(state: AppState): AppState {
         ),
         chat: [
           ...state.room.chat,
-          createSystemMessage(`306 ROUND_ENDED R${currentRound.roundNo}`),
-          createSystemMessage(`303 ROUND_STARTED R${nextRoundNo}`),
+          createSystemMessage(`ROUND_ENDED R${currentRound.roundNo}`),
+          createSystemMessage(`401 ROUND_STARTED R${nextRoundNo}`),
         ],
       },
     }
@@ -626,7 +626,7 @@ export function reduceMockFlowAdvanced(state: AppState): AppState {
       ...state.room,
       roomState: 'RESULT',
       currentTurn: null,
-      chat: [...state.room.chat, createSystemMessage('307 GAME_ENDED')],
+      chat: [...state.room.chat, createSystemMessage('413 GAME_ENDED')],
     },
   }
 }

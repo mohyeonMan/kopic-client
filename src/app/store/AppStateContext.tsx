@@ -210,7 +210,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             server.applyWordChoice({
               selectedWord,
               remainingSec: stateRef.current.room.settings.drawSec,
-              chatMessage: createSystemMessage(`310 DRAWING_STARTED (${selectedWord})`),
+              chatMessage: createSystemMessage(`404 DRAWING_STARTED (${selectedWord})`),
             }),
         )
       },

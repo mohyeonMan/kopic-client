@@ -87,8 +87,8 @@ export function createMockGameStartedPayload(state: AppState): ServerGameStarted
     currentTurn: createMockTurn(1, 1, firstDrawerSessionId, 'WORD_CHOICE', state.room.settings),
     chatMessages: [
       createSystemMessage('GAME_STARTED'),
-      createSystemMessage('303 ROUND_STARTED with drawerOrder snapshot'),
-      createSystemMessage('304 TURN_STARTED'),
+      createSystemMessage('401 ROUND_STARTED with drawerOrder snapshot'),
+      createSystemMessage('402 TURN_STARTED'),
     ],
   }
 }

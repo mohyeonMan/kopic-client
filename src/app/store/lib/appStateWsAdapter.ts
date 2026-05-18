@@ -2,7 +2,6 @@ import type { AppState, CanvasStroke } from '../../../entities/game/model'
 import type {
   AppStateContextValue,
   ServerGameStartedPayload,
-  ServerWordChoicePayload,
 } from '../appStateContextValue'
 import type { AppAction } from './appStateReducer'
 import {
@@ -106,70 +105,70 @@ export function createServerEnvelopeHandler({
     }
 
     switch (envelope.e) {
-      case 200: {
+      case 400: {
         const gameStartedPayload = decodeGeGameStartedPayload(payload)
         if (gameStartedPayload) {
           dispatch({ type: 'server/geGameStartedApplied', payload: gameStartedPayload })
         }
         return
       }
-      case 202: {
+      case 401: {
         const roundStartedPayload = decodeGeRoundStartedPayload(payload)
         if (roundStartedPayload) {
           dispatch({ type: 'server/geRoundStartedApplied', payload: roundStartedPayload })
         }
         return
       }
-      case 209: {
+      case 402: {
         const turnStartedPayload = decodeGeTurnStartedPayload(payload)
         if (turnStartedPayload) {
           dispatch({ type: 'server/geTurnStartedApplied', payload: turnStartedPayload })
         }
         return
       }
-      case 210: {
+      case 408: {
         const guessCorrectPayload = decodeGeGuessCorrectPayload(payload)
         if (guessCorrectPayload) {
           dispatch({ type: 'server/geGuessCorrectApplied', payload: guessCorrectPayload })
         }
         return
       }
-      case 203: {
+      case 403: {
         const wordChoiceOpenedPayload = decodeGeWordChoiceOpenedPayload(payload)
         if (wordChoiceOpenedPayload) {
           dispatch({ type: 'server/geWordChoiceOpenedApplied', payload: wordChoiceOpenedPayload })
         }
         return
       }
-      case 208: {
+      case 404: {
         const drawingStartedPayload = decodeGeDrawingStartedPayload(payload)
         if (drawingStartedPayload) {
           dispatch({ type: 'server/geDrawingStartedApplied', payload: drawingStartedPayload })
         }
         return
       }
-      case 211: {
+      case 409: {
         const hintRevealedPayload = decodeGeHintRevealedPayload(payload)
         if (hintRevealedPayload) {
           dispatch({ type: 'server/geHintRevealedApplied', payload: hintRevealedPayload })
         }
         return
       }
-      case 205: {
+      case 410: {
         const turnEndedPayload = decodeGeTurnEndedPayload(payload)
         if (turnEndedPayload) {
           dispatch({ type: 'server/geTurnEndedApplied', payload: turnEndedPayload })
         }
         return
       }
-      case 206: {
+      case 411: {
         const gameResultPayload = decodeGeGameResultPayload(payload)
         if (gameResultPayload) {
           dispatch({ type: 'server/geGameResultApplied', payload: gameResultPayload })
         }
         return
       }
-      case 207: {
+      case 412: {
         clearInboundStrokeQueue()
         const returnToLobbyPayload = decodeGeReturnToLobbyPayload(payload)
         if (returnToLobbyPayload) {
@@ -178,7 +177,7 @@ export function createServerEnvelopeHandler({
         return
       }
       case 300:
-      case 408:
+      case 304:
         if (payload && typeof payload === 'object') {
           const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(payload, stateRef.current)
           if (normalizedRoomSnapshot) {
@@ -212,8 +211,7 @@ export function createServerEnvelopeHandler({
         }
         return
       }
-      case 107:
-      case 308: {
+      case 303: {
         const nextSettings = decodeSettingsUpdatePayload(payload, stateRef.current.room.settings)
         if (nextSettings) {
           dispatch({ type: 'local/lobbySettingsPatched', payload: nextSettings })
@@ -228,19 +226,14 @@ export function createServerEnvelopeHandler({
         }
         return
       }
-      case 310:
-        if (payload && typeof payload === 'object') {
-          server.applyWordChoice(payload as ServerWordChoicePayload)
-        }
-        return
-      case 204: {
+      case 407: {
         const guessMessage = decodeGuessSubmittedMessage(payload)
         if (guessMessage) {
           dispatch({ type: 'server/chatReceived', payload: guessMessage })
         }
         return
       }
-      case 201:
+      case 405:
         if (isCanvasClearPayload(payload)) {
           clearInboundStrokeQueue()
           server.applyCanvasClear()
@@ -254,11 +247,11 @@ export function createServerEnvelopeHandler({
           }
         }
         return
-      case 402:
+      case 406:
         clearInboundStrokeQueue()
         server.applyCanvasClear()
         return
-      case 307:
+      case 413:
         server.applyGameEnded()
         return
       default:

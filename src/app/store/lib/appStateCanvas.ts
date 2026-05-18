@@ -76,7 +76,7 @@ export function reduceCanvasCleared(state: AppState): AppState {
         ...state.room.currentTurn,
         canvasStrokes: [],
       },
-      chat: [...state.room.chat, createSystemMessage('402 CANVAS_CLEAR')],
+      chat: [...state.room.chat, createSystemMessage('406 CANVAS_CLEAR')],
     },
   }
 }
