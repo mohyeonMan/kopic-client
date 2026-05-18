@@ -2,6 +2,7 @@ import './LobbySettingsOverlay.css'
 import type { GameSettings, RoomState } from '../../../../entities/game/model'
 import {
   CUSTOM_WORD_MODE_OPTIONS,
+  DRAWER_ORDER_MODE_OPTIONS,
   END_MODE_OPTIONS,
   SETTING_OPTIONS,
   type NumericSettingKey,
@@ -10,6 +11,7 @@ import {
 type LobbySettingsOverlayProps = {
   isHost: boolean
   isPrivateRoom: boolean
+  onApplyDrawerOrderMode: (value: GameSettings['drawerOrderMode']) => void
   onApplyEndMode: (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => void
   onApplyCustomWordMode: (value: 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM') => void
   onApplyCustomWordsRaw: (value: string) => void
@@ -24,6 +26,7 @@ type LobbySettingsOverlayProps = {
 export function LobbySettingsOverlay({
   isHost,
   isPrivateRoom,
+  onApplyDrawerOrderMode,
   onApplyEndMode,
   onApplyCustomWordMode,
   onApplyCustomWordsRaw,
@@ -114,6 +117,23 @@ export function LobbySettingsOverlay({
             {SETTING_OPTIONS.wordChoiceCount.map((option) => (
               <option key={option} value={option}>
                 {option}개
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>그리기 순서</span>
+          <select
+            className={!isHost ? 'select-no-caret' : undefined}
+            disabled={!isHost}
+            value={settings.drawerOrderMode}
+            onChange={(event) =>
+              onApplyDrawerOrderMode(event.target.value as GameSettings['drawerOrderMode'])
+            }
+          >
+            {DRAWER_ORDER_MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

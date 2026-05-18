@@ -141,6 +141,7 @@ export function GamePage() {
   const forcedPaletteColor = getParticipantAccentColor(me?.colorIndex)
   const {
     activePaletteColor,
+    applyDrawerOrderMode,
     applyEndMode,
     applySetting,
     applyCustomWordMode,
@@ -380,6 +381,7 @@ export function GamePage() {
           onSendStrokeChunk={handleSendStrokeChunk}
           onCommitStroke={handleCommitStroke}
           onToggleSettings={handleToggleSettings}
+          onApplyDrawerOrderMode={applyDrawerOrderMode}
           onApplySetting={applySetting}
           onApplyCustomWordMode={applyCustomWordMode}
           onApplyCustomWordsRaw={applyCustomWordsRaw}

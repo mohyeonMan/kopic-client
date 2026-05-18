@@ -44,6 +44,7 @@ type GameBoardPanelProps = {
   isSharedDrawingPhase: boolean
   nextTurnCountdownSec?: number
   nextDrawerName: string | null
+  onApplyDrawerOrderMode: (value: GameSettings['drawerOrderMode']) => void
   onApplyEndMode: (value: 'FIRST_CORRECT' | 'TIME_OR_ALL_CORRECT') => void
   onApplyCustomWordMode: (value: 'CUSTOM_ONLY' | 'BASE_PLUS_CUSTOM') => void
   onApplyCustomWordsRaw: (value: string) => void
@@ -98,6 +99,7 @@ export function GameBoardPanel({
   isSharedDrawingPhase,
   nextTurnCountdownSec,
   nextDrawerName,
+  onApplyDrawerOrderMode,
   onApplyEndMode,
   onApplyCustomWordMode,
   onApplyCustomWordsRaw,
@@ -173,6 +175,7 @@ export function GameBoardPanel({
           <LobbySettingsOverlay
             isHost={isHost}
             isPrivateRoom={isPrivateRoom}
+            onApplyDrawerOrderMode={onApplyDrawerOrderMode}
             onApplyEndMode={onApplyEndMode}
             onApplyCustomWordMode={onApplyCustomWordMode}
             onApplyCustomWordsRaw={onApplyCustomWordsRaw}

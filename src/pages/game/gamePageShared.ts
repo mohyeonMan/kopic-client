@@ -73,6 +73,11 @@ export const END_MODE_OPTIONS = [
   { value: 'TIME_OR_ALL_CORRECT', label: '전원' },
 ] as const
 
+export const DRAWER_ORDER_MODE_OPTIONS = [
+  { value: 'JOIN_ORDER', label: '순서대로' },
+  { value: 'RANDOM', label: '무작위' },
+] as const
+
 export const CUSTOM_WORD_MODE_OPTIONS = [
   { value: 'BASE_PLUS_CUSTOM', label: '기본 + 커스텀' },
   { value: 'CUSTOM_ONLY', label: '커스텀만' },

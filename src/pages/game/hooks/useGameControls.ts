@@ -76,6 +76,14 @@ export function useGameControls({
     actions.patchLobbySettings({ endMode: value })
   }
 
+  const applyDrawerOrderMode = (value: GameSettings['drawerOrderMode']) => {
+    if (!isHost) {
+      return
+    }
+
+    actions.patchLobbySettings({ drawerOrderMode: value })
+  }
+
   const applyCustomWordMode = (value: GameSettings['customWordMode']) => {
     if (!isHost) {
       return
@@ -164,6 +172,7 @@ export function useGameControls({
 
   return {
     activePaletteColor,
+    applyDrawerOrderMode,
     applyEndMode,
     applySetting,
     applyCustomWordMode,
