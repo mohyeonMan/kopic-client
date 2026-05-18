@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { buildInvitePath, routes, type AppRoute } from '../router/routes'
 import { useAppActions } from '../store/useAppActions'
+import { useAppSessionState } from '../store/useAppSessionState'
 import { useAppShellState } from '../store/useAppShellState'
 
 type AppLayoutProps = {
@@ -41,6 +42,7 @@ async function copyText(text: string) {
 
 export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps) {
   const actions = useAppActions()
+  const session = useAppSessionState()
   const shellState = useAppShellState()
   const [shareFeedback, setShareFeedback] = useState<string | null>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
@@ -51,6 +53,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const feedbackTimeoutRef = useRef<number | null>(null)
   const isGameRoute = currentRoute === routes.game
   const roomCode = shellState.roomCode.trim()
+  const inviterName = session.nickname.trim() || '친구'
   const canShareRoom = roomCode.length > 0
   const inviteUrl = canShareRoom
     ? new URL(buildInvitePath(roomCode), window.location.origin).toString()
@@ -269,16 +272,20 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       return
     }
 
+    const shareTitle = `KOPIC INVITATION : ${roomCode}`
+    const shareText = `${roomCode} 방에서 ${inviterName}님이 당신을 초대합니다.`
+    const shareBody = `${shareText}\n${inviteUrl}`
+
     try {
       if (supportsNativeShare) {
         const shareCandidates = [
           {
-            title: `KOPIC 방 ${roomCode}`,
-            text: `${roomCode} 방으로 바로 참여하세요.`,
+            title: shareTitle,
+            text: shareText,
             url: inviteUrl,
           },
           {
-            text: `${roomCode} 방으로 바로 참여하세요.\n${inviteUrl}`,
+            text: shareBody,
           },
           {
             url: inviteUrl,
