@@ -274,7 +274,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
 
     const shareTitle = `KOPIC INVITATION : ${roomCode}`
     const shareText = `${roomCode} 방에서 ${inviterName}님이 당신을 초대합니다.`
-    const shareBody = `${shareText}\n${inviteUrl}`
+    const shareBody = `${shareText} ${inviteUrl}`
 
     try {
       if (supportsNativeShare) {
