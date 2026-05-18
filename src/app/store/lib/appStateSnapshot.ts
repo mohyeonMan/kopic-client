@@ -18,7 +18,6 @@ import {
   normalizeParticipantColorIndex,
   readFiniteNumber,
   readNonEmptyString,
-  resolveChatTone,
 } from './appStateHelpers'
 import { readPointsMap } from './appStatePayloadDecoders'
 
@@ -59,15 +58,7 @@ function normalizeSnapshotRoomType(
 }
 
 function readSnapshotRoomTypeValue(payload: Record<string, unknown>): unknown {
-  if (Object.prototype.hasOwnProperty.call(payload, 'roomType')) {
-    return payload.roomType
-  }
-
-  if (isRecord(payload.room) && Object.prototype.hasOwnProperty.call(payload.room, 'roomType')) {
-    return payload.room.roomType
-  }
-
-  return undefined
+  return payload.rt
 }
 
 function isTurnPhase(value: unknown): value is TurnPhase {
@@ -82,7 +73,7 @@ function normalizeSnapshotRoomState(
     return rawRoomState
   }
 
-  const gamePhase = snapshotGame ? readNonEmptyString(snapshotGame.gamePhase) : undefined
+  const gamePhase = snapshotGame ? readNonEmptyString(snapshotGame.gp) : undefined
   if (gamePhase === 'PLAYING') {
     return 'RUNNING'
   }
@@ -196,27 +187,7 @@ function normalizeGameSettings(raw: unknown, fallback: GameSettings): GameSettin
     }
   }
 
-  if (!isRecord(raw)) {
-    return fallback
-  }
-
-  const drawerOrderMode = readDrawerOrderMode(raw.drawerOrderMode, fallback.drawerOrderMode)
-  const endMode = readEndMode(raw.endMode, fallback.endMode)
-  const customWordMode = readCustomWordMode(raw.customWordMode, fallback.customWordMode)
-  const customWordsRaw = readCustomWordsRaw(raw.customWordsRaw, fallback.customWordsRaw)
-
-  return {
-    roundCount: readInt(raw.roundCount, fallback.roundCount),
-    drawSec: readInt(raw.drawSec, fallback.drawSec),
-    wordChoiceSec: readInt(raw.wordChoiceSec, fallback.wordChoiceSec),
-    wordChoiceCount: readInt(raw.wordChoiceCount, fallback.wordChoiceCount),
-    hintRevealSec: readInt(raw.hintRevealSec, fallback.hintRevealSec),
-    hintLetterCount: readInt(raw.hintLetterCount, fallback.hintLetterCount),
-    drawerOrderMode,
-    endMode,
-    customWordMode,
-    customWordsRaw,
-  }
+  return fallback
 }
 
 function readRawSettingsPayload(payload: unknown): unknown {
@@ -224,19 +195,7 @@ function readRawSettingsPayload(payload: unknown): unknown {
     return undefined
   }
 
-  if (Object.prototype.hasOwnProperty.call(payload, 'settings')) {
-    return payload.settings
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, 'setting')) {
-    return payload.setting
-  }
-
-  if (Object.prototype.hasOwnProperty.call(payload, 's')) {
-    return payload.s
-  }
-
-  return undefined
+  return payload.st
 }
 
 export function decodeSettingsUpdatePayload(
@@ -249,27 +208,7 @@ export function decodeSettingsUpdatePayload(
     return normalizeGameSettings(rawSettings, fallback)
   }
 
-  if (!isRecord(rawSettings)) {
-    return null
-  }
-
-  const hasSettingKeys =
-    Object.prototype.hasOwnProperty.call(rawSettings, 'roundCount') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'drawSec') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'wordChoiceSec') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'wordChoiceCount') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'hintRevealSec') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'hintLetterCount') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'drawerOrderMode') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'endMode') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'customWordMode') ||
-    Object.prototype.hasOwnProperty.call(rawSettings, 'customWordsRaw')
-
-  if (!hasSettingKeys) {
-    return null
-  }
-
-  return normalizeGameSettings(rawSettings, fallback)
+  return null
 }
 
 function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
@@ -333,15 +272,11 @@ function normalizeParticipants(
   hostSessionId: string,
   roomState: RoomState,
 ): Participant[] {
-  const rawParticipants = Array.isArray(raw)
-    ? raw
-    : isRecord(raw)
-      ? Object.entries(raw).map(([sessionId, participant]) =>
-          isRecord(participant)
-            ? { ...participant, sessionId: readNonEmptyString(participant.sessionId) ?? sessionId }
-            : { sessionId },
-        )
-      : []
+  const rawParticipants: Record<string, unknown>[] = isRecord(raw)
+    ? Object.entries(raw).map(([sessionId, participant]) =>
+        isRecord(participant) ? { ...participant, sid: sessionId } : { sid: sessionId },
+      )
+    : []
 
   const nextParticipants: Participant[] = []
   const knownSessionIds = new Set<string>()
@@ -352,10 +287,7 @@ function normalizeParticipants(
       continue
     }
 
-    const sessionId =
-      readNonEmptyString(participant.sessionId) ??
-      readNonEmptyString(participant.sid) ??
-      readNonEmptyString(participant.userId)
+    const sessionId = readNonEmptyString(participant.sid)
     if (!sessionId || knownSessionIds.has(sessionId)) {
       continue
     }
@@ -364,26 +296,14 @@ function normalizeParticipants(
 
     nextParticipants.push({
       sessionId,
-      nickname:
-        readNonEmptyString(participant.nickname) ??
-        readNonEmptyString(participant.n) ??
-        `Guest${index + 1}`,
+      nickname: readNonEmptyString(participant.n) ?? `Guest${index + 1}`,
       colorIndex:
-        normalizeParticipantColorIndex(participant.colorIndex) ??
-        normalizeParticipantColorIndex(participant.ci) ??
-        normalizeParticipantColorIndex(participant.color) ??
-        normalizeParticipantColorIndex(participant.c),
+        normalizeParticipantColorIndex(participant.ci),
       isHost: sessionId === hostSessionId,
-      score: readFiniteNumber(participant.score) ?? 0,
-      isOnline:
-        typeof participant.isOnline === 'boolean'
-          ? participant.isOnline
-          : true,
-      joinOrder: readFiniteNumber(participant.joinOrder) ?? index + 1,
-      joinedMidRound:
-        typeof participant.joinedMidRound === 'boolean'
-          ? participant.joinedMidRound
-          : roomState === 'RUNNING',
+      score: 0,
+      isOnline: true,
+      joinOrder: index + 1,
+      joinedMidRound: roomState === 'RUNNING',
     })
   }
 
@@ -402,21 +322,14 @@ function normalizeCurrentRound(
     return null
   }
 
-  const roundNo = readFiniteNumber(raw.roundNo) ?? readFiniteNumber(raw.round) ?? 1
-  const parsedDrawerOrder = Array.isArray(raw.drawerSids)
-    ? raw.drawerSids
+  const roundNo = readFiniteNumber(raw.r) ?? 1
+  const parsedDrawerOrder = Array.isArray(raw.dss)
+    ? raw.dss
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
-    : Array.isArray(raw.drawerOrder)
-      ? raw.drawerOrder
-          .filter((value): value is string => typeof value === 'string')
-          .map((value) => value.trim())
-          .filter((value) => value.length > 0)
-      : []
-  const drawerSessionId =
-    readNonEmptyString(raw.drawerSid) ??
-    readNonEmptyString(raw.drawerSessionId)
+    : []
+  const drawerSessionId = readNonEmptyString(raw.ds)
   const turnCursorFromDrawer =
     drawerSessionId && parsedDrawerOrder.length > 0
       ? parsedDrawerOrder.findIndex((sessionId) => sessionId === drawerSessionId)
@@ -424,10 +337,8 @@ function normalizeCurrentRound(
 
   return {
     roundNo,
-    totalRounds: readFiniteNumber(raw.totalRounds) ?? settings.roundCount,
-    turnCursor:
-      readFiniteNumber(raw.turnCursor) ??
-      (turnCursorFromDrawer >= 0 ? turnCursorFromDrawer : 0),
+    totalRounds: settings.roundCount,
+    turnCursor: turnCursorFromDrawer >= 0 ? turnCursorFromDrawer : 0,
     drawerOrder: parsedDrawerOrder,
   }
 }
@@ -449,73 +360,24 @@ function normalizeCurrentTurn(
   const fallbackDrawerSessionId =
     sortParticipantsByJoinOrder(participants)[0]?.sessionId ??
     'unknown'
-  const drawerSessionId =
-    readNonEmptyString(raw.drawerSessionId) ??
-    readNonEmptyString(raw.drawerUserId) ??
-    readNonEmptyString(raw.drawerSid) ??
-    fallbackDrawerSessionId
+  const drawerSessionId = readNonEmptyString(raw.ds) ?? fallbackDrawerSessionId
   const phase =
-    normalizeSnapshotTurnPhase(raw.phase) ??
-    normalizeSnapshotTurnPhase(raw.turnPhase) ??
+    normalizeSnapshotTurnPhase(raw.tp) ??
     'WORD_CHOICE'
-  const correctSessionIdsSource = Array.isArray(raw.correctSessionIds)
-    ? raw.correctSessionIds
-    : Array.isArray(raw.correctUserIds)
-      ? raw.correctUserIds
-      : Array.isArray(raw.correctAnswerSids)
-        ? raw.correctAnswerSids
-        : []
-  const earnedPoints = readPointsMap(raw.earnedPoints)
-  const wordChoices = Array.isArray(raw.wordChoices)
-    ? raw.wordChoices
-        .filter((value): value is string => typeof value === 'string')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-    : Array.isArray(raw.words)
-      ? raw.words
-          .filter((value): value is string => typeof value === 'string')
-          .map((value) => value.trim())
-          .filter((value) => value.length > 0)
-      : []
-  const canvasStrokes = Array.isArray(raw.canvasStrokes)
-    ? raw.canvasStrokes
-        .map(normalizeCanvasStroke)
-        .filter((stroke): stroke is CanvasStroke => stroke !== null)
-    : []
-  const answerEntry = isRecord(raw.answerEntry) ? raw.answerEntry : null
-  const answerEntryWord = answerEntry
-    ? answerEntry.word === null
-      ? null
-      : readNonEmptyString(answerEntry.word) ?? null
-    : undefined
+  const correctSessionIdsSource = Array.isArray(raw.ca) ? raw.ca : []
+  const earnedPoints = readPointsMap(raw.ep)
+  const wordChoices: string[] = []
+  const canvasStrokes: CanvasStroke[] = []
   const selectedWord =
-    raw.selectedWord === null || raw.answer === null || answerEntryWord === null
+    raw.ans === null
       ? null
-      : answerEntryWord ??
-        readNonEmptyString(raw.selectedWord) ??
-        readNonEmptyString(raw.answer) ??
-        null
-  const selectedWordDescription =
-    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'description')
-      ? answerEntry.description === null
-        ? null
-        : typeof answerEntry.description === 'string'
-          ? answerEntry.description
-          : undefined
-      : raw.selectedWordDescription === null || raw.answerDescription === null
-        ? null
-        : typeof raw.selectedWordDescription === 'string'
-          ? raw.selectedWordDescription
-          : typeof raw.answerDescription === 'string'
-            ? raw.answerDescription
-            : undefined
+      : readNonEmptyString(raw.ans) ?? null
+  const selectedWordDescription = undefined
   const roundNo =
-    readFiniteNumber(raw.roundNo) ??
-    readFiniteNumber(raw.round) ??
+    readFiniteNumber(raw.r) ??
     currentRound?.roundNo ??
     1
   const turnNo =
-    readFiniteNumber(raw.turnNo) ??
     (currentRound ? currentRound.turnCursor + 1 : undefined) ??
     1
   const correctSessionIds = (
@@ -529,29 +391,25 @@ function normalizeCurrentTurn(
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
   const answerLength =
-    readFiniteNumber(raw.answerLength) ??
+    readFiniteNumber(raw.al) ??
     (selectedWord !== null ? Array.from(selectedWord).length : undefined)
   const hintPattern =
-    raw.hintPattern === null
+    raw.hp === null
       ? null
-      : typeof raw.hintPattern === 'string'
-        ? raw.hintPattern
+      : typeof raw.hp === 'string'
+        ? raw.hp
         : undefined
 
   return {
     roundNo,
     turnNo,
-    turnId:
-      readNonEmptyString(raw.tid) ??
-      readNonEmptyString(raw.turnId) ??
-      readNonEmptyString(raw.turn) ??
-      `turn-r${roundNo}-${turnNo}`,
+    turnId: readNonEmptyString(raw.tid) ?? `turn-r${roundNo}-${turnNo}`,
     drawerSessionId,
     phase,
     remainingSec:
       readFiniteNumber(raw.remainingSec) ??
       (phase === 'DRAWING' ? settings.drawSec : phase === 'WORD_CHOICE' ? settings.wordChoiceSec : 0),
-    deadlineAtMs: readFiniteNumber(raw.deadlineAtMs),
+    deadlineAtMs: undefined,
     correctSessionIds,
     earnedPoints,
     wordChoices,
@@ -601,72 +459,12 @@ export function resolvePrivilegedChatVisibility(
   )
 }
 
-function normalizeChatMessages(
-  raw: unknown,
-  ownSessionId: string,
-  fallback: ChatMessage[],
-  currentTurn: TurnSummary | null,
-): ChatMessage[] {
-  if (!Array.isArray(raw)) {
-    return fallback
-  }
-
-  const nextMessages: ChatMessage[] = []
-  for (const item of raw) {
-    if (!isRecord(item)) {
-      continue
-    }
-
-    const senderSessionId =
-      readNonEmptyString(item.senderSessionId) ??
-      readNonEmptyString(item.sid) ??
-      readNonEmptyString(item.sessionId)
-    const text = readNonEmptyString(item.text)
-    if (!text) {
-      continue
-    }
-
-    const tone = resolveChatTone(item.tone, item.sealed)
-    const message: ChatMessage = {
-      id: readNonEmptyString(item.id) ?? createUUID(),
-      nickname: readNonEmptyString(item.nickname) ?? '알수없음',
-      text,
-      tone,
-      privilegedVisible:
-        typeof item.privilegedVisible === 'boolean'
-          ? item.privilegedVisible
-          : resolvePrivilegedChatVisibility(tone, currentTurn, ownSessionId, senderSessionId),
-      mine:
-        typeof item.mine === 'boolean'
-          ? item.mine
-          : senderSessionId === ownSessionId,
-      createdAt: readFiniteNumber(item.createdAt) ?? Date.now(),
-      displayInChat:
-        typeof item.displayInChat === 'boolean'
-          ? item.displayInChat
-          : undefined,
-    }
-
-    if (senderSessionId) {
-      message.senderSessionId = senderSessionId
-    }
-
-    nextMessages.push(message)
-  }
-
-  return nextMessages
-}
-
 function resolveOwnSessionIdFromSnapshotPayload(
   payload: Record<string, unknown>,
   participants: Participant[],
   state: AppState,
 ): string {
-  const explicitSessionId =
-    readNonEmptyString(payload.mySessionId) ??
-    readNonEmptyString(payload.mySid) ??
-    readNonEmptyString(payload.sid) ??
-    readNonEmptyString(payload.sessionId)
+  const explicitSessionId = readNonEmptyString(payload.sid)
 
   if (explicitSessionId) {
     return explicitSessionId
@@ -708,52 +506,29 @@ export function normalizeRoomSnapshotPayload(
     return null
   }
 
-  const rawRoom = isRecord(payload.room) ? payload.room : null
-  const hostSessionId =
-    readNonEmptyString(payload.hostSessionId) ??
-    (rawRoom ? readNonEmptyString(rawRoom.hostSessionId) : undefined) ??
-    readNonEmptyString(payload.hostUserId) ??
-    (rawRoom ? readNonEmptyString(rawRoom.hostUserId) : undefined) ??
-    ''
-  const snapshotGame = isRecord(payload.game) ? payload.game : null
-  const roomState = normalizeSnapshotRoomState(payload.roomState, snapshotGame)
-  const hasParticipants = Object.prototype.hasOwnProperty.call(payload, 'participants')
-  const participants = hasParticipants
-    ? normalizeParticipants(payload.participants, hostSessionId, roomState)
-    : []
+  const hostSessionId = readNonEmptyString(payload.hs) ?? ''
+  const snapshotGame = isRecord(payload.g) ? payload.g : null
+  const roomState = normalizeSnapshotRoomState(undefined, snapshotGame)
+  const participants = normalizeParticipants(payload.ps, hostSessionId, roomState)
   const ownSessionId = resolveOwnSessionIdFromSnapshotPayload(payload, participants, state)
   const rawSettings = readRawSettingsPayload(payload)
   const settings =
     rawSettings === undefined
       ? state.room.settings
       : normalizeGameSettings(rawSettings, state.room.settings)
-  const hasCurrentRound = Object.prototype.hasOwnProperty.call(payload, 'currentRound')
-  const hasCurrentTurn = Object.prototype.hasOwnProperty.call(payload, 'currentTurn')
-  const hasCurrentCanvas = Object.prototype.hasOwnProperty.call(payload, 'currentCanvas')
-  const serverNowMs = readFiniteNumber(payload.serverNowMs)
-  const deadlineAtMs = readFiniteNumber(payload.deadlineAtMs)
-  const currentCanvasStrokes = hasCurrentCanvas
-    ? normalizeSnapshotCanvasStrokes(payload.currentCanvas)
+  const serverNowMs = readFiniteNumber(payload.now)
+  const deadlineAtMs = readFiniteNumber(payload.dl)
+  const currentCanvasStrokes = normalizeSnapshotCanvasStrokes(payload.cv)
+  const inferredCurrentRound = snapshotGame
+    ? normalizeCurrentRound(snapshotGame, settings)
     : null
-  const inferredCurrentRound = hasCurrentRound
-    ? normalizeCurrentRound(payload.currentRound, settings)
-    : snapshotGame
-      ? normalizeCurrentRound(snapshotGame, settings)
-      : null
   const currentRound = roomState === 'LOBBY' ? null : inferredCurrentRound
-  const inferredCurrentTurn = hasCurrentTurn
-    ? normalizeCurrentTurn(payload.currentTurn, settings, participants, currentRound)
-    : snapshotGame
-      ? normalizeCurrentTurn(snapshotGame, settings, participants, currentRound)
-      : null
+  const inferredCurrentTurn = snapshotGame
+    ? normalizeCurrentTurn(snapshotGame, settings, participants, currentRound)
+    : null
   const currentTurn = roomState === 'LOBBY' ? null : inferredCurrentTurn
-  const payloadCurrentTurn = isRecord(payload.currentTurn) ? payload.currentTurn : null
-  const hasTurnCanvasStrokes =
-    payloadCurrentTurn &&
-    Object.prototype.hasOwnProperty.call(payloadCurrentTurn, 'canvasStrokes')
   const preservedTurnCanvasStrokes =
     currentTurn &&
-    !hasTurnCanvasStrokes &&
     !currentCanvasStrokes &&
     state.room.currentTurn?.turnId === currentTurn.turnId
       ? state.room.currentTurn.canvasStrokes
@@ -772,28 +547,19 @@ export function normalizeRoomSnapshotPayload(
         canvasStrokes: currentCanvasStrokes ?? preservedTurnCanvasStrokes ?? currentTurn.canvasStrokes,
       }
     : null
-  const lobbyCanvasStrokes = Array.isArray(payload.lobbyCanvasStrokes)
-    ? payload.lobbyCanvasStrokes
-        .map(normalizeCanvasStroke)
-        .filter((stroke): stroke is CanvasStroke => stroke !== null)
-    : currentCanvasStrokes
-      ? currentCanvasStrokes
-      : state.room.lobbyCanvasStrokes ?? []
+  const lobbyCanvasStrokes = currentCanvasStrokes ?? state.room.lobbyCanvasStrokes ?? []
   const snapshotTotalPoints = snapshotGame
-    ? readPointsMap(snapshotGame.totalPoints)
-    : readPointsMap(payload.totalPoints)
+    ? readPointsMap(snapshotGame.pts)
+    : {}
   const normalizedParticipants = applyTotalPointsToParticipants(participants, snapshotTotalPoints)
-  const chat = normalizeChatMessages(payload.chat, ownSessionId, state.room.chat, normalizedCurrentTurn)
+  const chat = state.room.chat
 
   return {
     ownSessionId,
     roomSnapshot: {
       ...state.room,
       roomId: state.room.roomId,
-      roomCode:
-        readNonEmptyString(payload.roomCode) ??
-        (rawRoom ? readNonEmptyString(rawRoom.roomCode) : undefined) ??
-        '',
+      roomCode: readNonEmptyString(payload.rc) ?? '',
       roomType: normalizeSnapshotRoomType(
         readSnapshotRoomTypeValue(payload),
         state.room.roomType,
@@ -806,11 +572,9 @@ export function normalizeRoomSnapshotPayload(
       gameId:
         roomState === 'LOBBY'
           ? null
-          : payload.gameId === null
-            ? null
-            : readNonEmptyString(payload.gameId) ??
-              (snapshotGame ? readNonEmptyString(snapshotGame.gid) : undefined) ??
-              null,
+          : snapshotGame
+            ? readNonEmptyString(snapshotGame.gid) ?? null
+            : null,
       gameStartRemainingSec: undefined,
       gameStartDeadlineAtMs: undefined,
       roundStartRemainingSec: undefined,
@@ -832,26 +596,9 @@ export function decodeSnapshotEnvelopePayload(
     return null
   }
 
-  const explicitSessionId =
-    readNonEmptyString(payload.sid) ??
-    readNonEmptyString(payload.sessionId) ??
-    readNonEmptyString(payload.mySid) ??
-    readNonEmptyString(payload.mySessionId)
-  const explicitRoomCode = readNonEmptyString(payload.roomCode)
-  const explicitHostSessionId =
-    readNonEmptyString(payload.hostSessionId) ??
-    readNonEmptyString(payload.hostUserId)
-  const snapshotPayload = isRecord(payload.snap) ? payload.snap : payload
-  const normalizedSnapshotPayload = {
-    ...snapshotPayload,
-    ...(explicitRoomCode && readNonEmptyString(snapshotPayload.roomCode) === undefined
-      ? { roomCode: explicitRoomCode }
-      : {}),
-    ...(explicitHostSessionId && readNonEmptyString(snapshotPayload.hostSessionId) === undefined
-      ? { hostSessionId: explicitHostSessionId }
-      : {}),
-  }
-  const normalized = normalizeRoomSnapshotPayload(normalizedSnapshotPayload, state)
+  const explicitSessionId = readNonEmptyString(payload.sid)
+  const snapshotPayload = isRecord(payload.s) ? payload.s : null
+  const normalized = normalizeRoomSnapshotPayload(snapshotPayload, state)
 
   if (!normalized) {
     return null

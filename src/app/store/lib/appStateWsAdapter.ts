@@ -1,7 +1,6 @@
 import type { AppState, CanvasStroke } from '../../../entities/game/model'
 import type {
   AppStateContextValue,
-  ServerGameStartedPayload,
 } from '../appStateContextValue'
 import type { AppAction } from './appStateReducer'
 import {
@@ -27,7 +26,6 @@ import {
 import {
   decodeSettingsUpdatePayload,
   decodeSnapshotEnvelopePayload,
-  normalizeRoomSnapshotPayload,
 } from './appStateSnapshot'
 import type { Envelope } from '../../../ws/protocol/events'
 
@@ -203,11 +201,6 @@ export function createServerEnvelopeHandler({
         const roomLeftPayload = decodeRoomLeftPayload(payload)
         if (roomLeftPayload) {
           dispatch({ type: 'server/roomLeftApplied', payload: roomLeftPayload })
-          return
-        }
-
-        if (payload && typeof payload === 'object') {
-          server.applyGameStarted(payload as ServerGameStartedPayload)
         }
         return
       }
@@ -215,14 +208,6 @@ export function createServerEnvelopeHandler({
         const nextSettings = decodeSettingsUpdatePayload(payload, stateRef.current.room.settings)
         if (nextSettings) {
           dispatch({ type: 'local/lobbySettingsPatched', payload: nextSettings })
-          return
-        }
-
-        if (payload && typeof payload === 'object') {
-          const normalizedRoomSnapshot = normalizeRoomSnapshotPayload(payload, stateRef.current)
-          if (normalizedRoomSnapshot) {
-            server.applyRoomSnapshot(normalizedRoomSnapshot.roomSnapshot)
-          }
         }
         return
       }

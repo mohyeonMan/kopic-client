@@ -29,11 +29,7 @@ export type ServerRoomLeftPayload = {
 }
 
 function readTurnId(payload: Record<string, unknown>) {
-  return (
-    readNonEmptyString(payload.tid) ??
-    readNonEmptyString(payload.turn) ??
-    readNonEmptyString(payload.turnId)
-  )
+  return readNonEmptyString(payload.tid)
 }
 
 export function decodeGeGameStartedPayload(payload: unknown): GeGameStartedPayload | null {
@@ -41,15 +37,14 @@ export function decodeGeGameStartedPayload(payload: unknown): GeGameStartedPaylo
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const gameId = readNonEmptyString(payload.gid)
   if (!gameId) {
     return null
   }
 
   return {
     gameId,
-    gameStartSec:
-      readFiniteNumber(payload.gameStartSec) ?? readFiniteNumber(payload.startSec) ?? undefined,
+    gameStartSec: readFiniteNumber(payload.sec),
   }
 }
 
@@ -58,10 +53,10 @@ export function decodeGeRoundStartedPayload(payload: unknown): GeRoundStartedPay
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
-  const roundNo = readFiniteNumber(payload.round)
-  const drawerSessionIds = Array.isArray(payload.drawerSids)
-    ? payload.drawerSids
+  const gameId = readNonEmptyString(payload.gid)
+  const roundNo = readFiniteNumber(payload.r)
+  const drawerSessionIds = Array.isArray(payload.dss)
+    ? payload.dss
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
@@ -75,8 +70,7 @@ export function decodeGeRoundStartedPayload(payload: unknown): GeRoundStartedPay
     gameId,
     roundNo,
     drawerSessionIds,
-    roundStartSec:
-      readFiniteNumber(payload.roundStartSec) ?? readFiniteNumber(payload.startSec) ?? undefined,
+    roundStartSec: readFiniteNumber(payload.sec),
   }
 }
 
@@ -85,11 +79,11 @@ export function decodeGeTurnStartedPayload(payload: unknown): GeTurnStartedPaylo
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
-  const roundNo = readFiniteNumber(payload.round)
+  const gameId = readNonEmptyString(payload.gid)
+  const roundNo = readFiniteNumber(payload.r)
   const turnId = readTurnId(payload)
-  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
-  const remainingSec = readFiniteNumber(payload.turnStartSec)
+  const drawerSessionId = readNonEmptyString(payload.ds)
+  const remainingSec = readFiniteNumber(payload.sec)
 
   if (
     !gameId ||
@@ -115,9 +109,9 @@ export function decodeGeGuessCorrectPayload(payload: unknown): GeGuessCorrectPay
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const gameId = readNonEmptyString(payload.gid)
   const turnId = readTurnId(payload)
-  const sessionId = readNonEmptyString(payload.sid) ?? readNonEmptyString(payload.sessionId)
+  const sessionId = readNonEmptyString(payload.sid)
   if (!gameId || !turnId || !sessionId) {
     return null
   }
@@ -136,23 +130,21 @@ export function decodeGeWordChoiceOpenedPayload(
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
   const turnId = readTurnId(payload)
-  const drawerSessionId = readNonEmptyString(payload.sid) ?? readNonEmptyString(payload.drawerSid)
-  const remainingSec = readFiniteNumber(payload.wordChoiceSec)
+  const drawerSessionId = readNonEmptyString(payload.ds)
+  const remainingSec = readFiniteNumber(payload.sec)
   if (!turnId || !drawerSessionId || remainingSec === undefined) {
     return null
   }
 
-  const wordChoices = Array.isArray(payload.words)
-    ? payload.words
+  const wordChoices = Array.isArray(payload.w)
+    ? payload.w
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
     : []
 
   return {
-    gameId,
     turnId,
     drawerSessionId,
     remainingSec,
@@ -167,42 +159,42 @@ export function decodeGeDrawingStartedPayload(
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const gameId = readNonEmptyString(payload.gid)
   const turnId = readTurnId(payload)
-  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
-  const remainingSec = readFiniteNumber(payload.drawSec)
+  const drawerSessionId = readNonEmptyString(payload.ds)
+  const remainingSec = readFiniteNumber(payload.sec)
   if (!gameId || !turnId || !drawerSessionId || remainingSec === undefined) {
     return null
   }
 
-  const answerEntry = isRecord(payload.answerEntry) ? payload.answerEntry : null
+  const answerEntry = isRecord(payload.ae) ? payload.ae : null
   const answerEntryWord = answerEntry
-    ? answerEntry.word === null
+    ? answerEntry.w === null
       ? null
-      : readNonEmptyString(answerEntry.word) ?? null
+      : readNonEmptyString(answerEntry.w) ?? null
     : undefined
   const selectedWord =
-    payload.answer === null || answerEntryWord === null
+    payload.ans === null || answerEntryWord === null
       ? null
-      : answerEntryWord ?? readNonEmptyString(payload.answer) ?? null
+      : answerEntryWord ?? readNonEmptyString(payload.ans) ?? null
   const selectedWordDescription =
-    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'description')
-      ? answerEntry.description === null
+    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'd')
+      ? answerEntry.d === null
         ? null
-        : typeof answerEntry.description === 'string'
-          ? answerEntry.description
+        : typeof answerEntry.d === 'string'
+          ? answerEntry.d
           : undefined
-      : payload.answerDescription === null
+      : payload.ad === null
         ? null
-        : typeof payload.answerDescription === 'string'
-          ? payload.answerDescription
+        : typeof payload.ad === 'string'
+          ? payload.ad
           : undefined
-  const answerLength = readFiniteNumber(payload.answerLength)
+  const answerLength = readFiniteNumber(payload.al)
   const hintPattern =
-    payload.hintPattern === null
+    payload.hp === null
       ? null
-      : typeof payload.hintPattern === 'string'
-        ? payload.hintPattern
+      : typeof payload.hp === 'string'
+        ? payload.hp
         : undefined
 
   return {
@@ -224,10 +216,10 @@ export function decodeGeHintRevealedPayload(
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const gameId = readNonEmptyString(payload.gid)
   const turnId = readTurnId(payload)
-  const drawerSessionId = readNonEmptyString(payload.drawerSid) ?? readNonEmptyString(payload.sid)
-  const hintPattern = typeof payload.hintPattern === 'string' ? payload.hintPattern : null
+  const drawerSessionId = readNonEmptyString(payload.ds)
+  const hintPattern = typeof payload.hp === 'string' ? payload.hp : null
   if (!gameId || !turnId || !drawerSessionId || hintPattern === null) {
     return null
   }
@@ -237,8 +229,8 @@ export function decodeGeHintRevealedPayload(
     turnId,
     drawerSessionId,
     hintPattern,
-    revealedCount: readFiniteNumber(payload.revealedCount),
-    totalRevealCount: readFiniteNumber(payload.totalRevealCount),
+    revealedCount: readFiniteNumber(payload.hc),
+    totalRevealCount: readFiniteNumber(payload.ht),
   }
 }
 
@@ -269,22 +261,22 @@ export function decodeGeTurnEndedPayload(payload: unknown): GeTurnEndedPayload |
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
+  const gameId = readNonEmptyString(payload.gid)
   const turnId = readTurnId(payload)
-  const reason = readNonEmptyString(payload.reason)
+  const reason = readNonEmptyString(payload.rsn)
   if (!gameId || !turnId || !reason) {
     return null
   }
 
-  const answer = payload.answer === null ? null : readNonEmptyString(payload.answer) ?? null
+  const answer = payload.ans === null ? null : readNonEmptyString(payload.ans) ?? null
 
   return {
     gameId,
     turnId,
     reason,
     answer,
-    earnedPoints: readPointsMap(payload.earnedPoints),
-    turnEndSec: readFiniteNumber(payload.turnEndSec) ?? readFiniteNumber(payload.remainingSec) ?? undefined,
+    earnedPoints: readPointsMap(payload.ep),
+    turnEndSec: readFiniteNumber(payload.sec),
   }
 }
 
@@ -293,8 +285,8 @@ export function decodeGeGameResultPayload(payload: unknown): GeGameResultPayload
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
-  const resultSec = readFiniteNumber(payload.resultSec)
+  const gameId = readNonEmptyString(payload.gid)
+  const resultSec = readFiniteNumber(payload.sec)
   if (!gameId || resultSec === undefined) {
     return null
   }
@@ -302,7 +294,7 @@ export function decodeGeGameResultPayload(payload: unknown): GeGameResultPayload
   return {
     gameId,
     resultSec,
-    totalPoints: readPointsMap(payload.totalPoints),
+    totalPoints: readPointsMap(payload.pts),
   }
 }
 
@@ -313,8 +305,8 @@ export function decodeGeReturnToLobbyPayload(
     return null
   }
 
-  const gameId = readNonEmptyString(payload.gid) ?? readNonEmptyString(payload.gameId)
-  const reason = readNonEmptyString(payload.reason)
+  const gameId = readNonEmptyString(payload.gid)
+  const reason = readNonEmptyString(payload.rsn)
   if (!gameId || !reason) {
     return null
   }
@@ -322,7 +314,7 @@ export function decodeGeReturnToLobbyPayload(
   return {
     gameId,
     reason,
-    restartSec: readFiniteNumber(payload.restartSec),
+    restartSec: readFiniteNumber(payload.sec),
   }
 }
 
@@ -331,16 +323,7 @@ export function isCanvasClearPayload(payload: unknown) {
     return true
   }
 
-  if (!payload || typeof payload !== 'object') {
-    return false
-  }
-
-  const { clear, type, op } = payload as { clear?: unknown; type?: unknown; op?: unknown }
-  if (clear === true) {
-    return true
-  }
-
-  return type === 'CANVAS_CLEAR' || op === 'CANVAS_CLEAR'
+  return false
 }
 
 export function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPayload | null {
@@ -348,22 +331,15 @@ export function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPaylo
     return null
   }
 
-  const { sid, sessionId, nickname, n, colorIndex, ci, color, c } = payload as {
+  const { sid, n, ci } = payload as {
     sid?: unknown
-    sessionId?: unknown
-    nickname?: unknown
     n?: unknown
-    colorIndex?: unknown
     ci?: unknown
-    color?: unknown
-    c?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
       ? sid
-      : typeof sessionId === 'string' && sessionId.trim().length > 0
-        ? sessionId
-        : null
+      : null
 
   if (!participantSessionId) {
     return null
@@ -372,9 +348,7 @@ export function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPaylo
   const participantNickname =
     typeof n === 'string' && n.trim().length > 0
       ? n.trim()
-      : typeof nickname === 'string' && nickname.trim().length > 0
-        ? nickname.trim()
-        : null
+      : null
   if (!participantNickname) {
     return null
   }
@@ -382,11 +356,7 @@ export function decodeRoomJoinedPayload(payload: unknown): ServerRoomJoinedPaylo
   return {
     sessionId: participantSessionId.trim(),
     nickname: participantNickname,
-    colorIndex:
-      normalizeParticipantColorIndex(colorIndex) ??
-      normalizeParticipantColorIndex(ci) ??
-      normalizeParticipantColorIndex(color) ??
-      normalizeParticipantColorIndex(c),
+    colorIndex: normalizeParticipantColorIndex(ci),
   }
 }
 
@@ -395,38 +365,22 @@ export function decodeRoomLeftPayload(payload: unknown): ServerRoomLeftPayload |
     return null
   }
 
-  const { sid, sessionId, nextHost, nextHostSid, nextHostSessionId } = payload as {
+  const { sid, nh } = payload as {
     sid?: unknown
-    sessionId?: unknown
-    nextHost?: unknown
-    nextHostSid?: unknown
-    nextHostSessionId?: unknown
+    nh?: unknown
   }
   const participantSessionId =
     typeof sid === 'string' && sid.trim().length > 0
       ? sid
-      : typeof sessionId === 'string' && sessionId.trim().length > 0
-        ? sessionId
-        : null
+      : null
 
   if (!participantSessionId) {
     return null
   }
 
-  const decodedNextHostSid =
-    readNonEmptyString(nextHostSid) ??
-    readNonEmptyString(nextHostSessionId) ??
-    (typeof nextHost === 'string'
-      ? readNonEmptyString(nextHost)
-      : isRecord(nextHost)
-        ? readNonEmptyString(nextHost.sid) ??
-          readNonEmptyString(nextHost.sessionId) ??
-          readNonEmptyString(nextHost.userId)
-        : undefined)
-
   return {
     sid: participantSessionId.trim(),
-    nextHostSid: decodedNextHostSid,
+    nextHostSid: readNonEmptyString(nh),
   }
 }
 
@@ -449,8 +403,8 @@ export function decodeServerErrorPayload(
   }
 
   return {
-    reason: readNonEmptyString(payload.reason) ?? `ERROR_${eventCode}`,
-    message: readNonEmptyString(payload.message) ?? '요청을 처리할 수 없습니다.',
+    reason: readNonEmptyString(payload.rsn) ?? `ERROR_${eventCode}`,
+    message: readNonEmptyString(payload.msg) ?? '요청을 처리할 수 없습니다.',
     code: eventCode,
   }
 }

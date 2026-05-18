@@ -213,19 +213,12 @@ export function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | nul
     return null
   }
 
-  const { sid, sessionId, t, text, sealed } = payload as {
+  const { sid, t, s } = payload as {
     sid?: unknown
-    sessionId?: unknown
     t?: unknown
-    text?: unknown
-    sealed?: unknown
+    s?: unknown
   }
-  const rawText =
-    typeof t === 'string'
-      ? t
-      : typeof text === 'string'
-        ? text
-        : null
+  const rawText = typeof t === 'string' ? t : null
 
   if (!rawText || rawText.trim().length === 0) {
     return null
@@ -234,15 +227,13 @@ export function decodeGuessSubmittedMessage(payload: unknown): ChatMessage | nul
   const senderSessionId =
     typeof sid === 'string' && sid.trim().length > 0
       ? sid.trim()
-      : typeof sessionId === 'string' && sessionId.trim().length > 0
-        ? sessionId.trim()
-        : undefined
+      : undefined
 
   return {
     id: createUUID(),
     nickname: '알수없음',
     text: rawText.slice(0, 50),
-    tone: resolveChatTone(undefined, sealed),
+    tone: resolveChatTone(undefined, s),
     senderSessionId,
     mine: false,
     createdAt: Date.now(),

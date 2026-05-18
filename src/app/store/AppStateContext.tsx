@@ -205,7 +205,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
         sendClientEvent(
           'WORD_CHOICE',
-          { choiceIndex: normalizedChoiceIndex },
+          { ci: normalizedChoiceIndex },
           () =>
             server.applyWordChoice({
               selectedWord,
