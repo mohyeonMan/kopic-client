@@ -51,9 +51,9 @@ jobs:
               ;;
             prod)
               echo "environment=prod" >> "${GITHUB_OUTPUT}"
-              echo "app_base_path=/kopic/" >> "${GITHUB_OUTPUT}"
-              echo "ws_path=/kopic/ws" >> "${GITHUB_OUTPUT}"
-              echo "app_base_path_nginx=/kopic" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path=/" >> "${GITHUB_OUTPUT}"
+              echo "ws_path=/ws" >> "${GITHUB_OUTPUT}"
+              echo "app_base_path_nginx=/" >> "${GITHUB_OUTPUT}"
               echo "image_tag=prod-sha-${GITHUB_SHA::7}" >> "${GITHUB_OUTPUT}"
               ;;
             *)

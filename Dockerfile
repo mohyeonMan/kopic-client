@@ -19,14 +19,23 @@ FROM nginx:1.27-alpine
 
 ARG APP_BASE_PATH=/kopic
 
-COPY nginx.conf /tmp/nginx.conf
+COPY nginx.conf /tmp/nginx-subpath.conf
+COPY nginx-root.conf /tmp/nginx-root.conf
 RUN APP_BASE_PATH_NORMALIZED="${APP_BASE_PATH%/}" && \
-    sed "s|/kopic|${APP_BASE_PATH_NORMALIZED}|g" /tmp/nginx.conf > /etc/nginx/conf.d/default.conf
+    if [ -z "${APP_BASE_PATH_NORMALIZED}" ]; then \
+      cp /tmp/nginx-root.conf /etc/nginx/conf.d/default.conf; \
+    else \
+      sed "s|__APP_BASE_PATH__|${APP_BASE_PATH_NORMALIZED}|g" /tmp/nginx-subpath.conf > /etc/nginx/conf.d/default.conf; \
+    fi
 
 COPY --from=build /app/dist /tmp/kopic-dist
 RUN APP_BASE_PATH_NORMALIZED="${APP_BASE_PATH%/}" && \
-    mkdir -p "/usr/share/nginx/html${APP_BASE_PATH_NORMALIZED}" && \
-    cp -R /tmp/kopic-dist/. "/usr/share/nginx/html${APP_BASE_PATH_NORMALIZED}" && \
+    if [ -z "${APP_BASE_PATH_NORMALIZED}" ]; then \
+      cp -R /tmp/kopic-dist/. /usr/share/nginx/html; \
+    else \
+      mkdir -p "/usr/share/nginx/html${APP_BASE_PATH_NORMALIZED}" && \
+      cp -R /tmp/kopic-dist/. "/usr/share/nginx/html${APP_BASE_PATH_NORMALIZED}"; \
+    fi && \
     rm -rf /tmp/kopic-dist
 
 EXPOSE 80
