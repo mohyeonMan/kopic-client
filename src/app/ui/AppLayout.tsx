@@ -49,10 +49,14 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [qrCodeError, setQrCodeError] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
+  const [exitRoomCodeCopied, setExitRoomCodeCopied] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement | null>(null)
   const feedbackTimeoutRef = useRef<number | null>(null)
+  const exitCopyFeedbackTimeoutRef = useRef<number | null>(null)
   const isGameRoute = currentRoute === routes.game
   const roomCode = shellState.roomCode.trim()
+  const isPrivateRoom = shellState.roomType === 'PRIVATE'
   const inviterName = session.nickname.trim() || '친구'
   const canShareRoom = roomCode.length > 0
   const inviteUrl = canShareRoom
@@ -92,6 +96,10 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       if (feedbackTimeoutRef.current) {
         window.clearTimeout(feedbackTimeoutRef.current)
       }
+
+      if (exitCopyFeedbackTimeoutRef.current) {
+        window.clearTimeout(exitCopyFeedbackTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -116,6 +124,28 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [qrModalOpen])
+
+  useEffect(() => {
+    if (!exitConfirmOpen || typeof document === 'undefined') {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExitConfirmOpen(false)
+      }
+    }
+
+    const bodyElement = document.body
+    const previousOverflow = bodyElement.style.overflow
+    bodyElement.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      bodyElement.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [exitConfirmOpen])
 
   useEffect(() => {
     if (!qrModalOpen || !inviteUrl) {
@@ -342,6 +372,34 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     }
   }
 
+  const handleConfirmExit = () => {
+    setExitConfirmOpen(false)
+    actions.clearRoomCache()
+    onNavigate(routes.main)
+  }
+
+  const handleCopyRoomCodeFromExitModal = async () => {
+    if (!roomCode) {
+      return
+    }
+
+    try {
+      await copyText(roomCode)
+      setExitRoomCodeCopied(true)
+
+      if (exitCopyFeedbackTimeoutRef.current) {
+        window.clearTimeout(exitCopyFeedbackTimeoutRef.current)
+      }
+
+      exitCopyFeedbackTimeoutRef.current = window.setTimeout(() => {
+        setExitRoomCodeCopied(false)
+      }, 1400)
+    } catch {
+      setExitRoomCodeCopied(false)
+      showShareFeedback('복사 실패')
+    }
+  }
+
   return (
     <div className={shellClassName}>
       {isGameRoute ? (
@@ -413,8 +471,9 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                 type="button"
                 className="route-tab topbar-exit-button"
                 onClick={() => {
-                  actions.clearRoomCache()
-                  onNavigate(routes.main)
+                  setShareMenuOpen(false)
+                  setExitRoomCodeCopied(false)
+                  setExitConfirmOpen(true)
                 }}
               >
                 {'나가기'}
@@ -456,6 +515,52 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
                 onClick={() => setQrModalOpen(false)}
               >
                 {'닫기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isGameRoute && exitConfirmOpen ? (
+        <div
+          className="topbar-exit-modal-backdrop"
+          role="presentation"
+          onClick={() => setExitConfirmOpen(false)}
+        >
+          <div
+            className="topbar-exit-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="게임 나가기 확인"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="topbar-exit-modal-copy">
+              <h2>게임을 나갈까요?</h2>
+              <p>현재 방에서 나가고 메인 화면으로 이동합니다.</p>
+            </div>
+            <div className="topbar-exit-modal-actions">
+              {isPrivateRoom ? (
+                <button
+                  type="button"
+                  className="secondary-button topbar-exit-copy-button"
+                  onClick={handleCopyRoomCodeFromExitModal}
+                >
+                  {exitRoomCodeCopied ? '복사됨' : '방 코드 복사'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setExitConfirmOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleConfirmExit}
+              >
+                나가기
               </button>
             </div>
           </div>

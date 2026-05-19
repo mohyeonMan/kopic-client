@@ -19,18 +19,22 @@ type UseGameStageOverlayArgs = {
   currentRound: RoundSummary | null
   currentTurn: TurnSummary | null
   earnedScores: EarnedScore[]
+  gameStartCountdownActive: boolean
   gameId: string | null
   isDrawer: boolean
   roomState: RoomState
+  roundStartCountdownActive: boolean
 }
 
 export function useGameStageOverlay({
   currentRound,
   currentTurn,
   earnedScores,
+  gameStartCountdownActive,
   gameId,
   isDrawer,
   roomState,
+  roundStartCountdownActive,
 }: UseGameStageOverlayArgs) {
   const [overlayPreview, setOverlayPreview] = useState<OverlayPreview>('actual')
   const [activeStageOverlay, setActiveStageOverlay] = useState<StageOverlayPhase | null>(null)
@@ -71,6 +75,9 @@ export function useGameStageOverlay({
   const requestedStageOverlay: StageOverlayPhase | null =
     roomState === 'RUNNING' &&
     STAGE_OVERLAY_PHASES.includes(previewMode as StageOverlayPhase) &&
+    (previewMode !== 'gameStart' || gameStartCountdownActive) &&
+    (previewMode !== 'roundStart' || roundStartCountdownActive) &&
+    (previewMode !== 'turnStart' || currentTurn?.phase === 'READY') &&
     (previewMode !== 'wordChoice' || Boolean(currentTurn))
       ? (previewMode as StageOverlayPhase)
       : null
@@ -179,9 +186,12 @@ export function useGameStageOverlay({
 
     if (gameKey !== autoPreviewGameKeyRef.current) {
       autoPreviewGameKeyRef.current = gameKey
-      autoPreviewRoundKeyRef.current = null
-      autoPreviewTurnKeyRef.current = null
-      setOverlayPreview('gameStart')
+      autoPreviewRoundKeyRef.current = roundKey
+      autoPreviewTurnKeyRef.current = turnKey
+
+      if (gameStartCountdownActive) {
+        setOverlayPreview('gameStart')
+      }
       return
     }
 
@@ -194,8 +204,11 @@ export function useGameStageOverlay({
 
     if (roundKey !== autoPreviewRoundKeyRef.current) {
       autoPreviewRoundKeyRef.current = roundKey
-      autoPreviewTurnKeyRef.current = null
-      setOverlayPreview('roundStart')
+      autoPreviewTurnKeyRef.current = turnKey
+
+      if (roundStartCountdownActive) {
+        setOverlayPreview('roundStart')
+      }
       return
     }
 
@@ -204,8 +217,19 @@ export function useGameStageOverlay({
     }
 
     autoPreviewTurnKeyRef.current = turnKey
-    setOverlayPreview('turnStart')
-  }, [currentRound, currentTurn, gameId, roomState])
+
+    if (currentTurn?.phase === 'READY') {
+      setOverlayPreview('turnStart')
+    }
+  }, [
+    currentRound,
+    currentTurn,
+    currentTurn?.phase,
+    gameId,
+    gameStartCountdownActive,
+    roomState,
+    roundStartCountdownActive,
+  ])
 
   useEffect(() => {
     if (

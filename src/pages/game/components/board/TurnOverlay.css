@@ -174,6 +174,10 @@
   transform: translate(-50%, 0);
 }
 
+.canvas-overlay-card-word-choice-open .word-choice-heading {
+  animation: word-choice-heading-enter 260ms ease-out 120ms backwards;
+}
+
 .canvas-overlay-card-word-choice-closed {
   opacity: 0;
   pointer-events: none;
@@ -205,6 +209,15 @@
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
+}
+
+.canvas-full-overlay-open > strong,
+.canvas-full-overlay-open .overlay-countdown-line strong {
+  animation: stage-headline-pop 360ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
+}
+
+.canvas-full-overlay-open .overlay-countdown-line span {
+  animation: stage-count-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .canvas-full-overlay-closed {
@@ -627,6 +640,30 @@
     background 180ms ease;
 }
 
+.canvas-overlay-card-word-choice-open .word-choice-button {
+  animation: word-choice-button-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(1) {
+  animation-delay: 160ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(2) {
+  animation-delay: 210ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(3) {
+  animation-delay: 260ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(4) {
+  animation-delay: 310ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(5) {
+  animation-delay: 360ms;
+}
+
 .word-choice-actions-count-3 {
   flex-wrap: nowrap;
 }
@@ -854,6 +891,71 @@
       0 0 0 1px rgba(228, 74, 58, 0.35) inset,
       0 0 14px rgba(255, 213, 79, 0.85),
       0 0 28px rgba(255, 213, 79, 0.6);
+  }
+}
+
+@keyframes stage-count-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.86);
+  }
+
+  68% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes stage-headline-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes word-choice-heading-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes word-choice-button-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas-full-overlay-open > strong,
+  .canvas-full-overlay-open .overlay-countdown-line strong,
+  .canvas-full-overlay-open .overlay-countdown-line span,
+  .canvas-overlay-card-word-choice-open .word-choice-heading,
+  .canvas-overlay-card-word-choice-open .word-choice-button,
+  .canvas-result-screen,
+  .canvas-result-screen::before {
+    animation: none;
   }
 }
 

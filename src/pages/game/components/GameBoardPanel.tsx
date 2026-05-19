@@ -139,17 +139,17 @@ export function GameBoardPanel({
   const hasMinimumParticipants = participantCount >= 2
   const canStartGame = isHost && hasMinimumParticipants && !isCustomOnlyWithoutRaw
   const shouldShowPrivateStartButton = isPrivateRoom && isHost
+  const boardFrameClassName = [
+    'board-frame',
+    isCorrectHighlightActive ? 'board-frame-correct-highlight' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <section ref={centerPanelRef} className="panel game-center-panel">
       <div className="board-shell">
-        <div
-          className={
-            isCorrectHighlightActive
-              ? 'board-frame board-frame-correct-highlight'
-              : 'board-frame'
-          }
-        >
+        <div className={boardFrameClassName}>
           <BoardCanvas
             activePaletteColor={activePaletteColor}
             boardStrokes={boardStrokes}

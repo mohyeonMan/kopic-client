@@ -137,6 +137,7 @@ export type AppDevTools = {
 
 export type AppShellState = {
   roomCode: AppState['room']['roomCode']
+  roomType: AppState['room']['roomType']
   joinAction: AppState['session']['joinAction']
   joinRoomCode: AppState['session']['joinRoomCode']
 }

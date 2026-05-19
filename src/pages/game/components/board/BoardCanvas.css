@@ -243,6 +243,10 @@
   transform: translateY(0);
 }
 
+.board-start-game-button-open:not(:disabled) {
+  animation: board-start-ready-glow 2600ms ease-in-out 900ms infinite;
+}
+
 .board-start-game-button-closed {
   opacity: 0;
   visibility: hidden;
@@ -258,5 +262,28 @@
 
   .board-start-game-button {
     right: calc(100% + 6px);
+  }
+}
+
+@keyframes board-start-ready-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 24px rgba(155, 90, 43, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  }
+
+  50% {
+    box-shadow:
+      0 14px 30px rgba(225, 122, 46, 0.32),
+      0 0 0 4px rgba(225, 122, 46, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secret-word-banner-landing,
+  .board-start-game-button-open:not(:disabled) {
+    animation: none;
   }
 }

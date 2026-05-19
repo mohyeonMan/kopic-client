@@ -6,7 +6,7 @@ type UseCountdownSecArgs = {
   fallbackSec?: number
 }
 
-export function useCountdownSec({ active, deadlineAtMs, fallbackSec = 0 }: UseCountdownSecArgs) {
+export function useCountdownSec({ active, deadlineAtMs, fallbackSec }: UseCountdownSecArgs) {
   const [timerNowMs, setTimerNowMs] = useState(() => Date.now())
 
   useEffect(() => {
@@ -27,11 +27,11 @@ export function useCountdownSec({ active, deadlineAtMs, fallbackSec = 0 }: UseCo
   }, [active, deadlineAtMs])
 
   if (!active) {
-    return Math.max(0, Math.ceil(fallbackSec))
+    return typeof fallbackSec === 'number' ? Math.max(0, Math.ceil(fallbackSec)) : undefined
   }
 
   if (!deadlineAtMs) {
-    return Math.max(0, Math.ceil(fallbackSec))
+    return typeof fallbackSec === 'number' ? Math.max(0, Math.ceil(fallbackSec)) : undefined
   }
 
   return Math.max(0, Math.ceil((deadlineAtMs - timerNowMs) / 1000))

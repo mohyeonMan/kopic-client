@@ -254,10 +254,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const shellState = useMemo<AppShellState>(
     () => ({
       roomCode: state.room.roomCode,
+      roomType: state.room.roomType,
       joinAction: state.session.joinAction,
       joinRoomCode: state.session.joinRoomCode,
     }),
-    [state.room.roomCode, state.session.joinAction, state.session.joinRoomCode],
+    [state.room.roomCode, state.room.roomType, state.session.joinAction, state.session.joinRoomCode],
   )
 
   useEffect(() => {

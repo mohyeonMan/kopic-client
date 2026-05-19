@@ -102,6 +102,12 @@ export function GamePage() {
     deadlineAtMs: state.room.roundStartDeadlineAtMs,
     fallbackSec: state.room.roundStartRemainingSec,
   })
+  const gameStartCountdownActive =
+    typeof state.room.gameStartDeadlineAtMs === 'number' ||
+    typeof state.room.gameStartRemainingSec === 'number'
+  const roundStartCountdownActive =
+    typeof state.room.roundStartDeadlineAtMs === 'number' ||
+    typeof state.room.roundStartRemainingSec === 'number'
   const turnEndRemainingSec = useCountdownSec({
     active: roomState === 'RUNNING' && currentTurn?.phase === 'TURN_END',
     deadlineAtMs: currentTurn?.phase === 'TURN_END' ? currentTurn.deadlineAtMs : undefined,
@@ -126,9 +132,11 @@ export function GamePage() {
     currentRound,
     currentTurn,
     earnedScores,
+    gameStartCountdownActive,
     gameId: state.room.gameId,
     isDrawer,
     roomState,
+    roundStartCountdownActive,
   })
   const viewerRole =
     overlayPreview === 'drawingGuesser'

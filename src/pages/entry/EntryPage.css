@@ -19,6 +19,7 @@
   gap: 12px;
   min-height: auto;
   padding: 12px 8px 12px 28px;
+  isolation: isolate;
 }
 
 .entry-main-panel::before {
@@ -30,6 +31,61 @@
   width: 2px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(225, 122, 46, 0.6), rgba(29, 53, 87, 0.24));
+  transform-origin: top;
+  animation: entry-accent-grow 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.entry-main-panel::after {
+  content: '';
+  position: absolute;
+  inset: 4px -18px auto 0;
+  z-index: -1;
+  height: 150px;
+  pointer-events: none;
+  background:
+    linear-gradient(110deg, transparent 0%, rgba(225, 122, 46, 0.09) 44%, transparent 58%),
+    linear-gradient(110deg, transparent 8%, rgba(29, 53, 87, 0.06) 54%, transparent 68%);
+  opacity: 0;
+  transform: translateX(-18%) skewX(-14deg);
+  animation: entry-brush-wash 980ms ease-out 180ms both;
+}
+
+.entry-logo,
+.entry-main-panel > p,
+.entry-nickname-field,
+.entry-actions {
+  animation: entry-content-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.entry-logo {
+  animation-delay: 80ms;
+}
+
+.entry-main-panel > p:nth-of-type(1) {
+  animation-delay: 150ms;
+}
+
+.entry-main-panel > p:nth-of-type(2),
+.entry-main-panel > p:nth-of-type(3),
+.entry-main-panel > p:nth-of-type(4),
+.entry-main-panel > p:nth-of-type(5) {
+  animation-delay: 230ms;
+}
+
+.entry-main-panel > p:nth-of-type(6) {
+  animation-delay: 310ms;
+}
+
+.entry-main-panel > p:nth-of-type(n + 7) {
+  animation-delay: 370ms;
+}
+
+.entry-nickname-field {
+  animation-delay: 460ms;
+}
+
+.entry-actions {
+  animation-delay: 540ms;
 }
 
 .entry-logo {
@@ -86,6 +142,10 @@
   width: 100%;
 }
 
+.entry-action-quick:not(:disabled) {
+  animation: entry-ready-pulse 2600ms ease-in-out 1400ms infinite;
+}
+
 .entry-actions-secondary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -108,6 +168,7 @@
   padding: 16px;
   background: rgba(20, 31, 44, 0.46);
   backdrop-filter: blur(2px);
+  animation: entry-modal-backdrop-in 180ms ease both;
 }
 
 .entry-join-modal {
@@ -119,6 +180,8 @@
   background: rgba(255, 252, 247, 0.98);
   border: 1px solid rgba(32, 50, 71, 0.2);
   box-shadow: 0 16px 48px rgba(25, 36, 52, 0.24);
+  transform-origin: center;
+  animation: entry-modal-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .entry-join-modal h3 {
@@ -228,5 +291,92 @@
 
   .entry-nickname-field {
     margin-top: 42px;
+  }
+}
+
+@keyframes entry-accent-grow {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes entry-brush-wash {
+  0% {
+    opacity: 0;
+    transform: translateX(-24%) skewX(-14deg);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(18%) skewX(-14deg);
+  }
+}
+
+@keyframes entry-content-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entry-ready-pulse {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+
+  50% {
+    box-shadow: 0 10px 24px rgba(225, 122, 46, 0.2);
+  }
+}
+
+@keyframes entry-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes entry-modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-main-panel::before,
+  .entry-main-panel::after,
+  .entry-logo,
+  .entry-main-panel > p,
+  .entry-nickname-field,
+  .entry-actions,
+  .entry-action-quick:not(:disabled),
+  .entry-join-modal-backdrop,
+  .entry-join-modal {
+    animation: none;
   }
 }
