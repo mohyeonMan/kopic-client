@@ -108,6 +108,7 @@ type UseGameSoundsArgs = {
   isCorrectHighlightActive: boolean
   participants: Participant[]
   roomState: RoomState
+  secretWordBannerSoundKey: string | null
   settingsOpen: boolean
   stageOverlayOpen: boolean
 }
@@ -119,6 +120,7 @@ export function useGameSounds({
   isCorrectHighlightActive,
   participants,
   roomState,
+  secretWordBannerSoundKey,
   settingsOpen,
   stageOverlayOpen,
 }: UseGameSoundsArgs) {
@@ -127,19 +129,17 @@ export function useGameSounds({
   const correctHighlightWasActiveRef = useRef<boolean | null>(null)
   const participantIdsRef = useRef<Set<string> | null>(null)
   const previousRoomStateRef = useRef<RoomState | null>(null)
+  const secretWordBannerStateRef = useRef<CardSlideSoundState | null>(null)
 
   useEffect(() => {
     preloadGameSounds()
   }, [])
 
   useEffect(() => {
-    const cardSlideKey = settingsOpen
-      ? 'settings'
-      : activeStageOverlay === 'wordChoice'
-        ? 'wordChoice'
-        : null
-    const cardSlideActive =
-      settingsOpen || (activeStageOverlay === 'wordChoice' && stageOverlayOpen)
+    const stageOverlayKey =
+      activeStageOverlay && stageOverlayOpen ? `stage:${activeStageOverlay}` : null
+    const cardSlideKey = settingsOpen ? 'settings' : stageOverlayKey
+    const cardSlideActive = settingsOpen || stageOverlayKey !== null
     const previous = cardSlideStateRef.current
 
     if (
@@ -155,6 +155,24 @@ export function useGameSounds({
       key: cardSlideActive ? cardSlideKey : null,
     }
   }, [activeStageOverlay, settingsOpen, stageOverlayOpen])
+
+  useEffect(() => {
+    const bannerActive = secretWordBannerSoundKey !== null
+    const previous = secretWordBannerStateRef.current
+
+    if (
+      previous &&
+      bannerActive &&
+      (!previous.active || previous.key !== secretWordBannerSoundKey)
+    ) {
+      playGameSound('cardSlide')
+    }
+
+    secretWordBannerStateRef.current = {
+      active: bannerActive,
+      key: secretWordBannerSoundKey,
+    }
+  }, [secretWordBannerSoundKey])
 
   useEffect(() => {
     const previous = previousRoomStateRef.current

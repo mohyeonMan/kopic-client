@@ -265,7 +265,9 @@ export function CanvasBoard({
   const activePointerIdRef = useRef<number | null>(null)
   const renderedStrokeIdsRef = useRef<string[]>([])
 
-  strokesRef.current = strokes
+  useLayoutEffect(() => {
+    strokesRef.current = strokes
+  }, [strokes])
 
   useEffect(() => {
     if (!canDraw) {

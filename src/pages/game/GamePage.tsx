@@ -1,6 +1,11 @@
 import './GamePage.css'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { defaultSettings } from '../../entities/game/model'
+import {
+  defaultSettings,
+  type CanvasStroke,
+  type ChatMessage,
+  type Participant,
+} from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'
 import { GameBoardPanel } from './components/GameBoardPanel'
 import { GameChatPanel } from './components/GameChatPanel'
@@ -24,6 +29,11 @@ import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
 
+const EMPTY_PARTICIPANTS: Participant[] = []
+const EMPTY_CANVAS_STROKES: CanvasStroke[] = []
+const EMPTY_CHAT: ChatMessage[] = []
+const EMPTY_EARNED_POINTS: Record<string, number> = {}
+
 export function GamePage() {
   const { state, actions, server } = useAppState()
   const statusBarRef = useRef<HTMLElement | null>(null)
@@ -39,11 +49,13 @@ export function GamePage() {
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const actionError = state.session.actionError
   const isPrivateRoom = state.room.roomType === 'PRIVATE'
-  const participants = Array.isArray(state.room.participants) ? state.room.participants : []
+  const participants = Array.isArray(state.room.participants)
+    ? state.room.participants
+    : EMPTY_PARTICIPANTS
   const lobbyCanvasStrokes = Array.isArray(state.room.lobbyCanvasStrokes)
     ? state.room.lobbyCanvasStrokes
-    : []
-  const chat = Array.isArray(state.room.chat) ? state.room.chat : []
+    : EMPTY_CANVAS_STROKES
+  const chat = Array.isArray(state.room.chat) ? state.room.chat : EMPTY_CHAT
   const settings = state.room.settings ?? defaultSettings
   const isHost = hostSessionId === state.session.sessionId
   const drawer = participants.find(
@@ -54,7 +66,7 @@ export function GamePage() {
   )
   const isDrawer = state.session.sessionId === currentTurn?.drawerSessionId
   const currentCorrectIds = currentTurn?.correctSessionIds ?? EMPTY_SESSION_IDS
-  const currentEarnedPoints = currentTurn?.earnedPoints ?? {}
+  const currentEarnedPoints = currentTurn?.earnedPoints ?? EMPTY_EARNED_POINTS
 
   const visibleOrderEntries = getVisibleOrder(participants, currentRound?.drawerOrder)
   const nextDrawerName = (() => {
@@ -264,6 +276,14 @@ export function GamePage() {
     currentTurnId !== null &&
     currentTurnId === correctHighlightTurnId &&
     !isDrawer
+  const secretWordBannerSoundKey =
+    shouldShowSecretWordBanner && !isSecretWordBannerClosed && currentTurn
+      ? viewerRole === 'drawer'
+        ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
+        : `${currentTurn.turnId}-masked-${
+            currentTurn.hintPattern ?? currentTurn.answerLength ?? 'unknown'
+          }`
+      : null
 
   const activeMobilePanel = isChatComposerFocused ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
@@ -309,6 +329,7 @@ export function GamePage() {
     isCorrectHighlightActive,
     participants,
     roomState,
+    secretWordBannerSoundKey,
     settingsOpen,
     stageOverlayOpen,
   })

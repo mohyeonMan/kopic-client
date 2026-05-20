@@ -55,6 +55,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     stateRef.current = state
   }, [state])
 
+  const getState = useCallback(() => stateRef.current, [])
+
   const server = useMemo<AppStateContextValue['server']>(
     () => ({
       applyRoomSnapshot: (snapshot) => dispatch({ type: 'server/roomSnapshotApplied', payload: snapshot }),
@@ -105,10 +107,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         clearInboundStrokeQueue,
         dispatch: dispatch as (action: AppAction) => void,
         enqueueInboundStroke,
+        getState,
         server,
-        stateRef,
       }),
-    [clearInboundStrokeQueue, enqueueInboundStroke, server],
+    [clearInboundStrokeQueue, enqueueInboundStroke, getState, server],
   )
 
   useEffect(() => {

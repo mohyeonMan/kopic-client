@@ -29,16 +29,12 @@ import {
 } from './appStateSnapshot'
 import type { Envelope } from '../../../ws/protocol/events'
 
-type StateRef = {
-  current: AppState
-}
-
 type EnvelopeHandlerOptions = {
   clearInboundStrokeQueue: () => void
   dispatch: (action: AppAction) => void
   enqueueInboundStroke: (stroke: CanvasStroke) => void
+  getState: () => AppState
   server: AppStateContextValue['server']
-  stateRef: StateRef
 }
 
 const SERVER_ERROR_EVENT_CODES = new Set([1901, 1902, 1903, 1910, 1911, 1920, 1930, 1940, 1941, 1999])
@@ -79,14 +75,15 @@ export function createServerEnvelopeHandler({
   clearInboundStrokeQueue,
   dispatch,
   enqueueInboundStroke,
+  getState,
   server,
-  stateRef,
 }: EnvelopeHandlerOptions) {
   return (envelope: Envelope<unknown, number>) => {
     const payload = envelope.p
     if (SERVER_ERROR_EVENT_CODES.has(envelope.e)) {
       const errorPayload = decodeServerErrorPayload(payload, envelope.e)
-      if (stateRef.current.session.joinPending && !stateRef.current.session.joinAccepted) {
+      const state = getState()
+      if (state.session.joinPending && !state.session.joinAccepted) {
         clearInboundStrokeQueue()
         dispatch({ type: 'local/joinFailed', payload: errorPayload })
         return
@@ -177,9 +174,10 @@ export function createServerEnvelopeHandler({
       case 300:
       case 304:
         if (payload && typeof payload === 'object') {
-          const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(payload, stateRef.current)
+          const state = getState()
+          const normalizedRoomSnapshot = decodeSnapshotEnvelopePayload(payload, state)
           if (normalizedRoomSnapshot) {
-            if (normalizedRoomSnapshot.ownSessionId !== stateRef.current.session.sessionId) {
+            if (normalizedRoomSnapshot.ownSessionId !== state.session.sessionId) {
               dispatch({
                 type: 'local/sessionIdSynced',
                 payload: normalizedRoomSnapshot.ownSessionId,
@@ -205,7 +203,7 @@ export function createServerEnvelopeHandler({
         return
       }
       case 303: {
-        const nextSettings = decodeSettingsUpdatePayload(payload, stateRef.current.room.settings)
+        const nextSettings = decodeSettingsUpdatePayload(payload, getState().room.settings)
         if (nextSettings) {
           dispatch({ type: 'local/lobbySettingsPatched', payload: nextSettings })
         }
