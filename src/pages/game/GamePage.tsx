@@ -16,6 +16,7 @@ import {
 import { useAnimatedParticipants } from './hooks/useAnimatedParticipants'
 import { useChatAutoScroll } from './hooks/useChatAutoScroll'
 import { useGameControls } from './hooks/useGameControls'
+import { useGameSounds } from './hooks/useGameSounds'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
 import { useCountdownSec } from './hooks/useCountdownSec'
@@ -244,6 +245,12 @@ export function GamePage() {
     roomState === 'LOBBY'
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
+  const canvasSoundKey =
+    roomState === 'LOBBY'
+      ? 'lobby'
+      : roomState === 'RUNNING' && currentTurn
+        ? currentTurn.turnId
+        : null
   const drawerName = drawer?.nickname ?? '출제자'
   const currentTurnId = currentTurn?.turnId ?? null
   const isMeCorrectInCurrentTurn =
@@ -294,6 +301,17 @@ export function GamePage() {
       })
     })
   }
+
+  useGameSounds({
+    activeStageOverlay,
+    canvasSoundKey,
+    canvasStrokeCount: boardStrokes.length,
+    isCorrectHighlightActive,
+    participants,
+    roomState,
+    settingsOpen,
+    stageOverlayOpen,
+  })
 
   return (
     <div className={pageClassName}>
