@@ -13,16 +13,16 @@ import {
   type AppShellState,
   type AppStateContextValue,
 } from './appStateContextValue'
-import { createLobbySnapshot } from './lib/appStateFlow'
+import { createLobbySnapshot } from '@/entities/game/model/gameFlow'
 import {
   type AppAction,
   appStateReducer,
 } from './lib/appStateReducer'
 import { createServerEnvelopeHandler } from './lib/appStateWsAdapter'
 import { createAppActions } from './lib/appStateActions'
-import { useClientEventSender } from './lib/appStateClientEvents'
-import { useInboundStrokeQueue } from './lib/useInboundStrokeQueue'
-import { useWsSessionSubscription } from './lib/useWsSessionSubscription'
+import { useClientEventSender } from '@/features/game-session/model/useClientEventSender'
+import { useInboundStrokeQueue } from '@/features/game-session/model/useInboundStrokeQueue'
+import { useWsSessionSubscription } from '@/features/game-session/model/useWsSessionSubscription'
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)

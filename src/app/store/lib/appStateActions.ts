@@ -11,10 +11,10 @@ import {
   createSystemMessage,
   encodeCompactGameSettings,
   encodeCompactStroke,
-} from './appStateHelpers'
-import { createMockGameStartedPayload } from './appStateFlow'
+} from '@/entities/game/api/gameProtocol'
+import { createMockGameStartedPayload } from '@/entities/game/model/gameFlow'
 import type { AppAction } from './appStateReducer'
-import type { SendClientEvent } from './appStateClientEvents'
+import type { SendClientEvent } from '@/features/game-session/model/useClientEventSender'
 
 type CreateAppActionsArgs = {
   clearInboundStrokeQueue: () => void

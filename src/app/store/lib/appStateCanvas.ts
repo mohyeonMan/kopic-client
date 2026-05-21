@@ -1,5 +1,5 @@
 import type { AppState, CanvasStroke } from '../../../entities/game/model'
-import { createSystemMessage } from './appStateHelpers'
+import { createSystemMessage } from '@/entities/game/api/gameProtocol'
 
 export function reduceCanvasStrokeReceived(
   state: AppState,

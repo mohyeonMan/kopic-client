@@ -24,7 +24,7 @@ import type {
 import type {
   ServerRoomJoinedPayload,
   ServerRoomLeftPayload,
-} from './appStatePayloadDecoders'
+} from '@/entities/game/api/gamePayloadDecoders'
 import {
   reduceCanvasCleared,
   reduceCanvasStrokeReceived,
@@ -51,7 +51,7 @@ import {
   reduceMockFlowAdvanced,
   reduceTurnPhaseForced,
   reduceWordChoiceApplied,
-} from './appStateGame'
+} from '@/entities/game/model/gameTransitions'
 import {
   reduceRoomJoinedApplied,
   reduceRoomLeftApplied,

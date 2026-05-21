@@ -1,6 +1,6 @@
 import type { AppState, ChatMessage } from '../../../entities/game/model'
 import { createUUID } from '../../../shared/lib/createUUID'
-import { resolvePrivilegedChatVisibility } from './appStateSnapshot'
+import { resolvePrivilegedChatVisibility } from '@/entities/game/api/roomSnapshotPayload'
 
 export function reduceGuessSubmitted(state: AppState, text: string): AppState {
   return {

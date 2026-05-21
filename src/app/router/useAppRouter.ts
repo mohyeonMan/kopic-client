@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isAppRoute, normalizeRoutePath, routes, type AppRoute } from './routes'
-import { wsSessionManager, wsSessionOwner } from '../../ws/client/wsSessionManager'
+import { wsSessionManager, wsSessionOwner } from '@/features/game-session/api/wsSessionManager'
 import { useAppActions } from '../store/useAppActions'
 import { useAppSessionState } from '../store/useAppSessionState'
 

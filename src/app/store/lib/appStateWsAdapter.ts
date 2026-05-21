@@ -6,7 +6,7 @@ import type { AppAction } from './appStateReducer'
 import {
   decodeCompactStroke,
   decodeGuessSubmittedMessage,
-} from './appStateHelpers'
+} from '@/entities/game/api/gameProtocol'
 import {
   decodeGeDrawingStartedPayload,
   decodeGeGameResultPayload,
@@ -22,12 +22,12 @@ import {
   decodeRoomLeftPayload,
   decodeServerErrorPayload,
   isCanvasClearPayload,
-} from './appStatePayloadDecoders'
+} from '@/entities/game/api/gamePayloadDecoders'
 import {
   decodeSettingsUpdatePayload,
   decodeSnapshotEnvelopePayload,
-} from './appStateSnapshot'
-import type { Envelope } from '../../../ws/protocol/events'
+} from '@/entities/game/api/roomSnapshotPayload'
+import type { Envelope } from '@/features/game-session/api/gameSessionEvents'
 
 type EnvelopeHandlerOptions = {
   clearInboundStrokeQueue: () => void
@@ -41,34 +41,6 @@ const SERVER_ERROR_EVENT_CODES = new Set([1901, 1902, 1903, 1910, 1911, 1920, 19
 
 function isFatalRoomErrorCode(eventCode: number) {
   return eventCode === 1910 || eventCode === 1941
-}
-
-export function decodeInboundEnvelope(raw: unknown): Envelope<unknown, number> | null {
-  if (typeof raw !== 'string') {
-    return null
-  }
-
-  const tryParse = (source: string): Envelope<unknown, number> | null => {
-    try {
-      const parsed = JSON.parse(source) as Envelope<unknown, number>
-      return typeof parsed?.e === 'number' ? parsed : null
-    } catch {
-      return null
-    }
-  }
-
-  const trimmed = raw.trim()
-  const parsed = tryParse(trimmed)
-  if (parsed) {
-    return parsed
-  }
-
-  const lastBraceIndex = trimmed.lastIndexOf('}')
-  if (lastBraceIndex < 0) {
-    return null
-  }
-
-  return tryParse(trimmed.slice(0, lastBraceIndex + 1))
 }
 
 export function createServerEnvelopeHandler({

@@ -2,12 +2,12 @@ import type { AppState, Participant, RoomSnapshot } from '../../../entities/game
 import {
   createHostChangedMessage,
   createPresenceMessage,
-} from './appStateHelpers'
+} from '@/entities/game/api/gameProtocol'
 import type {
   ServerRoomJoinedPayload,
   ServerRoomLeftPayload,
-} from './appStatePayloadDecoders'
-import { sortParticipantsByJoinOrder } from './appStateSnapshot'
+} from '@/entities/game/api/gamePayloadDecoders'
+import { sortParticipantsByJoinOrder } from '@/entities/game/api/roomSnapshotPayload'
 
 export function reduceRoomSnapshotApplied(
   state: AppState,

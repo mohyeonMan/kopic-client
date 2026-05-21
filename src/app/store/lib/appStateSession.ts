@@ -1,5 +1,5 @@
 import type { AppState, ConnectionStatus } from '../../../entities/game/model'
-import { createClearedRoomState } from './appStateFlow'
+import { createClearedRoomState } from '@/entities/game/model/gameFlow'
 
 export function reduceSessionNicknameUpdated(state: AppState, nickname: string): AppState {
   return {
