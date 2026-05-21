@@ -1,5 +1,5 @@
 import type { AppState, ChatMessage } from '../../../entities/game/model'
-import { createUUID } from '../../utils/createUUID'
+import { createUUID } from '../../../shared/lib/createUUID'
 import { resolvePrivilegedChatVisibility } from './appStateSnapshot'
 
 export function reduceGuessSubmitted(state: AppState, text: string): AppState {

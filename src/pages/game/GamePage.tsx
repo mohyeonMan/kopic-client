@@ -1,5 +1,5 @@
 import './GamePage.css'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useMemo, useRef, type CSSProperties } from 'react'
 import {
   defaultSettings,
   type CanvasStroke,
@@ -7,6 +7,7 @@ import {
   type Participant,
 } from '../../entities/game/model'
 import { useAppState } from '../../app/store/useAppState'
+import { ActionErrorModal } from './components/ActionErrorModal'
 import { GameBoardPanel } from './components/GameBoardPanel'
 import { GameChatPanel } from './components/GameChatPanel'
 import { GameStatusBar } from './components/GameStatusBar'
@@ -25,6 +26,7 @@ import { useGameSounds } from './hooks/useGameSounds'
 import { useGameStageOverlay } from './hooks/useGameStageOverlay'
 import { useParticipantBubbles } from './hooks/useParticipantBubbles'
 import { useCountdownSec } from './hooks/useCountdownSec'
+import { useMobileGamePanels } from './hooks/useMobileGamePanels'
 import { useMobileViewport } from './hooks/useMobileViewport'
 import { useSideSyncHeight } from './hooks/useSideSyncHeight'
 import { useTurnTimer } from './hooks/useTurnTimer'
@@ -42,9 +44,17 @@ export function GamePage() {
   const participantPanelRef = useRef<HTMLElement | null>(null)
   const chatPanelRef = useRef<HTMLElement | null>(null)
   const sidePanelScrollRef = useRef<HTMLDivElement | null>(null)
-  const isPageAtBottomRef = useRef(false)
-  const [mobilePanel, setMobilePanel] = useState<'chat' | 'participants'>('chat')
-  const [isChatComposerFocused, setIsChatComposerFocused] = useState(false)
+  const {
+    activeMobilePanel,
+    focusMobilePanel,
+    handleChatComposerBlur,
+    handleChatComposerFocus,
+    isChatComposerFocused,
+  } = useMobileGamePanels({
+    chatPanelRef,
+    participantPanelRef,
+    statusBarRef,
+  })
 
   const { currentRound, currentTurn, roomState, hostSessionId } = state.room
   const actionError = state.session.actionError
@@ -217,32 +227,6 @@ export function GamePage() {
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
   useMobileViewport()
 
-  useEffect(() => {
-    const updatePageAtBottom = () => {
-      const scrollingElement = document.scrollingElement ?? document.documentElement
-      const visualViewport = window.visualViewport
-      const visualViewportBottom =
-        window.scrollY + (visualViewport?.offsetTop ?? 0) + (visualViewport?.height ?? window.innerHeight)
-      const layoutViewportBottom = scrollingElement.scrollTop + scrollingElement.clientHeight
-      const viewportBottom = Math.max(visualViewportBottom, layoutViewportBottom)
-
-      isPageAtBottomRef.current = scrollingElement.scrollHeight - viewportBottom <= 24
-    }
-
-    updatePageAtBottom()
-    window.addEventListener('scroll', updatePageAtBottom, { passive: true })
-    window.addEventListener('resize', updatePageAtBottom)
-    window.visualViewport?.addEventListener('resize', updatePageAtBottom)
-    window.visualViewport?.addEventListener('scroll', updatePageAtBottom)
-
-    return () => {
-      window.removeEventListener('scroll', updatePageAtBottom)
-      window.removeEventListener('resize', updatePageAtBottom)
-      window.visualViewport?.removeEventListener('resize', updatePageAtBottom)
-      window.visualViewport?.removeEventListener('scroll', updatePageAtBottom)
-    }
-  }, [])
-
   const revealedHintCount = (() => {
     if (!currentTurn || currentTurn.phase !== 'DRAWING' || !currentTurn.selectedWord) {
       return 0
@@ -285,7 +269,6 @@ export function GamePage() {
           }`
       : null
 
-  const activeMobilePanel = isChatComposerFocused ? 'chat' : mobilePanel
   const stageStyle: CSSProperties | undefined =
     ({
       ...(sideSyncHeight && sideSyncHeight > 0
@@ -293,34 +276,6 @@ export function GamePage() {
         : null),
     }) as CSSProperties
   const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
-  const scrollComposerAnchor = (wasPageAtBottom: boolean) => {
-    const targetElement = wasPageAtBottom ? chatPanelRef.current : statusBarRef.current
-
-    targetElement?.scrollIntoView({
-      block: 'start',
-      inline: 'nearest',
-    })
-  }
-  const focusMobilePanel = (panel: 'chat' | 'participants') => {
-    setMobilePanel(panel)
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const panelElement = panel === 'chat' ? chatPanelRef.current : participantPanelRef.current
-
-        if (!panelElement) {
-          return
-        }
-
-        panelElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-          inline: 'nearest',
-        })
-        panelElement.focus({ preventScroll: true })
-      })
-    })
-  }
 
   useGameSounds({
     activeStageOverlay,
@@ -344,34 +299,10 @@ export function GamePage() {
         visibleOrderEntries={visibleOrderEntries}
       />
 
-      {actionError ? (
-        <div
-          className="game-action-error-modal-backdrop"
-          role="presentation"
-          onClick={() => actions.dismissActionError()}
-        >
-          <div
-            className="game-action-error-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="요청 실패"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3>요청 실패</h3>
-            <p className="game-action-error-message">{actionError.message}</p>
-            <p className="game-action-error-reason">{`사유: ${actionError.reason}`}</p>
-            <div className="game-action-error-actions">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => actions.dismissActionError()}
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ActionErrorModal
+        actionError={actionError}
+        onDismiss={actions.dismissActionError}
+      />
 
       <section ref={stageRef} className="game-stage-layout" style={stageStyle}>
         <ParticipantPanel
@@ -483,14 +414,8 @@ export function GamePage() {
           onGuessInputChange={setGuessInput}
           onGuessSubmit={submitGuess}
           onChatScroll={handleChatScroll}
-          onComposerBlur={() => setIsChatComposerFocused(false)}
-          onComposerFocus={() => {
-            const wasPageAtBottom = isPageAtBottomRef.current
-
-            setIsChatComposerFocused(true)
-            setMobilePanel('chat')
-            window.requestAnimationFrame(() => scrollComposerAnchor(wasPageAtBottom))
-          }}
+          onComposerBlur={handleChatComposerBlur}
+          onComposerFocus={handleChatComposerFocus}
           onScrollToBottom={scrollChatToBottom}
         />
 

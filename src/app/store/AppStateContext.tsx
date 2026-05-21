@@ -1,55 +1,32 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
 import {
   type AppState,
-  type CanvasStroke,
   initialAppState,
-  type GameSettings,
 } from '../../entities/game/model'
-import { wsSessionManager } from '../../ws/client/wsSessionManager'
-import {
-  clientEventMeta,
-  type ClientEventCode,
-  type Envelope,
-} from '../../ws/protocol/events'
 import {
   AppActionsContext,
   AppSessionStateContext,
   AppShellStateContext,
   AppStateContext,
-  type AppActions,
   type AppConnectionControls,
   type AppDevTools,
   type AppShellState,
   type AppStateContextValue,
 } from './appStateContextValue'
-import {
-  CANVAS_CLEAR_MARKER,
-  createSystemMessage,
-  encodeCompactGameSettings,
-  encodeCompactStroke,
-} from './lib/appStateHelpers'
-import { createLobbySnapshot, createMockGameStartedPayload } from './lib/appStateFlow'
+import { createLobbySnapshot } from './lib/appStateFlow'
 import {
   type AppAction,
   appStateReducer,
 } from './lib/appStateReducer'
-import { decodeConnectionErrorPayload } from './lib/appStatePayloadDecoders'
-import {
-  createServerEnvelopeHandler,
-  decodeInboundEnvelope,
-} from './lib/appStateWsAdapter'
-
-type ClientEventName = (typeof clientEventMeta)[number]['name']
-
-const clientEventCodeByName = new Map<ClientEventName, ClientEventCode>(
-  clientEventMeta.map((event) => [event.name, event.code]),
-)
+import { createServerEnvelopeHandler } from './lib/appStateWsAdapter'
+import { createAppActions } from './lib/appStateActions'
+import { useClientEventSender } from './lib/appStateClientEvents'
+import { useInboundStrokeQueue } from './lib/useInboundStrokeQueue'
+import { useWsSessionSubscription } from './lib/useWsSessionSubscription'
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
   const stateRef = useRef<AppState>(state)
-  const inboundStrokeQueueRef = useRef<CanvasStroke[]>([])
-  const inboundStrokeFlushRafRef = useRef<number | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -69,37 +46,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const flushInboundStrokeQueue = useCallback(() => {
-    inboundStrokeFlushRafRef.current = null
-    const pending = inboundStrokeQueueRef.current
-    if (pending.length === 0) {
-      return
-    }
-
-    inboundStrokeQueueRef.current = []
-    dispatch({ type: 'server/canvasStrokesReceived', payload: pending })
-  }, [])
-
-  const clearInboundStrokeQueue = useCallback(() => {
-    inboundStrokeQueueRef.current = []
-    if (inboundStrokeFlushRafRef.current !== null) {
-      window.cancelAnimationFrame(inboundStrokeFlushRafRef.current)
-      inboundStrokeFlushRafRef.current = null
-    }
-  }, [])
-
-  const enqueueInboundStroke = useCallback(
-    (stroke: CanvasStroke) => {
-      inboundStrokeQueueRef.current.push(stroke)
-
-      if (inboundStrokeFlushRafRef.current !== null) {
-        return
-      }
-
-      inboundStrokeFlushRafRef.current = window.requestAnimationFrame(flushInboundStrokeQueue)
-    },
-    [flushInboundStrokeQueue],
-  )
+  const sendClientEvent = useClientEventSender()
+  const {
+    clearInboundStrokeQueue,
+    enqueueInboundStroke,
+  } = useInboundStrokeQueue(dispatch)
 
   const handleServerEnvelope = useMemo(
     () =>
@@ -113,123 +64,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [clearInboundStrokeQueue, enqueueInboundStroke, getState, server],
   )
 
-  useEffect(() => {
-    return () => {
-      clearInboundStrokeQueue()
-    }
-  }, [clearInboundStrokeQueue])
-
-  const sendClientEvent = useCallback(
-    <TPayload,>(eventName: ClientEventName, payload: TPayload, fallback?: () => void) => {
-      const code = clientEventCodeByName.get(eventName)
-
-      if (!code) {
-        fallback?.()
-        return
-      }
-
-      const envelope: Envelope<TPayload, ClientEventCode> = {
-        e: code,
-        p: payload,
-      }
-
-      const sent = wsSessionManager.send(JSON.stringify(envelope))
-      if (!sent) {
-        console.warn('[ws:out] dropped (socket not open)', { eventName, payload })
-        fallback?.()
-      }
-    },
-    [],
-  )
-
-  const actions = useMemo<AppActions>(
-    () => ({
-      updateNickname: (nickname) =>
-        dispatch({ type: 'local/sessionNicknameUpdated', payload: nickname }),
-      requestJoin: (options) => {
-        if (stateRef.current.session.joinPending || stateRef.current.session.joinAccepted) {
-          return
-        }
-
-        const normalizedRoomCode = options?.roomCode?.trim()
-        dispatch({
-          type: 'local/joinRequested',
-          payload: {
-            roomCode: normalizedRoomCode && normalizedRoomCode.length > 0 ? normalizedRoomCode : undefined,
-            action: options?.action === 1 ? 1 : 0,
-          },
-        })
-      },
-      dismissJoinError: () => {
-        dispatch({ type: 'local/joinErrorDismissed' })
-      },
-      dismissConnectionError: () => {
-        dispatch({ type: 'local/connectionErrorDismissed' })
-      },
-      dismissActionError: () => {
-        dispatch({ type: 'local/actionErrorDismissed' })
-      },
-      clearRoomCache: () => {
-        clearInboundStrokeQueue()
-        dispatch({ type: 'local/roomCacheCleared' })
-      },
-      patchLobbySettings: (settings) => {
-        if (stateRef.current.room.hostSessionId !== stateRef.current.session.sessionId) {
-          return
-        }
-
-        dispatch({ type: 'local/lobbySettingsPatched', payload: settings })
-
-        const nextSettings: GameSettings = {
-          ...stateRef.current.room.settings,
-          ...settings,
-        }
-
-        sendClientEvent('GAME_SETTINGS_UPDATE_REQUEST', encodeCompactGameSettings(nextSettings))
-      },
-      requestGameStart: () => {
-        sendClientEvent(
-          'GAME_START_REQUEST',
-          {},
-          () => server.applyGameStarted(createMockGameStartedPayload(stateRef.current)),
-        )
-      },
-      requestWordChoice: (choiceIndex) => {
-        const wordChoices = stateRef.current.room.currentTurn?.wordChoices ?? []
-        const normalizedChoiceIndex =
-          Number.isFinite(choiceIndex) && choiceIndex >= 0
-            ? Math.floor(choiceIndex)
-            : 0
-        const selectedWord =
-          wordChoices[normalizedChoiceIndex] ??
-          wordChoices[0] ??
-          ''
-
-        sendClientEvent(
-          'WORD_CHOICE',
-          { ci: normalizedChoiceIndex },
-          () =>
-            server.applyWordChoice({
-              selectedWord,
-              remainingSec: stateRef.current.room.settings.drawSec,
-              chatMessage: createSystemMessage(`404 DRAWING_STARTED (${selectedWord})`),
-            }),
-        )
-      },
-      submitGuess: (text) => {
-        dispatch({ type: 'local/guessSubmitted', payload: text })
-        sendClientEvent('GUESS_SUBMIT', { t: text })
-      },
-      sendCanvasStroke: (stroke) => {
-        sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
-      },
-      requestCanvasClear: () => {
-        clearInboundStrokeQueue()
-        server.applyCanvasClear()
-        sendClientEvent('DRAW_STROKE', CANVAS_CLEAR_MARKER)
-      },
-    }),
-    [clearInboundStrokeQueue, sendClientEvent, server],
+  const actions = useMemo(
+    () =>
+      createAppActions({
+        clearInboundStrokeQueue,
+        dispatch,
+        getState,
+        sendClientEvent,
+        server,
+      }),
+    [clearInboundStrokeQueue, getState, sendClientEvent, server],
   )
 
   const connection = useMemo<AppConnectionControls>(
@@ -263,38 +107,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [state.room.roomCode, state.room.roomType, state.session.joinAction, state.session.joinRoomCode],
   )
 
-  useEffect(() => {
-    const unsubscribe = wsSessionManager.subscribe((event) => {
-      if (event.type === 'status') {
-        dispatch({ type: 'connection/statusChanged', payload: event.status })
-        return
-      }
-
-      if (event.type === 'error') {
-        const connectionError = decodeConnectionErrorPayload(event.error)
-        if (connectionError) {
-          clearInboundStrokeQueue()
-          dispatch({ type: 'local/connectionErrorReported', payload: connectionError })
-        }
-        return
-      }
-
-      try {
-        const parsed = decodeInboundEnvelope(event.data)
-        if (!parsed) {
-          return
-        }
-
-        handleServerEnvelope(parsed)
-      } catch (error) {
-        console.error('[ws:in] invalid payload', error)
-      }
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [clearInboundStrokeQueue, handleServerEnvelope])
+  useWsSessionSubscription({
+    clearInboundStrokeQueue,
+    dispatch,
+    handleServerEnvelope,
+  })
 
   const value = useMemo<AppStateContextValue>(() => {
     return {

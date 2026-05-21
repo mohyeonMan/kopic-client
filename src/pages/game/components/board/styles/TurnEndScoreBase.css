@@ -1,0 +1,19 @@
+.earned-score-table {
+  display: grid;
+  gap: 10px;
+}
+
+.earned-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.earned-score-row-correct {
+  background: rgba(61, 153, 112, 0.28);
+}
+

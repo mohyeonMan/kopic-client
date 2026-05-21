@@ -1,0 +1,62 @@
+.canvas-overlay-card-word-choice {
+  gap: 18px;
+  width: min(560px, calc(100% - 48px));
+  left: 50%;
+  top: 20px;
+  transform: translate(-50%, 0);
+  transform-origin: top center;
+  transition:
+    transform 240ms ease,
+    opacity 240ms ease;
+  border-color: rgba(255, 224, 140, 0.48);
+  background:
+    radial-gradient(circle at top, rgba(255, 206, 107, 0.2), transparent 42%),
+    rgba(32, 50, 71, 0.9);
+  box-shadow:
+    0 22px 44px rgba(32, 50, 71, 0.24),
+    inset 0 0 0 1px rgba(255, 232, 179, 0.08);
+}
+
+.word-choice-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  width: 100%;
+}
+
+.word-choice-heading {
+  flex: 1 1 210px;
+  min-width: 0;
+}
+
+.word-choice-heading strong {
+  display: block;
+  text-align: left;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+
+.word-choice-body {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+}
+
+.canvas-overlay-card-word-choice-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-heading {
+  animation: word-choice-heading-enter 260ms ease-out 120ms backwards;
+}
+
+.canvas-overlay-card-word-choice-closed {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 24px));
+}
+

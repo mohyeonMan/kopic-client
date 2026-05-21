@@ -1,0 +1,85 @@
+.word-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+}
+
+.word-choice-button {
+  flex: 0 1 150px;
+  max-width: 200px;
+  border: 1px solid rgba(255, 222, 158, 0.34);
+  border-radius: 18px;
+  padding: 16px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 244, 214, 0.96), rgba(247, 223, 166, 0.92));
+  color: #233448;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 10px 22px rgba(16, 24, 40, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition:
+    transform 160ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button {
+  animation: word-choice-button-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(1) {
+  animation-delay: 160ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(2) {
+  animation-delay: 210ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(3) {
+  animation-delay: 260ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(4) {
+  animation-delay: 310ms;
+}
+
+.canvas-overlay-card-word-choice-open .word-choice-button:nth-child(5) {
+  animation-delay: 360ms;
+}
+
+.word-choice-actions-count-3 {
+  flex-wrap: nowrap;
+}
+
+.word-choice-actions-count-3 .word-choice-button {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+}
+
+.word-choice-actions-count-4 .word-choice-button {
+  flex-basis: calc((100% - 12px) / 2);
+  max-width: none;
+}
+
+.word-choice-actions-count-5 .word-choice-button {
+  flex-basis: calc((100% - 24px) / 3);
+  max-width: none;
+}
+
+.word-choice-button:hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 228, 1), rgba(255, 228, 171, 0.96));
+  box-shadow:
+    0 14px 28px rgba(16, 24, 40, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+

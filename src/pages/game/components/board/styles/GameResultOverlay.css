@@ -1,0 +1,182 @@
+.canvas-result-screen {
+  position: absolute;
+  inset: 24px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  background: rgba(32, 50, 71, 0.42);
+  border-radius: 22px;
+  backdrop-filter: blur(3px);
+  transform: translateY(100%);
+  will-change: transform;
+  animation: result-screen-shutter-rise 640ms ease forwards;
+  overflow: hidden;
+}
+
+.canvas-result-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 5px solid #e44a3a;
+  box-shadow:
+    0 0 0 1px rgba(255, 228, 137, 0.4) inset,
+    0 0 14px rgba(228, 74, 58, 0.7),
+    0 0 28px rgba(228, 74, 58, 0.5);
+  pointer-events: none;
+  animation: result-screen-border-flash 780ms steps(2, end) infinite;
+}
+
+.canvas-result-panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100% - 40px));
+  max-height: calc(100% - 28px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  padding: 22px clamp(18px, 3.4vw, 30px);
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background:
+    radial-gradient(circle at top, rgba(255, 219, 146, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(21, 35, 52, 0.94), rgba(18, 28, 42, 0.9));
+  box-shadow:
+    0 24px 48px rgba(8, 14, 23, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.result-heading {
+  justify-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.result-title {
+  margin: 0;
+  color: #fffaf0;
+  font-size: clamp(1.4rem, 4.6vw, 2.2rem);
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.result-ranking-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.result-ranking-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(8, 14, 23, 0.16);
+}
+
+.result-ranking-item-winner {
+  border-color: rgba(255, 215, 115, 0.4);
+  background: linear-gradient(180deg, rgba(255, 193, 103, 0.26), rgba(214, 118, 30, 0.24));
+}
+
+.result-rank-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 250, 240, 0.94);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.result-ranking-item-winner .result-rank-badge {
+  background: rgba(255, 248, 220, 0.28);
+  color: #fff3c2;
+}
+
+.result-rank-name {
+  min-width: 0;
+  color: #fffaf0;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-ranking-item-winner .result-rank-name {
+  color: #ffe3ab;
+}
+
+.result-rank-score {
+  color: rgba(255, 250, 240, 0.92);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.result-ranking-item-winner .result-rank-score {
+  color: #ffe3ab;
+}
+
+.result-ranking-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.result-ranking-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.result-ranking-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+}
+
+@keyframes result-screen-shutter-rise {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes result-screen-border-flash {
+  0%,
+  49% {
+    border-color: #e44a3a;
+    box-shadow:
+      0 0 0 1px rgba(255, 228, 137, 0.4) inset,
+      0 0 14px rgba(228, 74, 58, 0.7),
+      0 0 28px rgba(228, 74, 58, 0.5);
+  }
+
+  50%,
+  100% {
+    border-color: #ffd54f;
+    box-shadow:
+      0 0 0 1px rgba(228, 74, 58, 0.35) inset,
+      0 0 14px rgba(255, 213, 79, 0.85),
+      0 0 28px rgba(255, 213, 79, 0.6);
+  }
+}
+

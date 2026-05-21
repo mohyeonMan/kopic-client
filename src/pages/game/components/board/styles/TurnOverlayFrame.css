@@ -1,0 +1,124 @@
+.board-frame .canvas-overlay-card-word-choice {
+  width: min(clamp(320px, 82cqmin, 600px), calc(100% - clamp(20px, 5cqmin, 48px)));
+  min-height: auto;
+  align-content: normal;
+}
+
+.board-frame .canvas-full-overlay {
+  gap: clamp(8px, 1.4cqmin, 12px);
+  padding: clamp(12px, 2.8cqmin, 24px);
+}
+
+.board-frame .canvas-full-overlay > strong {
+  font-size: clamp(1.15rem, 4.2cqmin, 2.35rem);
+}
+
+.board-frame .canvas-full-overlay span {
+  font-size: clamp(12px, 1.45cqmin, 18px);
+}
+
+.board-frame .overlay-countdown-line {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.board-frame .overlay-countdown-line span {
+  color: rgba(255, 250, 240, 0.84);
+  font-size: clamp(0.95rem, 1.8cqmin, 1.2rem);
+  line-height: 1;
+}
+
+.board-frame .canvas-full-overlay-panel > strong {
+  font-size: clamp(1rem, 3.3cqmin, 1.9rem);
+}
+
+.board-frame .canvas-full-overlay-panel {
+  min-height: clamp(120px, 18cqmin, 240px);
+}
+
+.board-frame .word-choice-button {
+  border-radius: clamp(10px, 2.2cqmin, 18px);
+  padding: clamp(10px, 2.1cqmin, 16px) clamp(10px, 1.9cqmin, 14px);
+  font-size: clamp(0.88rem, 2.2cqmin, 1.05rem);
+}
+
+.board-frame .canvas-result-screen {
+  inset: clamp(10px, 2.2cqmin, 24px);
+  gap: clamp(8px, 1.8cqmin, 16px);
+}
+
+.board-frame .canvas-result-panel {
+  width: min(760px, calc(100% - clamp(16px, 4cqmin, 40px)));
+  gap: clamp(12px, 2.4cqmin, 18px);
+  padding: clamp(16px, 3cqmin, 26px) clamp(14px, 3.2cqmin, 28px);
+  border-radius: clamp(16px, 2.8cqmin, 26px);
+}
+
+.board-frame .result-title {
+  font-size: clamp(1.2rem, 4.4cqmin, 2rem);
+}
+
+.board-frame .result-ranking-list {
+  gap: clamp(6px, 1.2cqmin, 10px);
+}
+
+.board-frame .result-ranking-item {
+  padding: clamp(8px, 1.6cqmin, 12px) clamp(10px, 2cqmin, 16px);
+  border-radius: clamp(10px, 2.2cqmin, 16px);
+}
+
+.board-frame .result-rank-badge {
+  width: clamp(22px, 3.2cqmin, 30px);
+  height: clamp(22px, 3.2cqmin, 30px);
+  font-size: clamp(0.72rem, 1.4cqmin, 0.86rem);
+}
+
+.board-frame .result-rank-name {
+  font-size: clamp(0.88rem, 2.1cqmin, 1.06rem);
+}
+
+.board-frame .result-rank-score {
+  font-size: clamp(0.84rem, 1.9cqmin, 1rem);
+}
+
+.board-frame .earned-score-table-head {
+  font-size: clamp(10px, 1.2cqmin, 12px);
+}
+
+.board-frame .canvas-full-overlay-turn-end .earned-score-row {
+  padding: clamp(6px, 1.1cqmin, 10px) var(--score-side-pad);
+}
+
+.board-frame .turn-end-summary {
+  width: min(860px, calc(100% - clamp(16px, 4cqmin, 40px)));
+  gap: clamp(18px, 2.8cqmin, 24px);
+  padding: clamp(18px, 3.4cqmin, 28px) clamp(16px, 3.8cqmin, 30px);
+}
+
+.board-frame .turn-end-answer-prefix,
+.board-frame .turn-end-answer-suffix {
+  font-size: clamp(0.92rem, 2.2cqmin, 1.3rem);
+}
+
+.board-frame .turn-end-answer-word {
+  font-size: clamp(2.6rem, 9.4cqmin, 5.8rem);
+}
+
+.board-frame .turn-end-earned-score-content {
+  width: 100%;
+}
+
+.board-frame .earned-score-name {
+  font-size: clamp(0.8rem, 1.55cqmin, 0.98rem);
+}
+
+.board-frame .earned-score-role {
+  font-size: clamp(0.66rem, 1.25cqmin, 0.8rem);
+}
+
+.board-frame .earned-score-points {
+  font-size: clamp(0.74rem, 1.45cqmin, 0.9rem);
+}
+

@@ -1,5 +1,5 @@
 import type { CanvasStroke, ChatMessage, DrawingTool, GameSettings } from '../../../entities/game/model'
-import { createUUID } from '../../utils/createUUID'
+import { createUUID } from '../../../shared/lib/createUUID'
 
 type CompactPoint = [number, number]
 type CompactStrokePayload = [number, number, number, CompactPoint[]]
