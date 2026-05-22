@@ -1,4 +1,11 @@
-import type { CanvasStroke, ChatMessage, DrawingTool, GameSettings } from '@/entities/game/model'
+import {
+  CANVAS_COLOR_PALETTE,
+  DEFAULT_CANVAS_COLOR,
+  type CanvasStroke,
+  type ChatMessage,
+  type DrawingTool,
+  type GameSettings,
+} from '@/entities/game/model'
 import { createUUID } from '@/shared/lib/createUUID'
 
 type CompactPoint = [number, number]
@@ -16,31 +23,8 @@ type CompactGameSettingsPayload = [
   string,
 ]
 
-const WS_COLOR_PALETTE = [
-  '#203247',
-  '#345a74',
-  '#56758f',
-  '#d14b3f',
-  '#ea6f58',
-  '#ef9b47',
-  '#f2c14e',
-  '#5f8d4e',
-  '#7aac63',
-  '#1d6b4e',
-  '#1f8a8a',
-  '#4aa3b8',
-  '#5f6dd9',
-  '#6f55c6',
-  '#9656a2',
-  '#bd6a88',
-  '#8d6e63',
-  '#6f5a4b',
-  '#9aa5b1',
-  '#ffffff',
-] as const
-
 const colorIndexByHex = new Map<string, number>(
-  WS_COLOR_PALETTE.map((color, index) => [color, index]),
+  CANVAS_COLOR_PALETTE.map((color, index) => [color, index]),
 )
 
 const TOOL_CODE_BY_NAME: Record<DrawingTool, number> = {
@@ -77,7 +61,7 @@ export function normalizeParticipantColorIndex(value: unknown) {
   }
 
   const rounded = Math.round(colorIndex)
-  return rounded >= 1 && rounded <= WS_COLOR_PALETTE.length ? rounded : undefined
+  return rounded >= 1 && rounded <= CANVAS_COLOR_PALETTE.length ? rounded : undefined
 }
 
 function roundTo(value: number, digits: number) {
@@ -87,7 +71,7 @@ function roundTo(value: number, digits: number) {
 
 export function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload {
   const toolCode = TOOL_CODE_BY_NAME[stroke.tool]
-  const colorIndex = colorIndexByHex.get(stroke.color) ?? colorIndexByHex.get('#203247') ?? 0
+  const colorIndex = colorIndexByHex.get(stroke.color) ?? colorIndexByHex.get(DEFAULT_CANVAS_COLOR) ?? 0
 
   return [
     toolCode,
@@ -132,7 +116,7 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
     return null
   }
 
-  const colorHex = WS_COLOR_PALETTE[color] ?? '#203247'
+  const colorHex = CANVAS_COLOR_PALETTE[color] ?? DEFAULT_CANVAS_COLOR
   const normalizedPoints = points
     .filter((point): point is [number, number] =>
       Array.isArray(point) &&

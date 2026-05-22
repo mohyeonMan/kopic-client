@@ -1,6 +1,7 @@
-import type {
-  CanvasStroke,
-  DrawingTool,
+import {
+  DEFAULT_CANVAS_COLOR,
+  type CanvasStroke,
+  type DrawingTool,
 } from '@/entities/game/model'
 import { createUUID } from '@/shared/lib/createUUID'
 import {
@@ -38,7 +39,7 @@ function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
   return {
     id: readNonEmptyString(raw.id) ?? createUUID(),
     tool,
-    color: readNonEmptyString(raw.color) ?? '#203247',
+    color: readNonEmptyString(raw.color) ?? DEFAULT_CANVAS_COLOR,
     size,
     points,
   }
