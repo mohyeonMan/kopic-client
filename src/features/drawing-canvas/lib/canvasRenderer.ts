@@ -2,7 +2,6 @@ import type { CanvasPoint, CanvasStroke } from '@/entities/game/model'
 import {
   BASE_HEIGHT,
   BASE_WIDTH,
-  FILL_TOLERANCE,
   SOLID_STROKE_ALPHA_THRESHOLD,
   SOLID_STROKE_PADDING,
 } from './canvasBoardConstants'
@@ -15,13 +14,12 @@ function colorsMatch(
   imageData: Uint8ClampedArray,
   index: number,
   target: [number, number, number, number],
-  tolerance: number,
 ) {
   return (
-    Math.abs(imageData[index] - target[0]) <= tolerance &&
-    Math.abs(imageData[index + 1] - target[1]) <= tolerance &&
-    Math.abs(imageData[index + 2] - target[2]) <= tolerance &&
-    Math.abs(imageData[index + 3] - target[3]) <= tolerance
+    imageData[index] === target[0] &&
+    imageData[index + 1] === target[1] &&
+    imageData[index + 2] === target[2] &&
+    imageData[index + 3] === target[3]
   )
 }
 
@@ -67,36 +65,47 @@ function floodFill(
     return
   }
 
-  const stack = [[x, y]]
+  const totalPixels = width * height
+  const visited = new Uint8Array(totalPixels)
+  const stack = new Uint32Array(totalPixels)
+  let stackLength = 0
 
-  while (stack.length > 0) {
-    const next = stack.pop()
-
-    if (!next) {
-      continue
+  const enqueuePixel = (pixelX: number, pixelY: number) => {
+    if (pixelX < 0 || pixelY < 0 || pixelX >= width || pixelY >= height) {
+      return
     }
 
-    const [cx, cy] = next
-
-    if (cx < 0 || cy < 0 || cx >= width || cy >= height) {
-      continue
+    const pixelIndex = pixelY * width + pixelX
+    if (visited[pixelIndex]) {
+      return
     }
 
-    const index = (cy * width + cx) * 4
-
-    if (!colorsMatch(data, index, target, FILL_TOLERANCE)) {
-      continue
+    const index = pixelIndex * 4
+    if (!colorsMatch(data, index, target)) {
+      return
     }
 
+    visited[pixelIndex] = 1
     data[index] = replacement[0]
     data[index + 1] = replacement[1]
     data[index + 2] = replacement[2]
     data[index + 3] = replacement[3]
+    stack[stackLength] = pixelIndex
+    stackLength += 1
+  }
 
-    stack.push([cx + 1, cy])
-    stack.push([cx - 1, cy])
-    stack.push([cx, cy + 1])
-    stack.push([cx, cy - 1])
+  enqueuePixel(x, y)
+
+  while (stackLength > 0) {
+    const pixelIndex = stack[stackLength - 1]
+    stackLength -= 1
+
+    const cx = pixelIndex % width
+    const cy = Math.floor(pixelIndex / width)
+    enqueuePixel(cx + 1, cy)
+    enqueuePixel(cx - 1, cy)
+    enqueuePixel(cx, cy + 1)
+    enqueuePixel(cx, cy - 1)
   }
 
   context.putImageData(image, 0, 0)
