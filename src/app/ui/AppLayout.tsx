@@ -167,6 +167,37 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
   }, [exitConfirmOpen, handleConfirmExit])
 
   useEffect(() => {
+    if (
+      !isGameRoute ||
+      qrModalOpen ||
+      exitConfirmOpen ||
+      shareMenuOpen ||
+      typeof document === 'undefined'
+    ) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.key !== 'Escape' ||
+        document.querySelector('[aria-modal="true"]')
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      setExitConfirmOpen(true)
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [exitConfirmOpen, isGameRoute, qrModalOpen, shareMenuOpen])
+
+  useEffect(() => {
     if (!qrModalOpen || !inviteUrl) {
       return
     }
@@ -373,7 +404,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
         showShareFeedback('공유됨')
       } else {
         await copyText(inviteUrl)
-        showShareFeedback('기기 공유 미지원, 링크 복사됨')
+        showShareFeedback('링크 복사됨')
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
@@ -381,7 +412,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       } else {
         try {
           await copyText(inviteUrl)
-          showShareFeedback('공유 실패, 링크 복사됨')
+          showShareFeedback('링크 복사됨')
         } catch {
           showShareFeedback('공유 실패')
         }

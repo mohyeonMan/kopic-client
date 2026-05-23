@@ -1,8 +1,8 @@
 .canvas-overlay-card-word-choice {
   gap: 18px;
-  width: min(560px, calc(100% - 48px));
+  width: min(500px, calc(100% - 64px));
   left: 50%;
-  top: 20px;
+  top: 52px;
   transform: translate(-50%, 0);
   transform-origin: top center;
   transition:
@@ -59,4 +59,3 @@
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 24px));
 }
-

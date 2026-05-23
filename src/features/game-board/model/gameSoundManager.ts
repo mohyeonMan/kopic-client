@@ -2,9 +2,10 @@ import type { GameSoundName } from '@/entities/game/model'
 import cardSlideSoundUrl from '@/assets/sounds/card-slide.wav'
 import clearAllSoundUrl from '@/assets/sounds/clear-all.wav'
 import correctSoundUrl from '@/assets/sounds/correct.wav'
-import gameResultSoundUrl from '@/assets/sounds/original/game-result.wav'
+import gameResultSoundUrl from '@/assets/sounds/game-result.wav'
 import participantJoinSoundUrl from '@/assets/sounds/participant-join.wav'
 import participantLeaveSoundUrl from '@/assets/sounds/participant-leave.wav'
+import turnResultSoundUrl from '@/assets/sounds/turn-result.wav'
 
 const GAME_SOUND_FILES: Record<GameSoundName, string> = {
   cardSlide: cardSlideSoundUrl,
@@ -13,6 +14,7 @@ const GAME_SOUND_FILES: Record<GameSoundName, string> = {
   correct: correctSoundUrl,
   participantJoin: participantJoinSoundUrl,
   participantLeave: participantLeaveSoundUrl,
+  turnResult: turnResultSoundUrl,
 }
 
 const GAME_SOUND_VOLUMES: Record<GameSoundName, number> = {
@@ -22,6 +24,7 @@ const GAME_SOUND_VOLUMES: Record<GameSoundName, number> = {
   correct: 0.7,
   participantJoin: 0.45,
   participantLeave: 0.45,
+  turnResult: 0.6,
 }
 
 const MAX_PENDING_SOUND_PLAYS = 32

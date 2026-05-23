@@ -468,7 +468,7 @@ export function reduceGeTurnEndedApplied(
     },
     soundEvents: appendGameSoundEvent(state.soundEvents, {
       id: `turn:${payload.turnId}:end`,
-      sound: 'cardSlide',
+      sound: 'turnResult',
     }),
   }
 }

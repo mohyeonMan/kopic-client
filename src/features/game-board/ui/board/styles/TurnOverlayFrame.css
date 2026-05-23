@@ -1,5 +1,6 @@
 .board-frame .canvas-overlay-card-word-choice {
-  width: min(clamp(320px, 82cqmin, 600px), calc(100% - clamp(20px, 5cqmin, 48px)));
+  width: min(clamp(300px, 74cqmin, 540px), calc(100% - clamp(28px, 7cqmin, 64px)));
+  top: clamp(44px, 7cqmin, 58px);
   min-height: auto;
   align-content: normal;
 }
@@ -45,49 +46,32 @@
 }
 
 .board-frame .canvas-result-screen {
-  inset: clamp(10px, 2.2cqmin, 24px);
-  gap: clamp(8px, 1.8cqmin, 16px);
+  inset: 0;
+  padding: clamp(14px, 3cqmin, 28px);
 }
 
 .board-frame .canvas-result-panel {
-  width: min(760px, calc(100% - clamp(16px, 4cqmin, 40px)));
-  gap: clamp(12px, 2.4cqmin, 18px);
-  padding: clamp(16px, 3cqmin, 26px) clamp(14px, 3.2cqmin, 28px);
-  border-radius: clamp(16px, 2.8cqmin, 26px);
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  margin: auto;
 }
 
 .board-frame .result-title {
-  font-size: clamp(1.2rem, 4.4cqmin, 2rem);
-}
-
-.board-frame .result-ranking-list {
-  gap: clamp(6px, 1.2cqmin, 10px);
-}
-
-.board-frame .result-ranking-item {
-  padding: clamp(8px, 1.6cqmin, 12px) clamp(10px, 2cqmin, 16px);
-  border-radius: clamp(10px, 2.2cqmin, 16px);
-}
-
-.board-frame .result-rank-badge {
-  width: clamp(22px, 3.2cqmin, 30px);
-  height: clamp(22px, 3.2cqmin, 30px);
-  font-size: clamp(0.72rem, 1.4cqmin, 0.86rem);
-}
-
-.board-frame .result-rank-name {
-  font-size: clamp(0.88rem, 2.1cqmin, 1.06rem);
-}
-
-.board-frame .result-rank-score {
-  font-size: clamp(0.84rem, 1.9cqmin, 1rem);
+  font-size: clamp(1.6rem, 6.4cqmin, 4rem);
 }
 
 .board-frame .earned-score-table-head {
   font-size: clamp(10px, 1.2cqmin, 12px);
 }
 
-.board-frame .canvas-full-overlay-turn-end .earned-score-row {
+.board-frame .turn-end-summary .earned-score-table,
+.board-frame .turn-end-summary .earned-score-table-body {
+  gap: clamp(6px, 1.2cqmin, 10px);
+}
+
+.board-frame .turn-end-summary .earned-score-row {
+  gap: clamp(8px, 1.4cqmin, 10px);
   padding: clamp(6px, 1.1cqmin, 10px) var(--score-side-pad);
 }
 
@@ -121,4 +105,3 @@
 .board-frame .earned-score-points {
   font-size: clamp(0.74rem, 1.45cqmin, 0.9rem);
 }
-

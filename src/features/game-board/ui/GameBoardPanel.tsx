@@ -42,6 +42,7 @@ type GameBoardPanelProps = {
   isCorrectHighlightActive: boolean
   isSecretWordBannerClosed: boolean
   isSharedDrawingPhase: boolean
+  mySessionId: string
   nextTurnCountdownSec?: number
   nextDrawerName: string | null
   onApplyDrawerOrderMode: (value: GameSettings['drawerOrderMode']) => void
@@ -97,6 +98,7 @@ export function GameBoardPanel({
   isCorrectHighlightActive,
   isSecretWordBannerClosed,
   isSharedDrawingPhase,
+  mySessionId,
   nextTurnCountdownSec,
   nextDrawerName,
   onApplyDrawerOrderMode,
@@ -194,6 +196,7 @@ export function GameBoardPanel({
             drawerName={drawerName}
             earnedScores={earnedScores}
             gameStartCountdownSec={gameStartCountdownSec}
+            mySessionId={mySessionId}
             nextTurnCountdownSec={nextTurnCountdownSec}
             nextDrawerName={nextDrawerName}
             onRequestWordChoice={onRequestWordChoice}

@@ -79,15 +79,13 @@
 
 .topbar-share-button,
 .topbar-exit-button {
+  width: 92px;
   height: 32px;
   padding: 0 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.topbar-share-button {
-  min-width: 62px;
+  white-space: nowrap;
 }
 
 .topbar-share-button-open {
@@ -357,7 +355,7 @@ body.app-body-game #root {
   }
 
   .app-shell-game .topbar-room-name {
-    justify-self: start;
+    justify-self: end;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: 12px;
@@ -371,6 +369,7 @@ body.app-body-game #root {
 
   .app-shell-game .topbar-share-button,
   .app-shell-game .topbar-exit-button {
+    width: 84px;
     height: 28px;
     padding: 0 8px;
     font-size: 12px;

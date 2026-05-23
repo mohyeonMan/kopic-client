@@ -85,7 +85,7 @@ export function useGamePageModel() {
       null
     )
   })()
-  const ranking = participants.slice().sort((left, right) => right.score - left.score).slice(0, 3)
+  const ranking = participants.slice().sort((left, right) => right.score - left.score)
   const visibleChat = useMemo(
     () => chat.filter((message) => message.tone !== 'system'),
     [chat],
@@ -292,6 +292,7 @@ export function useGamePageModel() {
       isPrivateRoom: state.room.roomType === 'PRIVATE',
       isSecretWordBannerClosed,
       isSharedDrawingPhase,
+      mySessionId: state.session.sessionId,
       nextDrawerName,
       nextTurnCountdownSec: currentTurn?.phase === 'TURN_END' ? turnEndRemainingSec : undefined,
       onApplyCustomWordMode: applyCustomWordMode,

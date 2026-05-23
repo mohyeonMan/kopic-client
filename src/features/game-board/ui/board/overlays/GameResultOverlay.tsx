@@ -2,12 +2,14 @@ import type { Participant } from '@/entities/game/model'
 import type { OverlayPreview } from '@/features/game-board/model/gameBoardShared'
 
 type GameResultOverlayProps = {
+  mySessionId: string
   previewMode: OverlayPreview
   ranking: Participant[]
   returnToLobbyCountdownText: string | null
 }
 
 export function GameResultOverlay({
+  mySessionId,
   previewMode,
   ranking,
   returnToLobbyCountdownText,
@@ -30,32 +32,51 @@ export function GameResultOverlay({
 
   return (
     <div className="canvas-result-screen">
-      {returnToLobbyCountdownText ? (
-        <p className="overlay-seconds-only overlay-seconds-only-result">
-          {returnToLobbyCountdownText}
-        </p>
-      ) : null}
-      <div className="canvas-result-panel">
+      <div className="canvas-result-panel turn-end-summary">
+        {returnToLobbyCountdownText ? (
+          <p className="overlay-seconds-only overlay-seconds-only-result">
+            {returnToLobbyCountdownText}
+          </p>
+        ) : null}
         <div className="overlay-heading result-heading">
-          <p className="panel-label">게임 종료</p>
+          <p className="panel-label">최종 결과</p>
           <strong className="result-title">{gameResultHeadline}</strong>
         </div>
-        <ol className="result-ranking-list">
-          {ranking.map((participant, index) => (
-            <li
-              key={participant.sessionId}
-              className={
-                index === 0
-                  ? 'result-ranking-item result-ranking-item-winner'
-                  : 'result-ranking-item'
-              }
-            >
-              <span className="result-rank-badge">{index + 1}</span>
-              <span className="result-rank-name">{participant.nickname}</span>
-              <strong className="result-rank-score">{participant.score} pts</strong>
-            </li>
-          ))}
-        </ol>
+        <div className="earned-score-content turn-end-earned-score-content result-score-content">
+          <div className="earned-score-table result-score-table">
+            <div className="earned-score-table-head" aria-hidden="true">
+              <span className="score-col-rank">순위</span>
+              <span className="score-col-name">참여자</span>
+              <span className="score-col-points">점수</span>
+            </div>
+            <div className="earned-score-table-body result-score-table-body">
+              {ranking.map((participant, index) => {
+                const isWinner = topScore !== null && participant.score === topScore
+                const isSelf = participant.sessionId === mySessionId
+                const rowClassName = [
+                  'earned-score-row',
+                  'result-score-row',
+                  isWinner ? 'result-score-row-winner' : '',
+                  isSelf ? 'result-score-row-self' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+
+                return (
+                  <div key={participant.sessionId} className={rowClassName}>
+                    <span className="earned-score-rank score-col-rank">{index + 1}</span>
+                    <span className="earned-score-name result-score-name score-col-name">
+                      <span className="result-score-name-text">{participant.nickname}</span>
+                    </span>
+                    <strong className="earned-score-points score-col-points">
+                      {participant.score} pts
+                    </strong>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

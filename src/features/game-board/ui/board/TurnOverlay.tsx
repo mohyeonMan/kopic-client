@@ -25,6 +25,7 @@ type TurnOverlayProps = {
   drawerName: string
   earnedScores: EarnedScore[]
   gameStartCountdownSec?: number
+  mySessionId: string
   nextTurnCountdownSec?: number
   nextDrawerName: string | null
   onRequestWordChoice: (choiceIndex: number) => void
@@ -52,6 +53,7 @@ export function TurnOverlay({
   drawerName,
   earnedScores,
   gameStartCountdownSec,
+  mySessionId,
   nextTurnCountdownSec,
   nextDrawerName,
   onRequestWordChoice,
@@ -135,6 +137,7 @@ export function TurnOverlay({
       ) : null}
 
       <GameResultOverlay
+        mySessionId={mySessionId}
         previewMode={previewMode}
         ranking={ranking}
         returnToLobbyCountdownText={returnToLobbyCountdownText}

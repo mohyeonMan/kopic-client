@@ -23,6 +23,9 @@ type LobbySettingsOverlayProps = {
   settingsOpen: boolean
 }
 
+const CUSTOM_WORDS_PLACEHOLDER =
+  '쉼표(,)로 단어를 나누고, 설명은 세로줄(|) 뒤에 적어주세요.\n예: 고양이|야옹하고 우는 동물, 우주선|별 사이를 나는 탈것'
+
 export function LobbySettingsOverlay({
   isHost,
   isPrivateRoom,
@@ -211,7 +214,7 @@ export function LobbySettingsOverlay({
                 disabled={!isHost}
                 value={settings.customWordsRaw}
                 onChange={(event) => onApplyCustomWordsRaw(event.target.value)}
-                placeholder="단어|설명,단어,단어|설명"
+                placeholder={isHost ? CUSTOM_WORDS_PLACEHOLDER : undefined}
                 rows={3}
               />
             </label>

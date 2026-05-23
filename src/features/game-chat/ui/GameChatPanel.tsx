@@ -1,5 +1,6 @@
 import './GameChatPanel.css'
 import {
+  useEffect,
   useRef,
   type RefObject,
   type TouchEvent as ReactTouchEvent,
@@ -44,6 +45,53 @@ export function GameChatPanel({
     `panel game-side-panel game-side-panel-right${
       isMobileActive ? ' game-chat-panel-mobile-active' : ' game-chat-panel-mobile-inactive'
     }${isComposerFocused ? ' game-chat-panel-composer-focused' : ''}`
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.key !== 'Enter' ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        document.querySelector('[aria-modal="true"]')
+      ) {
+        return
+      }
+
+      const input = inputRef.current
+      if (!input || document.activeElement === input) {
+        return
+      }
+
+      const target = event.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLButtonElement ||
+        target instanceof HTMLAnchorElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      input.focus({ preventScroll: true })
+    }
+
+    document.addEventListener('keydown', handleDocumentKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown)
+    }
+  }, [])
 
   const handleInputTouchStart = (event: ReactTouchEvent<HTMLInputElement>) => {
     const input = inputRef.current
@@ -145,7 +193,7 @@ export function GameChatPanel({
               />
               <button
                 type="button"
-                className="secondary-button chat-submit-button"
+                className="primary-button chat-submit-button"
                 onPointerDown={(event) => event.preventDefault()}
                 onClick={onGuessSubmit}
                 disabled={guessInput.trim().length === 0}

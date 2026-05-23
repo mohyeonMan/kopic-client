@@ -1,8 +1,8 @@
 @container (max-height: 560px) {
   .board-frame .canvas-overlay-card-word-choice {
-    top: 6px;
-    width: calc(100% - 12px);
-    max-height: calc(100% - 12px);
+    top: 22px;
+    width: calc(100% - 28px);
+    max-height: calc(100% - 30px);
     overflow: hidden;
     gap: 10px;
   }
@@ -26,28 +26,8 @@
     font-size: 0.9rem;
   }
 
-  .canvas-result-panel {
-    max-height: calc(100% - 10px);
-    gap: 12px;
-    padding: 16px 12px;
-    border-radius: 20px;
-  }
-
-  .result-ranking-item {
-    gap: 9px;
-    padding: 9px 12px;
-  }
-
-  .result-rank-name {
-    font-size: 0.9rem;
-  }
-
-  .result-rank-score {
-    font-size: 0.85rem;
-  }
-
   .turn-end-summary {
-    width: calc(100% - 10px);
+    width: calc(100% - 24px);
     gap: 16px;
     padding: 18px 14px;
     border-radius: 22px;
@@ -75,9 +55,9 @@
   }
 
   .board-frame .canvas-overlay-card-word-choice {
-    top: 6px;
+    top: 18px;
     width: calc(100% - 10px);
-    max-height: calc(100% - 10px);
+    max-height: calc(100% - 28px);
   }
 
   .word-choice-top {
@@ -125,37 +105,8 @@
     font-size: clamp(2rem, 8.5cqmin, 3.6rem);
   }
 
-  .canvas-result-panel {
-    padding: 12px 10px;
-    border-radius: 16px;
-  }
-
   .result-title {
-    font-size: clamp(1.05rem, 4.1cqmin, 1.55rem);
-  }
-
-  .result-ranking-list {
-    gap: 7px;
-  }
-
-  .result-ranking-item {
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: 11px;
-  }
-
-  .result-rank-badge {
-    width: 24px;
-    height: 24px;
-    font-size: 0.76rem;
-  }
-
-  .result-rank-name {
-    font-size: 0.86rem;
-  }
-
-  .result-rank-score {
-    font-size: 0.8rem;
+    font-size: clamp(1.25rem, 5.2cqmin, 2.4rem);
   }
 
   .canvas-full-overlay-turn-end .canvas-full-overlay-panel {
@@ -169,8 +120,12 @@
     width: 94%;
   }
 
+  .result-score-content {
+    --score-grid-columns: 12% minmax(0, 1fr) 24%;
+  }
+
   .earned-score-table-head,
-  .canvas-full-overlay-turn-end .earned-score-row {
+  .turn-end-summary .earned-score-row {
     gap: 8px;
   }
 
@@ -202,8 +157,9 @@
   }
 
   .board-frame .canvas-overlay-card-word-choice {
-    width: calc(100% - 8px);
-    max-height: calc(100% - 8px);
+    top: 14px;
+    width: calc(100% - 18px);
+    max-height: calc(100% - 22px);
     gap: 8px;
   }
 
@@ -243,40 +199,8 @@
     border-width: 3px;
   }
 
-  .canvas-result-panel {
-    width: calc(100% - 8px);
-    max-height: calc(100% - 8px);
-    gap: 8px;
-    padding: 10px 8px;
-    border-radius: 14px;
-  }
-
   .result-title {
-    font-size: clamp(0.98rem, 3.9cqmin, 1.3rem);
-  }
-
-  .result-ranking-list {
-    gap: 6px;
-  }
-
-  .result-ranking-item {
-    gap: 7px;
-    padding: 7px 9px;
-    border-radius: 10px;
-  }
-
-  .result-rank-badge {
-    width: 21px;
-    height: 21px;
-    font-size: 0.7rem;
-  }
-
-  .result-rank-name {
-    font-size: 0.8rem;
-  }
-
-  .result-rank-score {
-    font-size: 0.76rem;
+    font-size: clamp(1.1rem, 4.8cqmin, 2rem);
   }
 
   .canvas-full-overlay-turn-end .canvas-full-overlay-panel {
@@ -307,8 +231,12 @@
     width: 92%;
   }
 
+  .result-score-content {
+    --score-grid-columns: 12% minmax(0, 1fr) 24%;
+  }
+
   .earned-score-table-head,
-  .canvas-full-overlay-turn-end .earned-score-row {
+  .turn-end-summary .earned-score-row {
     gap: 8px;
   }
 

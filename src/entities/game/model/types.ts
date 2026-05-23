@@ -9,6 +9,7 @@ export type GameSoundName =
   | 'gameResult'
   | 'participantJoin'
   | 'participantLeave'
+  | 'turnResult'
 
 export type GameSoundEvent = {
   id: string

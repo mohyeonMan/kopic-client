@@ -1,5 +1,5 @@
 import './EntryPage.css'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
 import { useAppActions } from '../../app/store/useAppActions'
 import { useAppSessionState } from '../../app/store/useAppSessionState'
@@ -14,6 +14,7 @@ const normalizeRoomCode = (value: string) => value.toUpperCase()
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const actions = useAppActions()
   const session = useAppSessionState()
+  const mainNicknameInputRef = useRef<HTMLInputElement | null>(null)
   const inviteRoomCodeFromPath = readInviteRoomCode(window.location.pathname)
   const inviteRoomCodeFromSearch =
     new URLSearchParams(window.location.search).get('roomCode')?.trim() ?? null
@@ -93,7 +94,12 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
       }
 
       event.preventDefault()
-      requestQuickJoin()
+      if (nicknameLength > 0) {
+        requestQuickJoin()
+        return
+      }
+
+      mainNicknameInputRef.current?.focus()
     }
 
     document.addEventListener('keydown', handleKeyDown)
@@ -101,7 +107,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [connectionError, joinError, joinModalOpen, requestQuickJoin])
+  }, [connectionError, joinError, joinModalOpen, nicknameLength, requestQuickJoin])
 
   useEffect(() => {
     if (!joinModalOpen) {
@@ -213,6 +219,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
         <label className="field entry-nickname-field">
           <span>{'닉네임'}</span>
           <input
+            ref={mainNicknameInputRef}
             value={session.nickname}
             onChange={(event) => handleMainNicknameChange(event.target.value)}
             placeholder={'닉네임은 10자 이내로 입력해주세요.'}
