@@ -1,4 +1,6 @@
 import type { AppState } from '@/entities/game/model'
+import { shouldHandlePrimaryEnter } from '@/shared/lib/keyboardShortcuts'
+import { useEffect } from 'react'
 
 type ActionErrorModalProps = {
   actionError: AppState['session']['actionError']
@@ -6,6 +8,27 @@ type ActionErrorModalProps = {
 }
 
 export function ActionErrorModal({ actionError, onDismiss }: ActionErrorModalProps) {
+  useEffect(() => {
+    if (!actionError) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandlePrimaryEnter(event)) {
+        return
+      }
+
+      event.preventDefault()
+      onDismiss()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [actionError, onDismiss])
+
   if (!actionError) {
     return null
   }

@@ -3,6 +3,7 @@ import {
   createHostChangedMessage,
   createPresenceMessage,
 } from '@/entities/game/api/gameProtocol'
+import { appendGameSoundEvent } from '@/entities/game/model'
 import type {
   ServerRoomJoinedPayload,
   ServerRoomLeftPayload,
@@ -13,14 +14,25 @@ export function reduceRoomSnapshotApplied(
   state: AppState,
   snapshot: RoomSnapshot,
 ): AppState {
+  const nextParticipants = Array.isArray(snapshot.participants)
+    ? sortParticipantsByJoinOrder(snapshot.participants)
+    : state.room.participants
+  const previousSessionIds = new Set(state.room.participants.map((participant) => participant.sessionId))
+  const nextSessionIds = new Set(nextParticipants.map((participant) => participant.sessionId))
+  const joinedSessionId =
+    previousSessionIds.size > 0
+      ? nextParticipants.find((participant) => !previousSessionIds.has(participant.sessionId))?.sessionId
+      : undefined
+  const leftSessionId = state.room.participants.find(
+    (participant) => !nextSessionIds.has(participant.sessionId),
+  )?.sessionId
+
   return {
     ...state,
     room: {
       ...state.room,
       ...snapshot,
-      participants: Array.isArray(snapshot.participants)
-        ? sortParticipantsByJoinOrder(snapshot.participants)
-        : state.room.participants,
+      participants: nextParticipants,
       lobbyCanvasStrokes: Array.isArray(snapshot.lobbyCanvasStrokes)
         ? snapshot.lobbyCanvasStrokes
         : [],
@@ -29,6 +41,18 @@ export function reduceRoomSnapshotApplied(
         : state.room.chat,
       settings: snapshot.settings ?? state.room.settings,
     },
+    soundEvents:
+      joinedSessionId
+        ? appendGameSoundEvent(state.soundEvents, {
+            id: `presence:${snapshot.roomId}:join:${joinedSessionId}:${state.room.participants.length}->${nextParticipants.length}`,
+            sound: 'participantJoin',
+          })
+        : leftSessionId
+          ? appendGameSoundEvent(state.soundEvents, {
+              id: `presence:${snapshot.roomId}:leave:${leftSessionId}:${state.room.participants.length}->${nextParticipants.length}`,
+              sound: 'participantLeave',
+            })
+          : state.soundEvents,
   }
 }
 
@@ -83,6 +107,13 @@ export function reduceRoomJoinedApplied(
       participants: sortParticipantsByJoinOrder([...state.room.participants, joinedParticipant]),
       chat: [...state.room.chat, createPresenceMessage(payload.nickname, true)],
     },
+    soundEvents:
+      state.room.participants.length > 0
+        ? appendGameSoundEvent(state.soundEvents, {
+            id: `presence:${state.room.roomId}:join:${payload.sessionId}:${state.room.participants.length}`,
+            sound: 'participantJoin',
+          })
+        : state.soundEvents,
   }
 }
 
@@ -145,5 +176,11 @@ export function reduceRoomLeftApplied(
         : null,
       chat: finalChat,
     },
+    soundEvents: leftParticipant
+      ? appendGameSoundEvent(state.soundEvents, {
+          id: `presence:${state.room.roomId}:leave:${payload.sid}:${state.room.participants.length}`,
+          sound: 'participantLeave',
+        })
+      : state.soundEvents,
   }
 }

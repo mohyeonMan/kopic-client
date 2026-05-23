@@ -1,12 +1,15 @@
 import './EntryPage.css'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { readInviteRoomCode, routes, type AppRoute } from '../../app/router/routes'
 import { useAppActions } from '../../app/store/useAppActions'
 import { useAppSessionState } from '../../app/store/useAppSessionState'
+import { shouldHandlePrimaryEnter } from '../../shared/lib/keyboardShortcuts'
 
 type EntryPageProps = {
   onNavigate: (route: AppRoute) => void
 }
+
+const normalizeRoomCode = (value: string) => value.toUpperCase()
 
 export function EntryPage({ onNavigate }: EntryPageProps) {
   const actions = useAppActions()
@@ -24,7 +27,6 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
   const nicknameValid = nicknameLength >= 1 && nicknameLength <= 10
   const joinError = session.joinError
   const connectionError = session.connectionError
-  const normalizeRoomCode = (value: string) => value.toUpperCase()
   const [joinModalOpen, setJoinModalOpen] = useState(() => inviteRoomCode !== null)
   const [joinModalNickname, setJoinModalNickname] = useState(session.nickname)
   const [joinModalRoomCode, setJoinModalRoomCode] = useState(
@@ -44,7 +46,15 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
     setJoinModalOpen(false)
   }
 
-  const submitJoinByRoomCode = () => {
+  const requestQuickJoin = useCallback(() => {
+    if (!nicknameValid || session.joinPending) {
+      return
+    }
+
+    actions.requestJoin({ action: 0 })
+  }, [actions, nicknameValid, session.joinPending])
+
+  const submitJoinByRoomCode = useCallback(() => {
     const nextNickname = joinModalNickname.trim()
     const nextRoomCode = normalizeRoomCode(joinModalRoomCode.trim())
     if (nextNickname.length < 1 || nextNickname.length > 10 || nextRoomCode.length === 0 || session.joinPending) {
@@ -54,7 +64,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
     actions.updateNickname(nextNickname)
     actions.requestJoin({ roomCode: nextRoomCode, action: 0 })
     setJoinModalOpen(false)
-  }
+  }, [actions, joinModalNickname, joinModalRoomCode, session.joinPending, setJoinModalOpen])
 
   const handleMainNicknameChange = (value: string) => {
     actions.updateNickname(value.slice(0, 10))
@@ -71,6 +81,90 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
 
     onNavigate(routes.game)
   }, [onNavigate, session.joinAccepted])
+
+  useEffect(() => {
+    if (joinModalOpen || joinError || connectionError) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandlePrimaryEnter(event)) {
+        return
+      }
+
+      event.preventDefault()
+      requestQuickJoin()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [connectionError, joinError, joinModalOpen, requestQuickJoin])
+
+  useEffect(() => {
+    if (!joinModalOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandlePrimaryEnter(event)) {
+        return
+      }
+
+      event.preventDefault()
+      submitJoinByRoomCode()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [joinModalOpen, submitJoinByRoomCode])
+
+  useEffect(() => {
+    if (!joinError) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandlePrimaryEnter(event)) {
+        return
+      }
+
+      event.preventDefault()
+      actions.dismissJoinError()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [actions, joinError])
+
+  useEffect(() => {
+    if (joinError || !connectionError) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandlePrimaryEnter(event)) {
+        return
+      }
+
+      event.preventDefault()
+      actions.dismissConnectionError()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [actions, connectionError, joinError])
 
   useEffect(() => {
     if (!joinError && !connectionError) {
@@ -131,9 +225,7 @@ export function EntryPage({ onNavigate }: EntryPageProps) {
             type="button"
             className="primary-button entry-action-quick"
             disabled={!nicknameValid || session.joinPending}
-            onClick={() => {
-              actions.requestJoin({ action: 0 })
-            }}
+            onClick={requestQuickJoin}
           >
             {session.joinPending ? '입장 중...' : '빠른 입장'}
           </button>

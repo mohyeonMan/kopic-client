@@ -11,6 +11,7 @@ import {
   type NumericSettingKey,
   type ViewerRole,
 } from '@/features/game-board/model/gameBoardShared'
+import { playGameSound } from '@/features/game-board/model/gameSoundManager'
 
 type GameControlActions = {
   patchLobbySettings: (settings: Partial<GameSettings>) => void
@@ -144,7 +145,12 @@ export function useGameControls({
   }
 
   const handleToggleSettings = () => {
-    setSettingsOpen((open) => !open)
+    const nextOpen = !settingsOpen
+    if (nextOpen) {
+      void playGameSound('cardSlide')
+    }
+
+    setSettingsOpen(nextOpen)
   }
 
   const handleCloseSettings = () => {

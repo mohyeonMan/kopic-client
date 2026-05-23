@@ -230,16 +230,10 @@ export function useGamePageModel() {
     roomState === 'LOBBY'
       ? lobbyCanvasStrokes
       : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
-  const canvasSoundKey =
-    roomState === 'LOBBY'
-      ? 'lobby'
-      : roomState === 'RUNNING' && currentTurn
-        ? currentTurn.turnId
-        : null
   const drawerName = drawer?.nickname ?? '출제자'
   const currentTurnId = currentTurn?.turnId ?? null
   const isMeCorrectInCurrentTurn =
-    currentTurn !== null && currentTurn.phase === 'DRAWING'
+    currentTurn !== null && (currentTurn.phase === 'DRAWING' || currentTurn.phase === 'TURN_END')
       ? currentTurn.correctSessionIds.includes(state.session.sessionId) &&
         state.session.sessionId !== currentTurn.drawerSessionId
       : false
@@ -249,14 +243,6 @@ export function useGamePageModel() {
     currentTurnId !== null &&
     currentTurnId === correctHighlightTurnId &&
     !isDrawer
-  const secretWordBannerSoundKey =
-    shouldShowSecretWordBanner && !isSecretWordBannerClosed && currentTurn
-      ? viewerRole === 'drawer'
-        ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
-        : `${currentTurn.turnId}-masked-${
-            currentTurn.hintPattern ?? currentTurn.answerLength ?? 'unknown'
-          }`
-      : null
   const stageStyle: CSSProperties | undefined =
     ({
       ...(sideSyncHeight && sideSyncHeight > 0
@@ -266,15 +252,7 @@ export function useGamePageModel() {
   const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
 
   useGameSounds({
-    activeStageOverlay,
-    canvasSoundKey,
-    canvasStrokeCount: boardStrokes.length,
-    isCorrectHighlightActive,
-    participants,
-    roomState,
-    secretWordBannerSoundKey,
-    settingsOpen,
-    stageOverlayOpen,
+    soundEvents: state.soundEvents,
   })
 
   return {

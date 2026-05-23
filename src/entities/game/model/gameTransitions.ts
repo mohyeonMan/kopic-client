@@ -17,6 +17,7 @@ import {
   createCorrectAnswerAlertMessage,
   createSystemMessage,
 } from '@/entities/game/api/gameProtocol'
+import { appendGameSoundEvent } from './gameSoundEvents'
 import { applyTotalPointsToParticipants } from '@/entities/game/api/roomSnapshotPayload'
 import {
   applyEarnedPointsToParticipants,
@@ -59,6 +60,10 @@ export function reduceGameStartedApplied(
       currentTurn: payload.currentTurn,
       chat: [...state.room.chat, ...(payload.chatMessages ?? [])],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `game:${payload.gameId}:start`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -86,6 +91,10 @@ export function reduceGeGameStartedApplied(
       lobbyCanvasStrokes: [],
       chat: [...state.room.chat, createSystemMessage(`400 GE_GAME_STARTED ${payload.gameId}`)],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `game:${payload.gameId}:start`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -116,6 +125,10 @@ export function reduceGeRoundStartedApplied(
       lobbyCanvasStrokes: [],
       chat: [...state.room.chat, createSystemMessage(`401 GE_ROUND_STARTED R${payload.roundNo}`)],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `game:${payload.gameId}:round:${payload.roundNo}:start`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -176,6 +189,10 @@ export function reduceGeTurnStartedApplied(
         createSystemMessage(`402 GE_TURN_STARTED ${payload.drawerSessionId}`),
       ],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${payload.turnId}:started`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -208,6 +225,15 @@ export function reduceGeGuessCorrectApplied(
         ? state.room.chat
         : [...state.room.chat, createCorrectAnswerAlertMessage(correctNickname)],
     },
+    soundEvents:
+      !alreadyCorrect &&
+      payload.sessionId === state.session.sessionId &&
+      payload.sessionId !== state.room.currentTurn.drawerSessionId
+        ? appendGameSoundEvent(state.soundEvents, {
+            id: `turn:${payload.turnId}:correct:${payload.sessionId}`,
+            sound: 'correct',
+          })
+        : state.soundEvents,
   }
 }
 
@@ -272,6 +298,10 @@ export function reduceGeWordChoiceOpenedApplied(
         createSystemMessage(`403 GE_WORD_CHOICE_OPEN ${payload.drawerSessionId}`),
       ],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${payload.turnId}:word-choice`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -346,6 +376,10 @@ export function reduceGeDrawingStartedApplied(
         createSystemMessage(`404 GE_DRAWING_STARTED ${payload.drawerSessionId}`),
       ],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${payload.turnId}:drawing-started`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -368,6 +402,10 @@ export function reduceGeHintRevealedApplied(
         hintPattern: payload.hintPattern,
       },
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${payload.turnId}:hint:${payload.revealedCount ?? payload.hintPattern}`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -428,6 +466,10 @@ export function reduceGeTurnEndedApplied(
       },
       chat: [...state.room.chat, createSystemMessage(`410 GE_TURN_ENDED ${payload.reason}`)],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${payload.turnId}:end`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -452,6 +494,10 @@ export function reduceGeGameResultApplied(
       currentTurn: null,
       chat: [...state.room.chat, createSystemMessage(`411 GE_GAME_RESULT ${payload.resultSec}s`)],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `game:${payload.gameId}:result`,
+      sound: 'gameResult',
+    }),
   }
 }
 
@@ -513,6 +559,10 @@ export function reduceWordChoiceApplied(
         ? [...state.room.chat, payload.chatMessage]
         : state.room.chat,
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `turn:${state.room.currentTurn.turnId}:drawing-started`,
+      sound: 'cardSlide',
+    }),
   }
 }
 
@@ -525,6 +575,10 @@ export function reduceGameEndedApplied(state: AppState): AppState {
       currentTurn: null,
       chat: [...state.room.chat, createSystemMessage('413 GAME_ENDED')],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `game:${state.room.gameId ?? 'local'}:ended`,
+      sound: 'gameResult',
+    }),
   }
 }
 

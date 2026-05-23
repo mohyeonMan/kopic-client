@@ -1,5 +1,6 @@
 import './AppLayout.css'
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -9,6 +10,7 @@ import { buildInvitePath, routes, type AppRoute } from '../router/routes'
 import { useAppActions } from '../store/useAppActions'
 import { useAppSessionState } from '../store/useAppSessionState'
 import { useAppShellState } from '../store/useAppShellState'
+import { shouldHandlePrimaryEnter } from '../../shared/lib/keyboardShortcuts'
 
 type AppLayoutProps = {
   currentRoute: AppRoute
@@ -64,6 +66,11 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     : null
   const supportsNativeShare = typeof navigator.share === 'function'
   const shellClassName = isGameRoute ? 'app-shell app-shell-game' : 'app-shell app-shell-main'
+  const handleConfirmExit = useCallback(() => {
+    setExitConfirmOpen(false)
+    actions.clearRoomCache()
+    onNavigate(routes.main)
+  }, [actions, onNavigate])
 
   useEffect(() => {
     if (!shareMenuOpen) {
@@ -111,6 +118,12 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setQrModalOpen(false)
+        return
+      }
+
+      if (shouldHandlePrimaryEnter(event)) {
+        event.preventDefault()
+        setQrModalOpen(false)
       }
     }
 
@@ -133,6 +146,12 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setExitConfirmOpen(false)
+        return
+      }
+
+      if (shouldHandlePrimaryEnter(event)) {
+        event.preventDefault()
+        handleConfirmExit()
       }
     }
 
@@ -145,7 +164,7 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
       bodyElement.style.overflow = previousOverflow
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [exitConfirmOpen])
+  }, [exitConfirmOpen, handleConfirmExit])
 
   useEffect(() => {
     if (!qrModalOpen || !inviteUrl) {
@@ -370,12 +389,6 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
     } finally {
       setShareMenuOpen(false)
     }
-  }
-
-  const handleConfirmExit = () => {
-    setExitConfirmOpen(false)
-    actions.clearRoomCache()
-    onNavigate(routes.main)
   }
 
   const handleCopyRoomCodeFromExitModal = async () => {

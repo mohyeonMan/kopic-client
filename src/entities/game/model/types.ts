@@ -2,6 +2,18 @@ export type ConnectionStatus = 'idle' | 'connecting' | 'synced' | 'reconnecting'
 export type RoomState = 'LOBBY' | 'RUNNING' | 'RESULT'
 export type TurnPhase = 'READY' | 'WORD_CHOICE' | 'DRAWING' | 'TURN_END'
 export type DrawingTool = 'PEN' | 'ERASER' | 'FILL'
+export type GameSoundName =
+  | 'cardSlide'
+  | 'clearAll'
+  | 'correct'
+  | 'gameResult'
+  | 'participantJoin'
+  | 'participantLeave'
+
+export type GameSoundEvent = {
+  id: string
+  sound: GameSoundName
+}
 
 export type Participant = {
   sessionId: string
@@ -125,4 +137,5 @@ export type AppState = {
   session: SessionState
   connectionStatus: ConnectionStatus
   room: RoomSnapshot
+  soundEvents: GameSoundEvent[]
 }

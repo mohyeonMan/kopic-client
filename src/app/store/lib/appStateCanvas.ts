@@ -1,5 +1,7 @@
 import type { AppState, CanvasStroke } from '../../../entities/game/model'
 import { createSystemMessage } from '@/entities/game/api/gameProtocol'
+import { appendGameSoundEvent } from '@/entities/game/model'
+import { createUUID } from '@/shared/lib/createUUID'
 
 export function reduceCanvasStrokeReceived(
   state: AppState,
@@ -65,6 +67,10 @@ export function reduceCanvasCleared(state: AppState): AppState {
         ...state.room,
         lobbyCanvasStrokes: [],
       },
+      soundEvents: appendGameSoundEvent(state.soundEvents, {
+        id: `canvas:lobby:clear:${createUUID()}`,
+        sound: 'clearAll',
+      }),
     }
   }
 
@@ -78,5 +84,9 @@ export function reduceCanvasCleared(state: AppState): AppState {
       },
       chat: [...state.room.chat, createSystemMessage('406 CANVAS_CLEAR')],
     },
+    soundEvents: appendGameSoundEvent(state.soundEvents, {
+      id: `canvas:${state.room.currentTurn.turnId}:clear:${createUUID()}`,
+      sound: 'clearAll',
+    }),
   }
 }

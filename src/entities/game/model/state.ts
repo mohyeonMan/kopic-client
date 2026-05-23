@@ -26,6 +26,7 @@ export const initialAppState: AppState = {
     actionError: undefined,
   },
   connectionStatus: 'idle',
+  soundEvents: [],
   room: {
     roomId: 'room-01',
     roomCode: 'KOPIC7',
