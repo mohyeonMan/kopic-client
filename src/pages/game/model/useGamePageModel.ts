@@ -7,6 +7,7 @@ import {
 } from '@/entities/game/model'
 import { useAppState } from '@/app/store/useAppState'
 import { useGameControls } from '@/features/game-board/model/useGameControls'
+import { useGameSoundPreference } from '@/features/game-board/model/useGameSoundPreference'
 import { useGameSounds } from '@/features/game-board/model/useGameSounds'
 import { useGameStageOverlay } from '@/features/game-board/model/useGameStageOverlay'
 import {
@@ -214,6 +215,7 @@ export function useGamePageModel() {
     visibleChat,
   })
   const sideSyncHeight = useSideSyncHeight(centerPanelRef)
+  const { soundEnabled, toggleSoundEnabled } = useGameSoundPreference()
   useMobileViewport()
 
   const revealedHintCount = (() => {
@@ -252,6 +254,7 @@ export function useGamePageModel() {
   const pageClassName = `gamepage-shell gamepage-shell-mobile-${activeMobilePanel}`
 
   useGameSounds({
+    enabled: soundEnabled,
     soundEvents: state.soundEvents,
   })
 
@@ -308,6 +311,7 @@ export function useGamePageModel() {
       onSetColor: handleColorChange,
       onSetSize: handleSizeChange,
       onSetTool: handleToolChange,
+      onToggleSoundEnabled: toggleSoundEnabled,
       onStageOverlayTransitionEnd: handleStageOverlayTransitionEnd,
       onStartGame: handleStartGame,
       onToggleSettings: handleToggleSettings,
@@ -322,6 +326,7 @@ export function useGamePageModel() {
       settingsOpen,
       shouldShowSecretWordBanner,
       size,
+      soundEnabled,
       stageOverlayOpen,
       tool,
       turnEndOverlaySnapshot,

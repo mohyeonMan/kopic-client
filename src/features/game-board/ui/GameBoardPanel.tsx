@@ -58,6 +58,7 @@ type GameBoardPanelProps = {
   onSetColor: (color: string) => void
   onSetSize: (size: number) => void
   onSetTool: (tool: DrawingTool) => void
+  onToggleSoundEnabled: () => void
   onStageOverlayTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void
   onStartGame: () => void
   onToggleSettings: () => void
@@ -71,6 +72,7 @@ type GameBoardPanelProps = {
   settingsOpen: boolean
   shouldShowSecretWordBanner: boolean
   size: number
+  soundEnabled: boolean
   stageOverlayOpen: boolean
   tool: DrawingTool
   turnStartCountdownSec?: number
@@ -114,6 +116,7 @@ export function GameBoardPanel({
   onSetColor,
   onSetSize,
   onSetTool,
+  onToggleSoundEnabled,
   onStageOverlayTransitionEnd,
   onStartGame,
   onToggleSettings,
@@ -127,6 +130,7 @@ export function GameBoardPanel({
   settingsOpen,
   shouldShowSecretWordBanner,
   size,
+  soundEnabled,
   stageOverlayOpen,
   tool,
   turnStartCountdownSec,
@@ -224,7 +228,9 @@ export function GameBoardPanel({
           onSetColor={onSetColor}
           onSetSize={onSetSize}
           onSetTool={onSetTool}
+          onToggleSoundEnabled={onToggleSoundEnabled}
           size={size}
+          soundEnabled={soundEnabled}
           tool={tool}
         />
       </div>

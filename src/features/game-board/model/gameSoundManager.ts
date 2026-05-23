@@ -46,6 +46,7 @@ let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
 let unlockListenersAttached = false
 let flushingPendingSounds = false
+let gameSoundEnabled = true
 
 const soundBuffers = new Map<GameSoundName, AudioBuffer>()
 const soundBufferPromises = new Map<GameSoundName, Promise<AudioBuffer | null>>()
@@ -58,6 +59,12 @@ function nowMs() {
 function warnGameSound(message: string, detail?: unknown) {
   if (import.meta.env.DEV) {
     console.warn(`[sound] ${message}`, detail)
+  }
+}
+
+function clearPendingSoundPlays(started: boolean) {
+  while (pendingSoundPlays.length > 0) {
+    pendingSoundPlays.shift()?.resolve(started)
   }
 }
 
@@ -81,7 +88,7 @@ function getAudioContext() {
   try {
     audioContext = new AudioContextConstructor()
     masterGain = audioContext.createGain()
-    masterGain.gain.value = 1
+    masterGain.gain.value = gameSoundEnabled ? 1 : 0
     masterGain.connect(audioContext.destination)
   } catch (error) {
     warnGameSound('context creation failed', error)
@@ -133,6 +140,10 @@ function loadSoundBuffer(name: GameSoundName) {
 }
 
 export function preloadGameSounds() {
+  if (!gameSoundEnabled) {
+    return
+  }
+
   for (const name of Object.keys(GAME_SOUND_FILES) as GameSoundName[]) {
     void loadSoundBuffer(name)
   }
@@ -217,6 +228,11 @@ async function flushPendingSoundPlays() {
     return
   }
 
+  if (!gameSoundEnabled) {
+    clearPendingSoundPlays(true)
+    return
+  }
+
   flushingPendingSounds = true
 
   try {
@@ -241,6 +257,10 @@ async function flushPendingSoundPlays() {
 }
 
 export function initializeGameSoundSystem() {
+  if (!gameSoundEnabled) {
+    return
+  }
+
   const context = getAudioContext()
   if (context?.state !== 'running') {
     attachUnlockListeners()
@@ -250,6 +270,10 @@ export function initializeGameSoundSystem() {
 }
 
 export async function unlockGameAudio() {
+  if (!gameSoundEnabled) {
+    return false
+  }
+
   const context = getAudioContext()
   if (!context) {
     return false
@@ -278,6 +302,10 @@ export async function playGameSound(
   name: GameSoundName,
   options: { queueIfSuspended?: boolean; volumeScale?: number } = {},
 ) {
+  if (!gameSoundEnabled) {
+    return true
+  }
+
   initializeGameSoundSystem()
 
   const context = getAudioContext()
@@ -304,4 +332,20 @@ export async function playGameSound(
   removeUnlockListeners()
   void flushPendingSoundPlays()
   return startDecodedSound(name, volumeScale)
+}
+
+export function setGameSoundEnabled(enabled: boolean) {
+  gameSoundEnabled = enabled
+
+  if (masterGain) {
+    masterGain.gain.value = enabled ? 1 : 0
+  }
+
+  if (!enabled) {
+    clearPendingSoundPlays(true)
+    return
+  }
+
+  initializeGameSoundSystem()
+  void flushPendingSoundPlays()
 }

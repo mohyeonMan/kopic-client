@@ -15,7 +15,9 @@ type BoardToolbarProps = {
   onSetColor: (color: string) => void
   onSetSize: (size: number) => void
   onSetTool: (tool: DrawingTool) => void
+  onToggleSoundEnabled: () => void
   size: number
+  soundEnabled: boolean
   tool: DrawingTool
 }
 
@@ -29,9 +31,13 @@ export function BoardToolbar({
   onSetColor,
   onSetSize,
   onSetTool,
+  onToggleSoundEnabled,
   size,
+  soundEnabled,
   tool,
 }: BoardToolbarProps) {
+  const soundToggleLabel = soundEnabled ? '효과음 켬' : '효과음 끔'
+
   return (
     <div className="tool-row">
       <div className="tool-main-actions">
@@ -80,24 +86,44 @@ export function BoardToolbar({
           disabled={!canDraw}
         />
       </label>
-      <div className="color-palette">
-        {TOOL_COLORS.map((swatch, swatchIndex) => (
-          <button
-            key={swatch}
-            type="button"
-            aria-label={`Select ${swatch}`}
-            className={swatch === activePaletteColor ? 'color-swatch color-swatch-active' : 'color-swatch'}
-            style={
-              canUseFullPalette
-                ? { background: swatch }
-                : isSharedDrawingPhase && swatch === forcedPaletteColor
+      <div className="tool-bottom-row">
+        <div className="color-palette">
+          {TOOL_COLORS.map((swatch, swatchIndex) => (
+            <button
+              key={swatch}
+              type="button"
+              aria-label={`Select ${swatch}`}
+              className={swatch === activePaletteColor ? 'color-swatch color-swatch-active' : 'color-swatch'}
+              style={
+                canUseFullPalette
                   ? { background: swatch }
-                  : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
-            }
-            onClick={() => onSetColor(swatch)}
-            disabled={!canUseFullPalette}
-          />
-        ))}
+                  : isSharedDrawingPhase && swatch === forcedPaletteColor
+                    ? { background: swatch }
+                    : { background: TOOL_COLORS_GRAYSCALE[swatchIndex] }
+              }
+              onClick={() => onSetColor(swatch)}
+              disabled={!canUseFullPalette}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-label={soundToggleLabel}
+          aria-checked={soundEnabled}
+          className={
+            soundEnabled
+              ? 'sound-toggle-button sound-toggle-button-on'
+              : 'sound-toggle-button sound-toggle-button-off'
+          }
+          role="switch"
+          title={soundToggleLabel}
+          onClick={onToggleSoundEnabled}
+        >
+          <span className="sound-toggle-text">효과음</span>
+          <span className="sound-toggle-switch" aria-hidden="true">
+            <span className="sound-toggle-knob" />
+          </span>
+        </button>
       </div>
     </div>
   )
