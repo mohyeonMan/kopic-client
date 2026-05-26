@@ -28,6 +28,7 @@ import {
   decodeSnapshotEnvelopePayload,
 } from '@/entities/game/api/roomSnapshotPayload'
 import type { Envelope } from '@/features/game-session/api/gameSessionEvents'
+import { wsSessionManager } from '@/features/game-session/api/wsSessionManager'
 
 type EnvelopeHandlerOptions = {
   clearInboundStrokeQueue: () => void
@@ -57,6 +58,10 @@ export function createServerEnvelopeHandler({
       const state = getState()
       if (state.session.joinPending && !state.session.joinAccepted) {
         clearInboundStrokeQueue()
+        if (wsSessionManager.retryJoinAfterServerReject(errorPayload)) {
+          return
+        }
+
         dispatch({ type: 'local/joinFailed', payload: errorPayload })
         return
       }
@@ -143,7 +148,6 @@ export function createServerEnvelopeHandler({
         }
         return
       }
-      case 300:
       case 304:
         if (payload && typeof payload === 'object') {
           const state = getState()

@@ -7,6 +7,7 @@ import type { Envelope } from '@/features/game-session/api/gameSessionEvents'
 
 type WsSessionDispatch = (action:
   | { type: 'connection/statusChanged'; payload: ConnectionStatus }
+  | { type: 'local/joinFailed'; payload: { reason: string; message: string } }
   | { type: 'local/connectionErrorReported'; payload: { reason: string; message: string } }
 ) => void
 
@@ -34,6 +35,12 @@ export function useWsSessionSubscription({
           clearInboundStrokeQueue()
           dispatch({ type: 'local/connectionErrorReported', payload: connectionError })
         }
+        return
+      }
+
+      if (event.type === 'join-error') {
+        clearInboundStrokeQueue()
+        dispatch({ type: 'local/joinFailed', payload: event.error })
         return
       }
 

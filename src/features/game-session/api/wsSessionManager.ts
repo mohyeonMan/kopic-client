@@ -1,25 +1,40 @@
 import type { ConnectionStatus } from '@/entities/game/model'
+import {
+  normalizeLobbyRouteError,
+  requestLobbyRoute,
+} from '@/features/game-session/api/lobbyRouteClient'
+import type {
+  LobbyRouteFailure,
+  LobbyRouteKind,
+  LobbyRouteRequest,
+} from '@/features/game-session/api/lobbyRouteClient'
 
 type SessionEvent =
   | { type: 'status'; status: ConnectionStatus }
   | { type: 'message'; data: string }
   | { type: 'error'; error: unknown }
+  | { type: 'join-error'; error: LobbyRouteFailure }
 
 type SessionSubscriber = (event: SessionEvent) => void
 
 const WS_OWNER_GAME_SESSION = 'route-game-session'
 const WS_CLOSE_GRACE_MS = 300
 const WS_HEARTBEAT_MS = 10000
-const WS_MAX_RECONNECT_ATTEMPTS = 3
-const WS_GE_ID = resolveGeId()
+const JOIN_SUCCESS_TIMEOUT_MS = 3000
+const JOIN_RETRY_DELAY_MS = 1000
+const JOIN_MAX_ATTEMPTS = 3
 const WS_BASE_PATH = resolveWsBasePath()
 const APP_MAIN_ROUTE = WS_BASE_PATH || '/'
 
 let ws: WebSocket | null = null
-let reconnectTimer: number | null = null
 let closeGraceTimer: number | null = null
 let heartbeatTimer: number | null = null
-let reconnectAttempt = 0
+let joinSuccessTimer: number | null = null
+let joinRetryTimer: number | null = null
+let connectSequence = 0
+let pendingConnectId: number | null = null
+let joinAttemptCount = 0
+let joinAccepted = false
 let currentStatus: ConnectionStatus = 'idle'
 let currentNickname: string | null = null
 let currentRoomCode: string | null = null
@@ -54,14 +69,6 @@ function normalizeJoinAction(action: 0 | 1 | null | undefined): 0 | 1 | null {
   return action === 1 ? 1 : 0
 }
 
-function resolveNickname() {
-  if (currentNickname) {
-    return currentNickname
-  }
-
-  return null
-}
-
 function resolveWsBasePath() {
   const baseUrl = import.meta.env.BASE_URL ?? '/'
   if (!baseUrl || baseUrl === '/') {
@@ -70,10 +77,6 @@ function resolveWsBasePath() {
 
   const trimmed = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-}
-
-function resolveGeId() {
-  return import.meta.env.VITE_GE_ID?.trim() || 'ge-local'
 }
 
 function resolveWsPath() {
@@ -101,7 +104,7 @@ function createBrowserWsUrl() {
   return new URL(`${protocol}//${window.location.host}${resolveWsPath()}`)
 }
 
-function resolveWsUrl() {
+function resolveWsUrl(routeToken: string) {
   const configuredUrl = import.meta.env.VITE_WS_URL?.trim()
   const url = configuredUrl
     ? new URL(configuredUrl)
@@ -109,33 +112,8 @@ function resolveWsUrl() {
       ? new URL('ws://localhost:8080/ws')
       : createBrowserWsUrl()
 
-  if (typeof window === 'undefined') {
-    return url.toString()
-  }
-
-  const queryToken = new URLSearchParams(window.location.search).get('token')
-  const storageToken =
-    window.localStorage.getItem('token') ??
-    window.localStorage.getItem('accessToken') ??
-    window.sessionStorage.getItem('token') ??
-    window.sessionStorage.getItem('accessToken')
-  const token = queryToken ?? storageToken
-
-  if (token) {
-    url.searchParams.set('token', token)
-  }
-  if (currentRoomCode) {
-    url.searchParams.set('roomCode', currentRoomCode)
-  }
-  if (currentAction !== null) {
-    url.searchParams.set('action', String(currentAction))
-  }
-  url.searchParams.set('geId', WS_GE_ID)
-  const nickname = resolveNickname()
-  if (nickname) {
-    url.searchParams.set('nickname', nickname)
-  }
-
+  url.search = ''
+  url.searchParams.set('routeToken', routeToken)
   return url.toString()
 }
 
@@ -152,13 +130,6 @@ function setStatus(status: ConnectionStatus) {
   publish({ type: 'status', status })
 }
 
-function clearReconnectTimer() {
-  if (reconnectTimer !== null) {
-    window.clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
-}
-
 function clearCloseGraceTimer() {
   if (closeGraceTimer !== null) {
     window.clearTimeout(closeGraceTimer)
@@ -171,6 +142,40 @@ function clearHeartbeatTimer() {
     window.clearInterval(heartbeatTimer)
     heartbeatTimer = null
   }
+}
+
+function clearJoinSuccessTimer() {
+  if (joinSuccessTimer !== null) {
+    window.clearTimeout(joinSuccessTimer)
+    joinSuccessTimer = null
+  }
+}
+
+function clearJoinRetryTimer() {
+  if (joinRetryTimer !== null) {
+    window.clearTimeout(joinRetryTimer)
+    joinRetryTimer = null
+  }
+}
+
+function invalidatePendingConnect() {
+  connectSequence += 1
+  pendingConnectId = null
+}
+
+function closeCurrentSocket() {
+  const current = ws
+  ws = null
+  if (current) {
+    current.close()
+  }
+}
+
+function resetJoinAttemptState() {
+  clearJoinSuccessTimer()
+  clearJoinRetryTimer()
+  invalidatePendingConnect()
+  joinAttemptCount = 0
 }
 
 function startHeartbeat(socket: WebSocket) {
@@ -194,47 +199,97 @@ function isPongMessage(raw: string) {
   }
 }
 
-function handleReconnectFailure() {
-  clearReconnectTimer()
+function resolveLobbyRouteKind(): LobbyRouteKind {
+  if (currentAction === 1) {
+    return 'private-create'
+  }
+
+  if (currentRoomCode) {
+    return 'private-join'
+  }
+
+  return 'quick'
+}
+
+function createLobbyRouteRequest(): LobbyRouteRequest | null {
+  if (!currentNickname) {
+    return null
+  }
+
+  const kind = resolveLobbyRouteKind()
+  if (kind === 'private-join') {
+    return {
+      kind,
+      nickname: currentNickname,
+      roomCode: currentRoomCode ?? undefined,
+    }
+  }
+
+  return {
+    kind,
+    nickname: currentNickname,
+  }
+}
+
+function createConnectionFailure(reason: string, message: string): LobbyRouteFailure {
+  return { reason, message }
+}
+
+function handleJoinFinalFailure(failure: LobbyRouteFailure) {
+  resetJoinAttemptState()
   clearHeartbeatTimer()
-
-  const current = ws
-  ws = null
+  closeCurrentSocket()
   owners.clear()
-  reconnectAttempt = 0
+  joinAccepted = false
   setStatus('idle')
+  publish({ type: 'join-error', error: failure })
+}
 
-  if (current) {
-    current.close()
-  }
+function scheduleJoinRetry(failure: LobbyRouteFailure) {
+  clearJoinSuccessTimer()
+  clearHeartbeatTimer()
+  closeCurrentSocket()
+  invalidatePendingConnect()
 
-  if (typeof window === 'undefined') {
+  if (owners.size === 0) {
+    setStatus('idle')
     return
   }
 
-  publish({
-    type: 'error',
-    error: {
-      reason: 'CONNECTION_FAILED',
-      message: '서버와 연결할 수 없습니다.',
-    },
-  })
-
-  if (normalizeRoutePath(window.location.pathname) === APP_MAIN_ROUTE) {
+  if (joinAttemptCount >= JOIN_MAX_ATTEMPTS) {
+    handleJoinFinalFailure(failure)
     return
   }
 
-  window.history.pushState({}, '', APP_MAIN_ROUTE)
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  clearJoinRetryTimer()
+  setStatus('reconnecting')
+  joinRetryTimer = window.setTimeout(() => {
+    joinRetryTimer = null
+    connectIfNeeded()
+  }, JOIN_RETRY_DELAY_MS)
+}
+
+function startJoinSuccessTimer(socket: WebSocket) {
+  clearJoinSuccessTimer()
+  joinSuccessTimer = window.setTimeout(() => {
+    if (ws !== socket || joinAccepted) {
+      return
+    }
+
+    scheduleJoinRetry(createConnectionFailure(
+      'JOIN_TIMEOUT',
+      '입장 응답을 받지 못했습니다.',
+    ))
+  }, JOIN_SUCCESS_TIMEOUT_MS)
 }
 
 function handleSessionDisconnected() {
-  clearReconnectTimer()
+  resetJoinAttemptState()
   clearHeartbeatTimer()
 
   ws = null
   owners.clear()
-  reconnectAttempt = 0
+  joinAccepted = false
   setStatus('idle')
 
   if (typeof window === 'undefined') {
@@ -257,44 +312,63 @@ function handleSessionDisconnected() {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
-function scheduleReconnect() {
-  if (owners.size === 0) {
-    setStatus('idle')
-    return
-  }
-
-  clearReconnectTimer()
-
-  if (reconnectAttempt >= WS_MAX_RECONNECT_ATTEMPTS) {
-    handleReconnectFailure()
-    return
-  }
-
-  setStatus('reconnecting')
-  const delayMs = Math.min(1000 * 2 ** reconnectAttempt, 5000)
-  reconnectAttempt += 1
-
-  reconnectTimer = window.setTimeout(() => {
-    reconnectTimer = null
-    connectIfNeeded()
-  }, delayMs)
-}
-
 function closeNow() {
-  clearReconnectTimer()
+  resetJoinAttemptState()
   clearHeartbeatTimer()
-
-  const current = ws
-  ws = null
-  if (current) {
-    current.close()
-  }
-
-  reconnectAttempt = 0
+  closeCurrentSocket()
+  joinAccepted = false
   setStatus('idle')
 }
 
-function connectIfNeeded() {
+async function connectIfNeeded() {
+  if (owners.size === 0) {
+    return
+  }
+
+  if (pendingConnectId !== null) {
+    return
+  }
+
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return
+  }
+
+  const routeRequest = createLobbyRouteRequest()
+  if (!routeRequest) {
+    joinAttemptCount += 1
+    scheduleJoinRetry(createConnectionFailure(
+      'INVALID_NICKNAME',
+      '닉네임을 입력해주세요.',
+    ))
+    return
+  }
+
+  clearJoinRetryTimer()
+  setStatus(joinAttemptCount > 0 ? 'reconnecting' : 'connecting')
+
+  const connectId = connectSequence + 1
+  connectSequence = connectId
+  pendingConnectId = connectId
+  joinAttemptCount += 1
+
+  let routeToken: string
+  try {
+    routeToken = await requestLobbyRoute(routeRequest)
+  } catch (error) {
+    if (pendingConnectId !== connectId) {
+      return
+    }
+
+    pendingConnectId = null
+    scheduleJoinRetry(normalizeLobbyRouteError(error))
+    return
+  }
+
+  if (pendingConnectId !== connectId) {
+    return
+  }
+
+  pendingConnectId = null
   if (owners.size === 0) {
     return
   }
@@ -303,19 +377,21 @@ function connectIfNeeded() {
     return
   }
 
-  setStatus('connecting')
   let next: WebSocket
-
   try {
-    next = new WebSocket(resolveWsUrl())
-  } catch (error) {
-    publish({ type: 'error', error })
-    scheduleReconnect()
+    next = new WebSocket(resolveWsUrl(routeToken))
+  } catch {
+    scheduleJoinRetry(createConnectionFailure(
+      'WS_CONNECTION_FAILED',
+      '서버와 연결할 수 없습니다.',
+    ))
     return
   }
 
   ws = next
   let opened = false
+  let socketFailure: LobbyRouteFailure | null = null
+  startJoinSuccessTimer(next)
 
   next.onopen = () => {
     if (ws !== next) {
@@ -323,7 +399,6 @@ function connectIfNeeded() {
     }
 
     opened = true
-    reconnectAttempt = 0
     setStatus('synced')
     startHeartbeat(next)
   }
@@ -346,7 +421,14 @@ function connectIfNeeded() {
       return
     }
 
-    publish({ type: 'error', error })
+    socketFailure = createConnectionFailure(
+      'WS_CONNECTION_FAILED',
+      '서버와 연결할 수 없습니다.',
+    )
+
+    if (joinAccepted) {
+      publish({ type: 'error', error })
+    }
   }
 
   next.onclose = () => {
@@ -357,12 +439,15 @@ function connectIfNeeded() {
     ws = null
     clearHeartbeatTimer()
 
-    if (opened) {
+    if (joinAccepted) {
       handleSessionDisconnected()
       return
     }
 
-    scheduleReconnect()
+    scheduleJoinRetry(socketFailure ?? createConnectionFailure(
+      opened ? 'JOIN_CONNECTION_CLOSED' : 'WS_CONNECTION_FAILED',
+      opened ? '입장 연결이 종료되었습니다.' : '서버와 연결할 수 없습니다.',
+    ))
   }
 }
 
@@ -375,6 +460,7 @@ export const wsSessionManager = {
     const prevNickname = currentNickname
     const prevRoomCode = currentRoomCode
     const prevAction = currentAction
+    const joinRequested = action !== undefined
 
     if (typeof nickname === 'string') {
       currentNickname = normalizeNickname(nickname)
@@ -386,7 +472,7 @@ export const wsSessionManager = {
       currentAction = normalizeJoinAction(action)
     }
 
-    const queryChanged =
+    const routeParamsChanged =
       prevNickname !== currentNickname ||
       prevRoomCode !== currentRoomCode ||
       prevAction !== currentAction
@@ -394,8 +480,15 @@ export const wsSessionManager = {
     owners.add(owner)
     clearCloseGraceTimer()
 
-    if (queryChanged && ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-      closeNow()
+    if (joinRequested && joinAccepted) {
+      joinAccepted = false
+    }
+
+    if (routeParamsChanged && !joinAccepted) {
+      resetJoinAttemptState()
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        closeCurrentSocket()
+      }
     }
 
     connectIfNeeded()
@@ -408,6 +501,7 @@ export const wsSessionManager = {
     }
 
     clearCloseGraceTimer()
+    resetJoinAttemptState()
     closeGraceTimer = window.setTimeout(() => {
       closeGraceTimer = null
       if (owners.size === 0) {
@@ -430,6 +524,18 @@ export const wsSessionManager = {
     return () => {
       subscribers.delete(subscriber)
     }
+  },
+  markJoinAccepted() {
+    joinAccepted = true
+    resetJoinAttemptState()
+  },
+  retryJoinAfterServerReject(failure: LobbyRouteFailure) {
+    if (joinAccepted || owners.size === 0) {
+      return false
+    }
+
+    scheduleJoinRetry(failure)
+    return true
   },
   clearJoinConnectParams() {
     currentRoomCode = null

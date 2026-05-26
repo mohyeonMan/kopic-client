@@ -23,7 +23,6 @@ export const serverEventMeta = [
   { code: 411, name: 'GE_GAME_RESULT' },
   { code: 412, name: 'GE_RETURN_TO_LOBBY' },
   { code: 413, name: 'GAME_ENDED' },
-  { code: 300, name: 'JOIN_ACCEPTED' },
   { code: 301, name: 'ROOM_JOINED' },
   { code: 302, name: 'ROOM_LEFT' },
   { code: 303, name: 'GAME_SETTINGS_UPDATED' },

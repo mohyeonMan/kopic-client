@@ -31,6 +31,7 @@ export function useAppRouter() {
       return
     }
 
+    wsSessionManager.markJoinAccepted()
     wsSessionManager.clearJoinConnectParams()
   }, [session.joinAccepted])
 
