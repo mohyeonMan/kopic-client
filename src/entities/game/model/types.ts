@@ -116,6 +116,7 @@ export type SessionState = {
   nickname: string
   joinPending: boolean
   joinAccepted: boolean
+  wsDrainRejoinPending: boolean
   joinRoomCode?: string
   joinAction?: 0 | 1
   joinError?: {

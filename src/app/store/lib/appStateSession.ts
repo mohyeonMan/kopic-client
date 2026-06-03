@@ -43,6 +43,7 @@ export function reduceJoinRequested(
       ...state.session,
       joinPending: true,
       joinAccepted: false,
+      wsDrainRejoinPending: false,
       joinRoomCode: payload?.roomCode,
       joinAction: payload?.action ?? 0,
       joinError: undefined,
@@ -60,6 +61,7 @@ export function reduceJoinAccepted(state: AppState): AppState {
       ...state.session,
       joinPending: false,
       joinAccepted: true,
+      wsDrainRejoinPending: false,
       joinError: undefined,
       connectionError: undefined,
       actionError: undefined,
@@ -77,6 +79,7 @@ export function reduceJoinFailed(
       ...state.session,
       joinPending: false,
       joinAccepted: false,
+      wsDrainRejoinPending: false,
       joinRoomCode: undefined,
       joinAction: undefined,
       joinError: payload,
@@ -107,6 +110,7 @@ export function reduceConnectionErrorReported(
       ...state.session,
       joinPending: false,
       joinAccepted: false,
+      wsDrainRejoinPending: false,
       joinRoomCode: undefined,
       joinAction: undefined,
       connectionError: payload,
@@ -156,6 +160,7 @@ export function reduceRoomCacheCleared(state: AppState): AppState {
       ...state.session,
       joinPending: false,
       joinAccepted: false,
+      wsDrainRejoinPending: false,
       joinRoomCode: undefined,
       joinAction: undefined,
       joinError: undefined,
@@ -185,6 +190,7 @@ export function reduceConnectionStatusChanged(
         ...state.session,
         joinPending: false,
         joinAccepted: false,
+        wsDrainRejoinPending: false,
         joinRoomCode: undefined,
         joinAction: undefined,
         joinError: state.session.joinError,
@@ -198,5 +204,19 @@ export function reduceConnectionStatusChanged(
   return {
     ...state,
     connectionStatus: status,
+  }
+}
+
+export function reduceWsDrainRejoinRequested(state: AppState): AppState {
+  if (state.session.wsDrainRejoinPending) {
+    return state
+  }
+
+  return {
+    ...state,
+    session: {
+      ...state.session,
+      wsDrainRejoinPending: true,
+    },
   }
 }

@@ -29,6 +29,27 @@ export function reduceGuessSubmitted(state: AppState, text: string): AppState {
   }
 }
 
+export function reduceNotificationReceived(state: AppState, text: string): AppState {
+  const normalizedText = text.trim() || '공지사항이 도착했습니다.'
+
+  return {
+    ...state,
+    room: {
+      ...state.room,
+      chat: [
+        ...state.room.chat,
+        {
+          id: createUUID(),
+          nickname: '공지',
+          text: normalizedText,
+          tone: 'alert',
+          createdAt: Date.now(),
+        },
+      ],
+    },
+  }
+}
+
 export function reduceChatReceived(state: AppState, payload: ChatMessage): AppState {
   const senderSessionId = payload.senderSessionId
   const senderNickname = senderSessionId

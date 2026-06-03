@@ -23,6 +23,8 @@ const WS_HEARTBEAT_MS = 10000
 const JOIN_SUCCESS_TIMEOUT_MS = 3000
 const JOIN_RETRY_DELAY_MS = 1000
 const JOIN_MAX_ATTEMPTS = 3
+const ROOM_CLOSED_CLOSE_CODE = 4001
+const ROOM_CLOSED_REASON_PREFIX = 'ROOM_CLOSED:'
 const WS_BASE_PATH = resolveWsBasePath()
 const APP_MAIN_ROUTE = WS_BASE_PATH || '/'
 
@@ -235,6 +237,47 @@ function createConnectionFailure(reason: string, message: string): LobbyRouteFai
   return { reason, message }
 }
 
+function resolveRoomClosedReason(event?: CloseEvent) {
+  if (!event || event.code !== ROOM_CLOSED_CLOSE_CODE) {
+    return null
+  }
+
+  const reason = event.reason.trim()
+  if (!reason.startsWith(ROOM_CLOSED_REASON_PREFIX)) {
+    return null
+  }
+
+  return reason.slice(ROOM_CLOSED_REASON_PREFIX.length).trim() || 'UNKNOWN'
+}
+
+function resolveRoomClosedMessage(reason: string) {
+  switch (reason) {
+    case 'DRAIN_GAME_ENDED':
+      return '게임이 종료되어 로비로 이동합니다.'
+    case 'DRAIN_WAITING_ROOM':
+      return '방이 종료되어 로비로 이동합니다.'
+    case 'DRAIN_FORCE_CLOSE':
+      return '서버 종료로 방이 종료되었습니다.'
+    default:
+      return '방이 종료되어 로비로 이동합니다.'
+  }
+}
+
+function createSessionDisconnectedFailure(closeEvent?: CloseEvent): LobbyRouteFailure {
+  const roomClosedReason = resolveRoomClosedReason(closeEvent)
+  if (roomClosedReason) {
+    return {
+      reason: roomClosedReason,
+      message: resolveRoomClosedMessage(roomClosedReason),
+    }
+  }
+
+  return {
+    reason: 'SESSION_DISCONNECTED',
+    message: '세션이 끊겼습니다.',
+  }
+}
+
 function handleJoinFinalFailure(failure: LobbyRouteFailure) {
   resetJoinAttemptState()
   clearHeartbeatTimer()
@@ -283,7 +326,7 @@ function startJoinSuccessTimer(socket: WebSocket) {
   }, JOIN_SUCCESS_TIMEOUT_MS)
 }
 
-function handleSessionDisconnected() {
+function handleSessionDisconnected(closeEvent?: CloseEvent) {
   resetJoinAttemptState()
   clearHeartbeatTimer()
 
@@ -298,10 +341,7 @@ function handleSessionDisconnected() {
 
   publish({
     type: 'error',
-    error: {
-      reason: 'SESSION_DISCONNECTED',
-      message: '세션이 끊겼습니다.',
-    },
+    error: createSessionDisconnectedFailure(closeEvent),
   })
 
   if (normalizeRoutePath(window.location.pathname) === APP_MAIN_ROUTE) {
@@ -431,7 +471,7 @@ async function connectIfNeeded() {
     }
   }
 
-  next.onclose = () => {
+  next.onclose = (event) => {
     if (ws !== next) {
       return
     }
@@ -440,7 +480,7 @@ async function connectIfNeeded() {
     clearHeartbeatTimer()
 
     if (joinAccepted) {
-      handleSessionDisconnected()
+      handleSessionDisconnected(event)
       return
     }
 

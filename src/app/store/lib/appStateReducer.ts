@@ -33,6 +33,7 @@ import {
 import {
   reduceChatReceived,
   reduceGuessSubmitted,
+  reduceNotificationReceived,
 } from './appStateChat'
 import {
   reduceGameEndedApplied,
@@ -70,6 +71,7 @@ import {
   reduceRoomCacheCleared,
   reduceSessionIdSynced,
   reduceSessionNicknameUpdated,
+  reduceWsDrainRejoinRequested,
 } from './appStateSession'
 
 export type AppAction =
@@ -84,6 +86,8 @@ export type AppAction =
   | { type: 'local/actionErrorReported'; payload: { reason: string; message: string; code?: number } }
   | { type: 'local/actionErrorDismissed' }
   | { type: 'local/roomCacheCleared' }
+  | { type: 'local/notificationReceived'; payload: string }
+  | { type: 'local/wsDrainRejoinRequested' }
   | { type: 'local/lobbySettingsPatched'; payload: Partial<GameSettings> }
   | { type: 'local/guessSubmitted'; payload: string }
   | { type: 'connection/statusChanged'; payload: ConnectionStatus }
@@ -134,6 +138,10 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       return reduceActionErrorDismissed(state)
     case 'local/roomCacheCleared':
       return reduceRoomCacheCleared(state)
+    case 'local/notificationReceived':
+      return reduceNotificationReceived(state, action.payload)
+    case 'local/wsDrainRejoinRequested':
+      return reduceWsDrainRejoinRequested(state)
     case 'local/lobbySettingsPatched':
       return reduceLobbySettingsPatched(state, action.payload)
     case 'local/guessSubmitted':

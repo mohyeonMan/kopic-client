@@ -61,13 +61,13 @@ export function useAppRouter() {
       return
     }
 
-    if (session.joinAccepted) {
+    if (session.joinAccepted || session.joinPending) {
       return
     }
 
     window.history.replaceState({}, '', routes.main)
     setRoute(routes.main)
-  }, [route, session.joinAccepted])
+  }, [route, session.joinAccepted, session.joinPending])
 
   useEffect(() => {
     previousRouteRef.current = route

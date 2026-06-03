@@ -19,6 +19,7 @@ export const initialAppState: AppState = {
     nickname: '',
     joinPending: false,
     joinAccepted: false,
+    wsDrainRejoinPending: false,
     joinRoomCode: undefined,
     joinAction: undefined,
     joinError: undefined,

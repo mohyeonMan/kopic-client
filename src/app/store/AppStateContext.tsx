@@ -76,6 +76,32 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [clearInboundStrokeQueue, getState, sendClientEvent, server],
   )
 
+  useEffect(() => {
+    if (!state.session.wsDrainRejoinPending) {
+      return
+    }
+
+    if (!state.session.joinAccepted || state.session.joinPending || state.room.roomState !== 'LOBBY') {
+      return
+    }
+
+    const roomCode = state.room.roomType === 'PRIVATE' ? state.room.roomCode.trim() : ''
+    dispatch({
+      type: 'local/joinRequested',
+      payload: {
+        action: 0,
+        roomCode: roomCode.length > 0 ? roomCode : undefined,
+      },
+    })
+  }, [
+    state.room.roomCode,
+    state.room.roomState,
+    state.room.roomType,
+    state.session.joinAccepted,
+    state.session.joinPending,
+    state.session.wsDrainRejoinPending,
+  ])
+
   const connection = useMemo<AppConnectionControls>(
     () => ({
       setStatus: (status) => dispatch({ type: 'connection/statusChanged', payload: status }),

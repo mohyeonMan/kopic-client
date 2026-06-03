@@ -6,6 +6,8 @@ import type { AppAction } from './appStateReducer'
 import {
   decodeCompactStroke,
   decodeGuessSubmittedMessage,
+  isRecord,
+  readNonEmptyString,
 } from '@/entities/game/api/gameProtocol'
 import {
   decodeGeDrawingStartedPayload,
@@ -39,9 +41,19 @@ type EnvelopeHandlerOptions = {
 }
 
 const SERVER_ERROR_EVENT_CODES = new Set([1901, 1902, 1903, 1910, 1911, 1920, 1930, 1940, 1941, 1999])
+const WS_DRAIN_REJOIN_LOBBY_MESSAGE = '연결 서버가 교체될 예정입니다. 자동으로 다시 입장합니다.'
+const WS_DRAIN_REJOIN_AFTER_GAME_MESSAGE = '연결 서버가 교체될 예정입니다. 로비로 돌아가면 자동으로 다시 입장합니다.'
 
 function isFatalRoomErrorCode(eventCode: number) {
   return eventCode === 1910 || eventCode === 1941
+}
+
+function decodeNotificationText(payload: unknown) {
+  if (!isRecord(payload)) {
+    return ''
+  }
+
+  return readNonEmptyString(payload.t) ?? ''
 }
 
 export function createServerEnvelopeHandler({
@@ -77,6 +89,24 @@ export function createServerEnvelopeHandler({
     }
 
     switch (envelope.e) {
+      case 450: {
+        dispatch({ type: 'local/notificationReceived', payload: decodeNotificationText(payload) })
+        return
+      }
+      case 452: {
+        const state = getState()
+        if (!state.session.wsDrainRejoinPending) {
+          dispatch({
+            type: 'local/notificationReceived',
+            payload:
+              state.room.roomState === 'LOBBY'
+                ? WS_DRAIN_REJOIN_LOBBY_MESSAGE
+                : WS_DRAIN_REJOIN_AFTER_GAME_MESSAGE,
+          })
+        }
+        dispatch({ type: 'local/wsDrainRejoinRequested' })
+        return
+      }
       case 400: {
         const gameStartedPayload = decodeGeGameStartedPayload(payload)
         if (gameStartedPayload) {
