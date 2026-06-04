@@ -24,6 +24,8 @@ import { useClientEventSender } from '@/features/game-session/model/useClientEve
 import { useInboundStrokeQueue } from '@/features/game-session/model/useInboundStrokeQueue'
 import { useWsSessionSubscription } from '@/features/game-session/model/useWsSessionSubscription'
 
+const WS_DRAIN_REJOIN_DELAY_SEC = 5
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
   const stateRef = useRef<AppState>(state)
@@ -85,14 +87,47 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const roomCode = state.room.roomType === 'PRIVATE' ? state.room.roomCode.trim() : ''
+    let remainingSec = WS_DRAIN_REJOIN_DELAY_SEC
+    const intervalId = window.setInterval(() => {
+      remainingSec -= 1
+
+      if (remainingSec > 0) {
+        dispatch({
+          type: 'local/notificationReceived',
+          payload: `${remainingSec}초 후 재입장합니다.`,
+        })
+        return
+      }
+
+      window.clearInterval(intervalId)
+      const latestState = stateRef.current
+      if (
+        !latestState.session.wsDrainRejoinPending ||
+        !latestState.session.joinAccepted ||
+        latestState.session.joinPending ||
+        latestState.room.roomState !== 'LOBBY'
+      ) {
+        return
+      }
+
+      const roomCode = latestState.room.roomType === 'PRIVATE' ? latestState.room.roomCode.trim() : ''
+      dispatch({
+        type: 'local/joinRequested',
+        payload: {
+          action: 0,
+          roomCode: roomCode.length > 0 ? roomCode : undefined,
+        },
+      })
+    }, 1000)
+
     dispatch({
-      type: 'local/joinRequested',
-      payload: {
-        action: 0,
-        roomCode: roomCode.length > 0 ? roomCode : undefined,
-      },
+      type: 'local/notificationReceived',
+      payload: `${remainingSec}초 후 재입장합니다.`,
     })
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
   }, [
     state.room.roomCode,
     state.room.roomState,
