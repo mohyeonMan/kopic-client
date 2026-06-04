@@ -117,6 +117,10 @@ export type SessionState = {
   joinPending: boolean
   joinAccepted: boolean
   wsDrainRejoinPending: boolean
+  notificationToast?: {
+    id: string
+    text: string
+  }
   joinRoomCode?: string
   joinAction?: 0 | 1
   joinError?: {

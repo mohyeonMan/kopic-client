@@ -11,6 +11,7 @@ import { useAppActions } from '../store/useAppActions'
 import { useAppSessionState } from '../store/useAppSessionState'
 import { useAppShellState } from '../store/useAppShellState'
 import { shouldHandlePrimaryEnter } from '../../shared/lib/keyboardShortcuts'
+import { NotificationToast } from '@/features/game-session/ui/NotificationToast'
 
 type AppLayoutProps = {
   currentRoute: AppRoute
@@ -446,6 +447,8 @@ export function AppLayout({ currentRoute, onNavigate, children }: AppLayoutProps
 
   return (
     <div className={shellClassName}>
+      <NotificationToast toast={session.notificationToast} />
+
       {isGameRoute ? (
         <header className="topbar">
           <h1 className="topbar-brand">KOPIC</h1>

@@ -31,15 +31,23 @@ export function reduceGuessSubmitted(state: AppState, text: string): AppState {
 
 export function reduceNotificationReceived(state: AppState, text: string): AppState {
   const normalizedText = text.trim() || '공지사항이 도착했습니다.'
+  const id = createUUID()
 
   return {
     ...state,
+    session: {
+      ...state.session,
+      notificationToast: {
+        id,
+        text: normalizedText,
+      },
+    },
     room: {
       ...state.room,
       chat: [
         ...state.room.chat,
         {
-          id: createUUID(),
+          id,
           nickname: '공지',
           text: normalizedText,
           tone: 'alert',
