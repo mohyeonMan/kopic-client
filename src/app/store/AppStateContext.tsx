@@ -29,6 +29,7 @@ const WS_DRAIN_REJOIN_DELAY_SEC = 5
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appStateReducer, initialAppState)
   const stateRef = useRef<AppState>(state)
+  const wsDrainRejoinRequestPendingRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -111,6 +112,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
 
       const roomCode = latestState.room.roomType === 'PRIVATE' ? latestState.room.roomCode.trim() : ''
+      wsDrainRejoinRequestPendingRef.current = true
       dispatch({
         type: 'local/joinRequested',
         payload: {
@@ -136,6 +138,25 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     state.session.joinPending,
     state.session.wsDrainRejoinPending,
   ])
+
+  useEffect(() => {
+    if (!wsDrainRejoinRequestPendingRef.current) {
+      return
+    }
+
+    if (state.session.joinAccepted && !state.session.joinPending) {
+      wsDrainRejoinRequestPendingRef.current = false
+      dispatch({
+        type: 'local/notificationReceived',
+        payload: '재입장에 성공하였습니다.',
+      })
+      return
+    }
+
+    if (!state.session.joinAccepted && !state.session.joinPending) {
+      wsDrainRejoinRequestPendingRef.current = false
+    }
+  }, [state.session.joinAccepted, state.session.joinPending])
 
   const connection = useMemo<AppConnectionControls>(
     () => ({
