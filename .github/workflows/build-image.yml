@@ -46,7 +46,6 @@ jobs:
               echo "environment=dev" >> "${GITHUB_OUTPUT}"
               echo "app_base_path=/kopic-dev/" >> "${GITHUB_OUTPUT}"
               echo "ws_path=/kopic-dev/ws" >> "${GITHUB_OUTPUT}"
-              echo "lobby_path=/kopic-dev/lobby" >> "${GITHUB_OUTPUT}"
               echo "app_base_path_nginx=/kopic-dev" >> "${GITHUB_OUTPUT}"
               echo "image_tag=dev-sha-${GITHUB_SHA::7}" >> "${GITHUB_OUTPUT}"
               ;;
@@ -54,7 +53,6 @@ jobs:
               echo "environment=prod" >> "${GITHUB_OUTPUT}"
               echo "app_base_path=/" >> "${GITHUB_OUTPUT}"
               echo "ws_path=/ws" >> "${GITHUB_OUTPUT}"
-              echo "lobby_path=/lobby" >> "${GITHUB_OUTPUT}"
               echo "app_base_path_nginx=/" >> "${GITHUB_OUTPUT}"
               echo "image_tag=prod-sha-${GITHUB_SHA::7}" >> "${GITHUB_OUTPUT}"
               ;;
@@ -76,7 +74,6 @@ jobs:
           build-args: |
             VITE_APP_BASE_PATH=${{ steps.deploy.outputs.app_base_path }}
             VITE_WS_PATH=${{ steps.deploy.outputs.ws_path }}
-            VITE_LOBBY_PATH=${{ steps.deploy.outputs.lobby_path }}
             APP_BASE_PATH=${{ steps.deploy.outputs.app_base_path_nginx }}
 
       - name: Checkout infra repo
