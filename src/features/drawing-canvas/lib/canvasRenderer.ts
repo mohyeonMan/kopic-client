@@ -6,7 +6,7 @@ import {
   SOLID_STROKE_PADDING,
 } from './canvasBoardConstants'
 
-const STROKE_WIDTH_INTERPOLATION_STEP = 8
+const STROKE_WIDTH_INTERPOLATION_STEP = 4
 
 function strokeColor(stroke: Pick<CanvasStroke, 'tool' | 'color'>) {
   return stroke.tool === 'ERASER' ? '#ffffff' : stroke.color
