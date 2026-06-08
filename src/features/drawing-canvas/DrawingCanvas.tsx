@@ -10,7 +10,7 @@ import { useCanvasInputGuards } from './hooks/useCanvasInputGuards'
 import { useCommittedCanvasRenderer } from './hooks/useCommittedCanvasRenderer'
 import { MAX_POINTS_PER_STROKE } from './lib/canvasBoardConstants'
 import { clearTextSelection, getCanvasPoint } from './lib/canvasPointer'
-import { buildCommittedStroke, type DraftStroke } from './lib/canvasStroke'
+import { buildCommittedStroke, createCanvasStrokeCid, type DraftStroke } from './lib/canvasStroke'
 
 type DrawingCanvasProps = {
   strokes: CanvasStroke[]
@@ -78,7 +78,9 @@ export function DrawingCanvas({
     event.preventDefault()
 
     if (tool === 'FILL') {
+      const cid = createCanvasStrokeCid()
       const committedStroke = buildCommittedStroke({
+        cid,
         tool,
         color,
         points: [getCanvasPoint(event, canvas, size, false)],
@@ -91,14 +93,17 @@ export function DrawingCanvas({
     }
 
     const startPoint = getCanvasPoint(event, canvas, size, tool === 'PEN' && event.pointerType === 'pen')
+    const cid = createCanvasStrokeCid()
     activePointerIdRef.current = event.pointerId
     canvas.setPointerCapture(event.pointerId)
     draftStrokeRef.current = {
+      cid,
       tool,
       color,
       points: [startPoint],
     }
     transmitStrokeRef.current = {
+      cid,
       tool,
       color,
       points: [startPoint],
@@ -132,6 +137,7 @@ export function DrawingCanvas({
       const flushedPoints = nextTransmitPoints.slice(0, MAX_POINTS_PER_STROKE)
       const carryPoint = flushedPoints[flushedPoints.length - 1]
       const chunkStroke = buildCommittedStroke({
+        cid: draftStrokeRef.current.cid,
         tool: draftStrokeRef.current.tool,
         color: draftStrokeRef.current.color,
         points: flushedPoints,
@@ -139,6 +145,7 @@ export function DrawingCanvas({
 
       onSendStrokeChunk?.(chunkStroke)
       transmitStrokeRef.current = {
+        cid: draftStrokeRef.current.cid,
         tool: draftStrokeRef.current.tool,
         color: draftStrokeRef.current.color,
         points: [carryPoint, nextPoint],
@@ -148,6 +155,7 @@ export function DrawingCanvas({
     }
 
     transmitStrokeRef.current = {
+      cid: draftStrokeRef.current.cid,
       tool: draftStrokeRef.current.tool,
       color: draftStrokeRef.current.color,
       points: nextTransmitPoints,

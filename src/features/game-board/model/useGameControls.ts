@@ -16,6 +16,7 @@ import { playGameSound } from '@/features/game-board/model/gameSoundManager'
 type GameControlActions = {
   patchLobbySettings: (settings: Partial<GameSettings>) => void
   requestCanvasClear: () => void
+  requestCanvasUndo: (cid: string) => void
   requestGameStart: () => void
   requestWordChoice: (choiceIndex: number) => void
   sendCanvasStroke: (stroke: CanvasStroke) => void
@@ -28,6 +29,7 @@ type GameControlServer = {
 
 type UseGameControlsArgs = {
   actions: GameControlActions
+  canvasStrokes: CanvasStroke[]
   forcedPaletteColor?: string
   isHost: boolean
   onBeforeRequestWordChoice?: () => void
@@ -40,6 +42,7 @@ type UseGameControlsArgs = {
 
 export function useGameControls({
   actions,
+  canvasStrokes,
   forcedPaletteColor,
   isHost,
   onBeforeRequestWordChoice,
@@ -72,6 +75,8 @@ export function useGameControls({
   const isSharedDrawingPhase = roomState === 'LOBBY' && !settingsOpen
   const canUseFullPalette = isDrawerDrawingPhase
   const activePaletteColor = isSharedDrawingPhase && forcedPaletteColor ? forcedPaletteColor : color
+  const lastCanvasStrokeCid = canvasStrokes.slice().reverse().find((stroke) => stroke.cid)?.cid
+  const canUndoCanvas = canDraw && Boolean(lastCanvasStrokeCid)
 
   const applySetting = (key: NumericSettingKey, value: string) => {
     if (!isHost) {
@@ -144,6 +149,14 @@ export function useGameControls({
     actions.requestCanvasClear()
   }
 
+  const handleUndoCanvas = () => {
+    if (!lastCanvasStrokeCid || !canUndoCanvas) {
+      return
+    }
+
+    actions.requestCanvasUndo(lastCanvasStrokeCid)
+  }
+
   const handleToggleSettings = () => {
     const nextOpen = !settingsOpen
     if (nextOpen) {
@@ -196,6 +209,7 @@ export function useGameControls({
     applyCustomWordMode,
     applyCustomWordsRaw,
     canDraw,
+    canUndoCanvas,
     canUseFullPalette,
     currentWordChoices,
     guessInput,
@@ -209,6 +223,7 @@ export function useGameControls({
     handleStartGame,
     handleToggleSettings,
     handleToolChange,
+    handleUndoCanvas,
     isDrawerDrawingPhase,
     isSharedDrawingPhase,
     setGuessInput,

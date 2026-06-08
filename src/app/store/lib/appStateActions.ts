@@ -8,6 +8,7 @@ import type {
 } from '../appStateContextValue'
 import {
   CANVAS_CLEAR_MARKER,
+  createCanvasUndoMarker,
   createSystemMessage,
   encodeCompactGameSettings,
   encodeCompactStroke,
@@ -113,6 +114,15 @@ export function createAppActions({
     },
     sendCanvasStroke: (stroke) => {
       sendClientEvent('DRAW_STROKE', encodeCompactStroke(stroke))
+    },
+    requestCanvasUndo: (cid) => {
+      const normalizedCid = cid.trim()
+      if (!normalizedCid) {
+        return
+      }
+
+      dispatch({ type: 'server/canvasStrokeUndone', payload: normalizedCid })
+      sendClientEvent('DRAW_STROKE', createCanvasUndoMarker(normalizedCid))
     },
     requestCanvasClear: () => {
       clearInboundStrokeQueue()

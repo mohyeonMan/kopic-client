@@ -8,6 +8,7 @@ import {
 type BoardToolbarProps = {
   activePaletteColor: string
   canDraw: boolean
+  canUndoCanvas: boolean
   canUseFullPalette: boolean
   forcedPaletteColor?: string
   isSharedDrawingPhase: boolean
@@ -16,6 +17,7 @@ type BoardToolbarProps = {
   onSetSize: (size: number) => void
   onSetTool: (tool: DrawingTool) => void
   onToggleSoundEnabled: () => void
+  onUndoCanvas: () => void
   size: number
   soundEnabled: boolean
   tool: DrawingTool
@@ -24,6 +26,7 @@ type BoardToolbarProps = {
 export function BoardToolbar({
   activePaletteColor,
   canDraw,
+  canUndoCanvas,
   canUseFullPalette,
   forcedPaletteColor,
   isSharedDrawingPhase,
@@ -32,6 +35,7 @@ export function BoardToolbar({
   onSetSize,
   onSetTool,
   onToggleSoundEnabled,
+  onUndoCanvas,
   size,
   soundEnabled,
   tool,
@@ -64,6 +68,14 @@ export function BoardToolbar({
           disabled={!canDraw}
         >
           채우기
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onUndoCanvas}
+          disabled={!canUndoCanvas}
+        >
+          되돌리기
         </button>
         <button
           type="button"

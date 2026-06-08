@@ -9,7 +9,7 @@ import {
 import { createUUID } from '@/shared/lib/createUUID'
 
 type CompactPoint = [number, number, number]
-type CompactStrokePayload = [number, number, CompactPoint[]]
+type CompactStrokePayload = [number, number, CompactPoint[], string?]
 type CompactGameSettingsPayload = [
   number,
   number,
@@ -36,6 +36,10 @@ const TOOL_CODE_BY_NAME: Record<DrawingTool, number> = {
 const TOOL_NAME_BY_CODE: DrawingTool[] = ['PEN', 'ERASER', 'FILL']
 
 export const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, []]
+
+export function createCanvasUndoMarker(cid: string): CompactStrokePayload {
+  return [4, 0, [], cid]
+}
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -72,16 +76,13 @@ function roundTo(value: number, digits: number) {
 export function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload {
   const toolCode = TOOL_CODE_BY_NAME[stroke.tool]
   const colorIndex = colorIndexByHex.get(stroke.color) ?? colorIndexByHex.get(DEFAULT_CANVAS_COLOR) ?? 0
+  const points: CompactPoint[] = stroke.points.map((point) => [
+    roundTo(point.x, 3),
+    roundTo(point.y, 3),
+    roundTo(point.size, 1),
+  ])
 
-  return [
-    toolCode,
-    colorIndex,
-    stroke.points.map((point) => [
-      roundTo(point.x, 3),
-      roundTo(point.y, 3),
-      roundTo(point.size, 1),
-    ]),
-  ]
+  return stroke.cid ? [toolCode, colorIndex, points, stroke.cid] : [toolCode, colorIndex, points]
 }
 
 export function encodeCompactGameSettings(settings: GameSettings): CompactGameSettingsPayload {
@@ -108,7 +109,7 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
     return null
   }
 
-  const [toolCode, color, points] = payload
+  const [toolCode, color, points, cid] = payload
   const tool = TOOL_NAME_BY_CODE[toolCode]
   if (
     !tool ||
@@ -135,6 +136,7 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
 
   return {
     id: createUUID(),
+    ...(readNonEmptyString(cid) ? { cid: readNonEmptyString(cid) } : {}),
     tool,
     color: colorHex,
     points: normalizedPoints,

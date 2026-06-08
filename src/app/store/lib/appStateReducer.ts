@@ -27,6 +27,7 @@ import type {
 } from '@/entities/game/api/gamePayloadDecoders'
 import {
   reduceCanvasCleared,
+  reduceCanvasStrokeUndone,
   reduceCanvasStrokeReceived,
   reduceCanvasStrokesReceived,
 } from './appStateCanvas'
@@ -109,6 +110,7 @@ export type AppAction =
   | { type: 'server/chatReceived'; payload: ChatMessage }
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
   | { type: 'server/canvasStrokesReceived'; payload: CanvasStroke[] }
+  | { type: 'server/canvasStrokeUndone'; payload: string }
   | { type: 'server/canvasCleared' }
   | { type: 'server/gameEndedApplied' }
   | { type: 'dev/turnPhaseForced'; payload: TurnPhase }
@@ -184,6 +186,8 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       return reduceCanvasStrokeReceived(state, action.payload)
     case 'server/canvasStrokesReceived':
       return reduceCanvasStrokesReceived(state, action.payload)
+    case 'server/canvasStrokeUndone':
+      return reduceCanvasStrokeUndone(state, action.payload)
     case 'server/canvasCleared':
       return reduceCanvasCleared(state)
     case 'server/gameEndedApplied':

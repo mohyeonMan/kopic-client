@@ -40,6 +40,7 @@ export type AppActions = {
   requestWordChoice: (choiceIndex: number) => void
   submitGuess: (text: string) => void
   sendCanvasStroke: (stroke: CanvasStroke) => void
+  requestCanvasUndo: (cid: string) => void
   requestCanvasClear: () => void
 }
 

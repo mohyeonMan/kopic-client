@@ -5,3 +5,16 @@ export function isCanvasClearPayload(payload: unknown) {
 
   return false
 }
+
+export function decodeCanvasUndoPayload(payload: unknown) {
+  if (
+    Array.isArray(payload) &&
+    payload[0] === 4 &&
+    typeof payload[3] === 'string' &&
+    payload[3].trim().length > 0
+  ) {
+    return payload[3].trim()
+  }
+
+  return null
+}

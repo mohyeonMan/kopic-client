@@ -23,6 +23,7 @@ import {
   decodeRoomJoinedPayload,
   decodeRoomLeftPayload,
   decodeServerErrorPayload,
+  decodeCanvasUndoPayload,
   isCanvasClearPayload,
 } from '@/entities/game/api/gamePayloadDecoders'
 import {
@@ -227,6 +228,14 @@ export function createServerEnvelopeHandler({
           clearInboundStrokeQueue()
           server.applyCanvasClear()
           return
+        }
+
+        {
+          const undoCid = decodeCanvasUndoPayload(payload)
+          if (undoCid) {
+            dispatch({ type: 'server/canvasStrokeUndone', payload: undoCid })
+            return
+          }
         }
 
         {

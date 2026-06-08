@@ -160,6 +160,10 @@ export function useGamePageModel() {
           ? 'drawer'
           : 'guesser'
   const forcedPaletteColor = getParticipantAccentColor(me?.colorIndex)
+  const boardStrokes =
+    roomState === 'LOBBY'
+      ? lobbyCanvasStrokes
+      : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const {
     activePaletteColor,
     applyDrawerOrderMode,
@@ -168,6 +172,7 @@ export function useGamePageModel() {
     applyCustomWordMode,
     applyCustomWordsRaw,
     canDraw,
+    canUndoCanvas,
     canUseFullPalette,
     guessInput,
     handleClearCanvas,
@@ -180,6 +185,7 @@ export function useGamePageModel() {
     handleStartGame,
     handleToggleSettings,
     handleToolChange,
+    handleUndoCanvas,
     isSharedDrawingPhase,
     setGuessInput,
     settingsOpen,
@@ -188,6 +194,7 @@ export function useGamePageModel() {
     tool,
   } = useGameControls({
     actions,
+    canvasStrokes: boardStrokes,
     forcedPaletteColor,
     isHost,
     onBeforeRequestWordChoice: () => setOverlayPreview('actual'),
@@ -228,10 +235,6 @@ export function useGamePageModel() {
     const elapsedSec = Math.max(0, settings.drawSec - displayedRemainingSec)
     return Math.floor(elapsedSec / interval) * lettersPerReveal
   })()
-  const boardStrokes =
-    roomState === 'LOBBY'
-      ? lobbyCanvasStrokes
-      : currentTurn?.canvasStrokes ?? lobbyCanvasStrokes
   const drawerName = drawer?.nickname ?? '출제자'
   const currentTurnId = currentTurn?.turnId ?? null
   const isMeCorrectInCurrentTurn =
@@ -282,6 +285,7 @@ export function useGamePageModel() {
       activeStageOverlay,
       boardStrokes,
       canDraw,
+      canUndoCanvas,
       canUseFullPalette,
       centerPanelRef,
       currentRound,
@@ -312,6 +316,7 @@ export function useGamePageModel() {
       onSetSize: handleSizeChange,
       onSetTool: handleToolChange,
       onToggleSoundEnabled: toggleSoundEnabled,
+      onUndoCanvas: handleUndoCanvas,
       onStageOverlayTransitionEnd: handleStageOverlayTransitionEnd,
       onStartGame: handleStartGame,
       onToggleSettings: handleToggleSettings,

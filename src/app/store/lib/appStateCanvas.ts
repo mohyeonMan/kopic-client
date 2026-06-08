@@ -59,6 +59,29 @@ export function reduceCanvasStrokesReceived(
   }
 }
 
+export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState {
+  if (!state.room.currentTurn) {
+    return {
+      ...state,
+      room: {
+        ...state.room,
+        lobbyCanvasStrokes: (state.room.lobbyCanvasStrokes ?? []).filter((stroke) => stroke.cid !== cid),
+      },
+    }
+  }
+
+  return {
+    ...state,
+    room: {
+      ...state.room,
+      currentTurn: {
+        ...state.room.currentTurn,
+        canvasStrokes: state.room.currentTurn.canvasStrokes.filter((stroke) => stroke.cid !== cid),
+      },
+    },
+  }
+}
+
 export function reduceCanvasCleared(state: AppState): AppState {
   if (!state.room.currentTurn) {
     return {

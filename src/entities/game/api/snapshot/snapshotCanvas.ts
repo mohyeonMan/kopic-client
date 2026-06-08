@@ -38,6 +38,7 @@ function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
 
   return {
     id: readNonEmptyString(raw.id) ?? createUUID(),
+    ...(readNonEmptyString(raw.cid) ? { cid: readNonEmptyString(raw.cid) } : {}),
     tool,
     color: readNonEmptyString(raw.color) ?? DEFAULT_CANVAS_COLOR,
     points,
