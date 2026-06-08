@@ -81,8 +81,7 @@ export function DrawingCanvas({
       const committedStroke = buildCommittedStroke({
         tool,
         color,
-        size,
-        points: [getCanvasPoint(event, canvas)],
+        points: [getCanvasPoint(event, canvas, size, false)],
       })
 
       onSendStrokeChunk?.(committedStroke)
@@ -91,19 +90,17 @@ export function DrawingCanvas({
       return
     }
 
-    const startPoint = getCanvasPoint(event, canvas)
+    const startPoint = getCanvasPoint(event, canvas, size, tool === 'PEN' && event.pointerType === 'pen')
     activePointerIdRef.current = event.pointerId
     canvas.setPointerCapture(event.pointerId)
     draftStrokeRef.current = {
       tool,
       color,
-      size,
       points: [startPoint],
     }
     transmitStrokeRef.current = {
       tool,
       color,
-      size,
       points: [startPoint],
     }
     redrawDraft()
@@ -117,7 +114,12 @@ export function DrawingCanvas({
 
     event.preventDefault()
 
-    const nextPoint = getCanvasPoint(event, canvas)
+    const nextPoint = getCanvasPoint(
+      event,
+      canvas,
+      size,
+      draftStrokeRef.current.tool === 'PEN' && event.pointerType === 'pen',
+    )
     const nextDraftPoints = [...draftStrokeRef.current.points, nextPoint]
     const nextTransmitPoints = [...(transmitStrokeRef.current?.points ?? []), nextPoint]
 
@@ -132,7 +134,6 @@ export function DrawingCanvas({
       const chunkStroke = buildCommittedStroke({
         tool: draftStrokeRef.current.tool,
         color: draftStrokeRef.current.color,
-        size: draftStrokeRef.current.size,
         points: flushedPoints,
       })
 
@@ -140,7 +141,6 @@ export function DrawingCanvas({
       transmitStrokeRef.current = {
         tool: draftStrokeRef.current.tool,
         color: draftStrokeRef.current.color,
-        size: draftStrokeRef.current.size,
         points: [carryPoint, nextPoint],
       }
       redrawDraft()
@@ -150,7 +150,6 @@ export function DrawingCanvas({
     transmitStrokeRef.current = {
       tool: draftStrokeRef.current.tool,
       color: draftStrokeRef.current.color,
-      size: draftStrokeRef.current.size,
       points: nextTransmitPoints,
     }
     redrawDraft()

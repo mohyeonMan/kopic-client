@@ -20,27 +20,26 @@ function normalizeCanvasStroke(raw: unknown): CanvasStroke | null {
     raw.tool === 'PEN' || raw.tool === 'ERASER' || raw.tool === 'FILL'
       ? raw.tool
       : 'PEN'
-  const size = readFiniteNumber(raw.size) ?? 5
   const points = Array.isArray(raw.points)
     ? raw.points
         .filter((point): point is Record<string, unknown> => isRecord(point))
         .map((point) => {
           const x = readFiniteNumber(point.x)
           const y = readFiniteNumber(point.y)
-          if (x === undefined || y === undefined) {
+          const size = readFiniteNumber(point.size)
+          if (x === undefined || y === undefined || size === undefined || size <= 0) {
             return null
           }
 
-          return { x, y }
+          return { x, y, size }
         })
-        .filter((point): point is { x: number; y: number } => point !== null)
+        .filter((point): point is { x: number; y: number; size: number } => point !== null)
     : []
 
   return {
     id: readNonEmptyString(raw.id) ?? createUUID(),
     tool,
     color: readNonEmptyString(raw.color) ?? DEFAULT_CANVAS_COLOR,
-    size,
     points,
   }
 }

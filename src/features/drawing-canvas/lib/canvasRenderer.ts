@@ -113,7 +113,7 @@ function floodFill(
 
 export function drawStroke(
   context: CanvasRenderingContext2D,
-  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'size' | 'points'>,
+  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'points'>,
 ) {
   if (stroke.points.length === 0) {
     return
@@ -128,38 +128,32 @@ export function drawStroke(
   context.lineCap = 'round'
   context.lineJoin = 'round'
   context.strokeStyle = strokeColor(stroke)
-  context.lineWidth = stroke.size
 
   if (stroke.points.length === 1) {
     const point = stroke.points[0]
     context.beginPath()
-    context.arc(point.x * BASE_WIDTH, point.y * BASE_HEIGHT, stroke.size / 2, 0, Math.PI * 2)
+    context.arc(point.x * BASE_WIDTH, point.y * BASE_HEIGHT, point.size / 2, 0, Math.PI * 2)
     context.fillStyle = strokeColor(stroke)
     context.fill()
     context.restore()
     return
   }
 
-  context.beginPath()
-  stroke.points.forEach((point, index) => {
-    const x = point.x * BASE_WIDTH
-    const y = point.y * BASE_HEIGHT
-
-    if (index === 0) {
-      context.moveTo(x, y)
-      return
-    }
-
-    context.lineTo(x, y)
+  stroke.points.slice(1).forEach((point, index) => {
+    const previousPoint = stroke.points[index]
+    context.beginPath()
+    context.lineWidth = (previousPoint.size + point.size) / 2
+    context.moveTo(previousPoint.x * BASE_WIDTH, previousPoint.y * BASE_HEIGHT)
+    context.lineTo(point.x * BASE_WIDTH, point.y * BASE_HEIGHT)
+    context.stroke()
   })
-  context.stroke()
   context.restore()
 }
 
 export function paintSolidStroke(
   context: CanvasRenderingContext2D,
   maskContext: CanvasRenderingContext2D,
-  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'size' | 'points'>,
+  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'points'>,
 ) {
   if (stroke.points.length === 0) {
     return
@@ -169,7 +163,8 @@ export function paintSolidStroke(
   const ratio = maskContext.getTransform().a || 1
   const xs = stroke.points.map((point) => point.x * BASE_WIDTH)
   const ys = stroke.points.map((point) => point.y * BASE_HEIGHT)
-  const padding = stroke.size / 2 + SOLID_STROKE_PADDING
+  const maxPointSize = Math.max(...stroke.points.map((point) => point.size))
+  const padding = maxPointSize / 2 + SOLID_STROKE_PADDING
   const left = Math.max(0, Math.floor((Math.min(...xs) - padding) * ratio))
   const top = Math.max(0, Math.floor((Math.min(...ys) - padding) * ratio))
   const right = Math.min(maskCanvas.width, Math.ceil((Math.max(...xs) + padding) * ratio))

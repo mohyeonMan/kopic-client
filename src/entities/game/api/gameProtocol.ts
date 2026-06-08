@@ -8,8 +8,8 @@ import {
 } from '@/entities/game/model'
 import { createUUID } from '@/shared/lib/createUUID'
 
-type CompactPoint = [number, number]
-type CompactStrokePayload = [number, number, number, CompactPoint[]]
+type CompactPoint = [number, number, number]
+type CompactStrokePayload = [number, number, CompactPoint[]]
 type CompactGameSettingsPayload = [
   number,
   number,
@@ -35,7 +35,7 @@ const TOOL_CODE_BY_NAME: Record<DrawingTool, number> = {
 
 const TOOL_NAME_BY_CODE: DrawingTool[] = ['PEN', 'ERASER', 'FILL']
 
-export const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, 0, []]
+export const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, []]
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -76,8 +76,11 @@ export function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload 
   return [
     toolCode,
     colorIndex,
-    roundTo(stroke.size, 1),
-    stroke.points.map((point) => [roundTo(point.x, 3), roundTo(point.y, 3)]),
+    stroke.points.map((point) => [
+      roundTo(point.x, 3),
+      roundTo(point.y, 3),
+      roundTo(point.size, 1),
+    ]),
   ]
 }
 
@@ -105,12 +108,11 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
     return null
   }
 
-  const [toolCode, color, size, points] = payload
+  const [toolCode, color, points] = payload
   const tool = TOOL_NAME_BY_CODE[toolCode]
   if (
     !tool ||
     typeof color !== 'number' ||
-    typeof size !== 'number' ||
     !Array.isArray(points)
   ) {
     return null
@@ -118,19 +120,23 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
 
   const colorHex = CANVAS_COLOR_PALETTE[color] ?? DEFAULT_CANVAS_COLOR
   const normalizedPoints = points
-    .filter((point): point is [number, number] =>
+    .filter((point): point is CompactPoint =>
       Array.isArray(point) &&
-      point.length === 2 &&
+      point.length === 3 &&
       typeof point[0] === 'number' &&
-      typeof point[1] === 'number',
+      Number.isFinite(point[0]) &&
+      typeof point[1] === 'number' &&
+      Number.isFinite(point[1]) &&
+      typeof point[2] === 'number' &&
+      Number.isFinite(point[2]) &&
+      point[2] > 0,
     )
-    .map(([x, y]) => ({ x, y }))
+    .map(([x, y, pointSize]) => ({ x, y, size: pointSize }))
 
   return {
     id: createUUID(),
     tool,
     color: colorHex,
-    size,
     points: normalizedPoints,
   }
 }

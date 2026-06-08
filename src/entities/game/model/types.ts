@@ -50,13 +50,13 @@ export type RoundSummary = {
 export type CanvasPoint = {
   x: number
   y: number
+  size: number
 }
 
 export type CanvasStroke = {
   id: string
   tool: DrawingTool
   color: string
-  size: number
   points: CanvasPoint[]
 }
 
