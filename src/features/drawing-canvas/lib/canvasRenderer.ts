@@ -6,8 +6,41 @@ import {
   SOLID_STROKE_PADDING,
 } from './canvasBoardConstants'
 
+const STROKE_WIDTH_INTERPOLATION_STEP = 8
+
 function strokeColor(stroke: Pick<CanvasStroke, 'tool' | 'color'>) {
   return stroke.tool === 'ERASER' ? '#ffffff' : stroke.color
+}
+
+function interpolate(start: number, end: number, progress: number) {
+  return start + (end - start) * progress
+}
+
+function drawStrokeSegment(
+  context: CanvasRenderingContext2D,
+  previousPoint: CanvasPoint,
+  point: CanvasPoint,
+) {
+  const startX = previousPoint.x * BASE_WIDTH
+  const startY = previousPoint.y * BASE_HEIGHT
+  const endX = point.x * BASE_WIDTH
+  const endY = point.y * BASE_HEIGHT
+  const distance = Math.hypot(endX - startX, endY - startY)
+  const segmentCount = Math.max(1, Math.ceil(distance / STROKE_WIDTH_INTERPOLATION_STEP))
+
+  for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+    const fromProgress = segmentIndex / segmentCount
+    const toProgress = (segmentIndex + 1) / segmentCount
+
+    context.beginPath()
+    context.lineWidth =
+      (interpolate(previousPoint.size, point.size, fromProgress) +
+        interpolate(previousPoint.size, point.size, toProgress)) /
+      2
+    context.moveTo(interpolate(startX, endX, fromProgress), interpolate(startY, endY, fromProgress))
+    context.lineTo(interpolate(startX, endX, toProgress), interpolate(startY, endY, toProgress))
+    context.stroke()
+  }
 }
 
 function colorsMatch(
@@ -141,11 +174,7 @@ export function drawStroke(
 
   stroke.points.slice(1).forEach((point, index) => {
     const previousPoint = stroke.points[index]
-    context.beginPath()
-    context.lineWidth = (previousPoint.size + point.size) / 2
-    context.moveTo(previousPoint.x * BASE_WIDTH, previousPoint.y * BASE_HEIGHT)
-    context.lineTo(point.x * BASE_WIDTH, point.y * BASE_HEIGHT)
-    context.stroke()
+    drawStrokeSegment(context, previousPoint, point)
   })
   context.restore()
 }
