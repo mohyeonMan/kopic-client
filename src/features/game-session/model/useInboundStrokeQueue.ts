@@ -51,5 +51,6 @@ export function useInboundStrokeQueue(dispatch: InboundStrokeDispatch) {
   return {
     clearInboundStrokeQueue,
     enqueueInboundStroke,
+    flushInboundStrokeQueue,
   }
 }

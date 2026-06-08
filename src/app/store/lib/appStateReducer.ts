@@ -111,7 +111,7 @@ export type AppAction =
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
   | { type: 'server/canvasStrokesReceived'; payload: CanvasStroke[] }
   | { type: 'server/canvasStrokeUndone'; payload: string }
-  | { type: 'server/canvasCleared' }
+  | { type: 'server/canvasCleared'; payload?: string }
   | { type: 'server/gameEndedApplied' }
   | { type: 'dev/turnPhaseForced'; payload: TurnPhase }
   | { type: 'dev/mockFlowAdvanced' }
@@ -189,7 +189,7 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
     case 'server/canvasStrokeUndone':
       return reduceCanvasStrokeUndone(state, action.payload)
     case 'server/canvasCleared':
-      return reduceCanvasCleared(state)
+      return reduceCanvasCleared(state, action.payload)
     case 'server/gameEndedApplied':
       return reduceGameEndedApplied(state)
     case 'dev/turnPhaseForced':

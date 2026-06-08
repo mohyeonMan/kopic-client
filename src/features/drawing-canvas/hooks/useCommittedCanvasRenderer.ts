@@ -29,6 +29,11 @@ export function useCommittedCanvasRenderer({
   strokesRef,
 }: UseCommittedCanvasRendererArgs) {
   const drawCommittedStroke = useCallback((context: CanvasRenderingContext2D, stroke: CanvasStroke) => {
+    if (stroke.clear) {
+      drawStroke(context, stroke)
+      return
+    }
+
     if (stroke.tool === 'FILL') {
       drawStroke(context, stroke)
       return

@@ -56,6 +56,7 @@ export type CanvasPoint = {
 export type CanvasStroke = {
   id: string
   cid?: string
+  clear?: boolean
   tool: DrawingTool
   color: string
   points: CanvasPoint[]

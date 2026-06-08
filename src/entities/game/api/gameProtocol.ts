@@ -37,6 +37,10 @@ const TOOL_NAME_BY_CODE: DrawingTool[] = ['PEN', 'ERASER', 'FILL']
 
 export const CANVAS_CLEAR_MARKER: CompactStrokePayload = [3, 0, []]
 
+export function createCanvasClearMarker(cid: string): CompactStrokePayload {
+  return [3, 0, [], cid]
+}
+
 export function createCanvasUndoMarker(cid: string): CompactStrokePayload {
   return [4, 0, [], cid]
 }
@@ -74,6 +78,10 @@ function roundTo(value: number, digits: number) {
 }
 
 export function encodeCompactStroke(stroke: CanvasStroke): CompactStrokePayload {
+  if (stroke.clear) {
+    return stroke.cid ? createCanvasClearMarker(stroke.cid) : CANVAS_CLEAR_MARKER
+  }
+
   const toolCode = TOOL_CODE_BY_NAME[stroke.tool]
   const colorIndex = colorIndexByHex.get(stroke.color) ?? colorIndexByHex.get(DEFAULT_CANVAS_COLOR) ?? 0
   const points: CompactPoint[] = stroke.points.map((point) => [
@@ -110,6 +118,17 @@ export function decodeCompactStroke(payload: unknown): CanvasStroke | null {
   }
 
   const [toolCode, color, points, cid] = payload
+  if (toolCode === 3) {
+    return {
+      id: createUUID(),
+      ...(readNonEmptyString(cid) ? { cid: readNonEmptyString(cid) } : {}),
+      clear: true,
+      tool: 'PEN',
+      color: DEFAULT_CANVAS_COLOR,
+      points: [],
+    }
+  }
+
   const tool = TOOL_NAME_BY_CODE[toolCode]
   if (
     !tool ||

@@ -53,7 +53,7 @@ export type AppServerControls = {
   applyGameStarted: (payload: ServerGameStartedPayload) => void
   applyWordChoice: (payload: ServerWordChoicePayload) => void
   applyCanvasStroke: (stroke: CanvasStroke) => void
-  applyCanvasClear: () => void
+  applyCanvasClear: (cid?: string) => void
   applyGameEnded: () => void
 }
 

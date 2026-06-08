@@ -43,7 +43,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       applyGameStarted: (payload) => dispatch({ type: 'server/gameStartedApplied', payload }),
       applyWordChoice: (payload) => dispatch({ type: 'server/wordChoiceApplied', payload }),
       applyCanvasStroke: (stroke) => dispatch({ type: 'server/canvasStrokeReceived', payload: stroke }),
-      applyCanvasClear: () => dispatch({ type: 'server/canvasCleared' }),
+      applyCanvasClear: (cid) => dispatch({ type: 'server/canvasCleared', payload: cid }),
       applyGameEnded: () => dispatch({ type: 'server/gameEndedApplied' }),
     }),
     [],
@@ -53,6 +53,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const {
     clearInboundStrokeQueue,
     enqueueInboundStroke,
+    flushInboundStrokeQueue,
   } = useInboundStrokeQueue(dispatch)
 
   const handleServerEnvelope = useMemo(
@@ -61,10 +62,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         clearInboundStrokeQueue,
         dispatch: dispatch as (action: AppAction) => void,
         enqueueInboundStroke,
+        flushInboundStrokeQueue,
         getState,
         server,
       }),
-    [clearInboundStrokeQueue, enqueueInboundStroke, getState, server],
+    [clearInboundStrokeQueue, enqueueInboundStroke, flushInboundStrokeQueue, getState, server],
   )
 
   const actions = useMemo(
@@ -72,11 +74,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       createAppActions({
         clearInboundStrokeQueue,
         dispatch,
+        flushInboundStrokeQueue,
         getState,
         sendClientEvent,
         server,
       }),
-    [clearInboundStrokeQueue, getState, sendClientEvent, server],
+    [clearInboundStrokeQueue, flushInboundStrokeQueue, getState, sendClientEvent, server],
   )
 
   useEffect(() => {

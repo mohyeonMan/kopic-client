@@ -1,7 +1,18 @@
 import type { AppState, CanvasStroke } from '../../../entities/game/model'
 import { createSystemMessage } from '@/entities/game/api/gameProtocol'
-import { appendGameSoundEvent } from '@/entities/game/model'
+import { DEFAULT_CANVAS_COLOR, appendGameSoundEvent } from '@/entities/game/model'
 import { createUUID } from '@/shared/lib/createUUID'
+
+function createCanvasClearStroke(cid?: string): CanvasStroke {
+  return {
+    id: createUUID(),
+    ...(cid ? { cid } : {}),
+    clear: true,
+    tool: 'PEN',
+    color: DEFAULT_CANVAS_COLOR,
+    points: [],
+  }
+}
 
 export function reduceCanvasStrokeReceived(
   state: AppState,
@@ -82,13 +93,15 @@ export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState
   }
 }
 
-export function reduceCanvasCleared(state: AppState): AppState {
+export function reduceCanvasCleared(state: AppState, cid?: string): AppState {
+  const clearStroke = createCanvasClearStroke(cid)
+
   if (!state.room.currentTurn) {
     return {
       ...state,
       room: {
         ...state.room,
-        lobbyCanvasStrokes: [],
+        lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), clearStroke],
       },
       soundEvents: appendGameSoundEvent(state.soundEvents, {
         id: `canvas:lobby:clear:${createUUID()}`,
@@ -103,7 +116,7 @@ export function reduceCanvasCleared(state: AppState): AppState {
       ...state.room,
       currentTurn: {
         ...state.room.currentTurn,
-        canvasStrokes: [],
+        canvasStrokes: [...state.room.currentTurn.canvasStrokes, clearStroke],
       },
       chat: [...state.room.chat, createSystemMessage('406 CANVAS_CLEAR')],
     },

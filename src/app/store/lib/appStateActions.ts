@@ -7,19 +7,21 @@ import type {
   AppStateContextValue,
 } from '../appStateContextValue'
 import {
-  CANVAS_CLEAR_MARKER,
+  createCanvasClearMarker,
   createCanvasUndoMarker,
   createSystemMessage,
   encodeCompactGameSettings,
   encodeCompactStroke,
 } from '@/entities/game/api/gameProtocol'
 import { createMockGameStartedPayload } from '@/entities/game/model/gameFlow'
+import { createUUID } from '@/shared/lib/createUUID'
 import type { AppAction } from './appStateReducer'
 import type { SendClientEvent } from '@/features/game-session/model/useClientEventSender'
 
 type CreateAppActionsArgs = {
   clearInboundStrokeQueue: () => void
   dispatch: (action: AppAction) => void
+  flushInboundStrokeQueue: () => void
   getState: () => AppState
   sendClientEvent: SendClientEvent
   server: AppStateContextValue['server']
@@ -28,6 +30,7 @@ type CreateAppActionsArgs = {
 export function createAppActions({
   clearInboundStrokeQueue,
   dispatch,
+  flushInboundStrokeQueue,
   getState,
   sendClientEvent,
   server,
@@ -125,9 +128,11 @@ export function createAppActions({
       sendClientEvent('DRAW_STROKE', createCanvasUndoMarker(normalizedCid))
     },
     requestCanvasClear: () => {
-      clearInboundStrokeQueue()
-      server.applyCanvasClear()
-      sendClientEvent('DRAW_STROKE', CANVAS_CLEAR_MARKER)
+      const cid = `cid_${createUUID().replaceAll('-', '').slice(0, 6)}`
+
+      flushInboundStrokeQueue()
+      server.applyCanvasClear(cid)
+      sendClientEvent('DRAW_STROKE', createCanvasClearMarker(cid))
     },
   }
 }

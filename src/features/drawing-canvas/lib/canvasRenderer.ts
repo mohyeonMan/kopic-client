@@ -146,8 +146,17 @@ function floodFill(
 
 export function drawStroke(
   context: CanvasRenderingContext2D,
-  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'points'>,
+  stroke: Pick<CanvasStroke, 'tool' | 'color' | 'points' | 'clear'>,
 ) {
+  if (stroke.clear) {
+    context.save()
+    context.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
+    context.restore()
+    return
+  }
+
   if (stroke.points.length === 0) {
     return
   }

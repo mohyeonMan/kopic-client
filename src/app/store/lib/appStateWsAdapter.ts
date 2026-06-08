@@ -23,6 +23,7 @@ import {
   decodeRoomJoinedPayload,
   decodeRoomLeftPayload,
   decodeServerErrorPayload,
+  decodeCanvasClearCid,
   decodeCanvasUndoPayload,
   isCanvasClearPayload,
 } from '@/entities/game/api/gamePayloadDecoders'
@@ -37,6 +38,7 @@ type EnvelopeHandlerOptions = {
   clearInboundStrokeQueue: () => void
   dispatch: (action: AppAction) => void
   enqueueInboundStroke: (stroke: CanvasStroke) => void
+  flushInboundStrokeQueue: () => void
   getState: () => AppState
   server: AppStateContextValue['server']
 }
@@ -61,6 +63,7 @@ export function createServerEnvelopeHandler({
   clearInboundStrokeQueue,
   dispatch,
   enqueueInboundStroke,
+  flushInboundStrokeQueue,
   getState,
   server,
 }: EnvelopeHandlerOptions) {
@@ -225,14 +228,15 @@ export function createServerEnvelopeHandler({
       }
       case 405:
         if (isCanvasClearPayload(payload)) {
-          clearInboundStrokeQueue()
-          server.applyCanvasClear()
+          flushInboundStrokeQueue()
+          server.applyCanvasClear(decodeCanvasClearCid(payload))
           return
         }
 
         {
           const undoCid = decodeCanvasUndoPayload(payload)
           if (undoCid) {
+            flushInboundStrokeQueue()
             dispatch({ type: 'server/canvasStrokeUndone', payload: undoCid })
             return
           }
@@ -246,7 +250,7 @@ export function createServerEnvelopeHandler({
         }
         return
       case 406:
-        clearInboundStrokeQueue()
+        flushInboundStrokeQueue()
         server.applyCanvasClear()
         return
       case 413:

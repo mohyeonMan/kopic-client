@@ -6,6 +6,19 @@ export function isCanvasClearPayload(payload: unknown) {
   return false
 }
 
+export function decodeCanvasClearCid(payload: unknown) {
+  if (
+    Array.isArray(payload) &&
+    payload[0] === 3 &&
+    typeof payload[3] === 'string' &&
+    payload[3].trim().length > 0
+  ) {
+    return payload[3].trim()
+  }
+
+  return undefined
+}
+
 export function decodeCanvasUndoPayload(payload: unknown) {
   if (
     Array.isArray(payload) &&
