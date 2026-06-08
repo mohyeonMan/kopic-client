@@ -19,7 +19,9 @@ export function getCanvasPoint(
   const pressure = Number.isFinite(event.pressure)
     ? Math.min(1, Math.max(0, event.pressure))
     : 0.5
-  const pointSize = usePressure ? size * (0.5 + pressure) : size
+  const sizeMultiplier =
+    pressure <= 0.5 ? 0.3 + pressure * 1.4 : 1 + (pressure - 0.5) * 1.6
+  const pointSize = usePressure ? size * sizeMultiplier : size
 
   return {
     x: Number(((event.clientX - rect.left) / rect.width).toFixed(3)),
