@@ -40,6 +40,16 @@ type UseGameControlsArgs = {
   currentTurnWordChoices?: string[]
 }
 
+function findLastCanvasStrokeCid(strokes: CanvasStroke[]) {
+  for (let index = strokes.length - 1; index >= 0; index -= 1) {
+    if (strokes[index].cid) {
+      return strokes[index].cid
+    }
+  }
+
+  return undefined
+}
+
 export function useGameControls({
   actions,
   canvasStrokes,
@@ -75,7 +85,7 @@ export function useGameControls({
   const isSharedDrawingPhase = roomState === 'LOBBY' && !settingsOpen
   const canUseFullPalette = isDrawerDrawingPhase
   const activePaletteColor = isSharedDrawingPhase && forcedPaletteColor ? forcedPaletteColor : color
-  const lastCanvasStrokeCid = canvasStrokes.slice().reverse().find((stroke) => stroke.cid)?.cid
+  const lastCanvasStrokeCid = findLastCanvasStrokeCid(canvasStrokes)
   const canUndoCanvas = canDraw && Boolean(lastCanvasStrokeCid)
 
   const applySetting = (key: NumericSettingKey, value: string) => {

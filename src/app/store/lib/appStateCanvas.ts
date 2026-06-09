@@ -14,6 +14,33 @@ function createCanvasClearStroke(cid?: string): CanvasStroke {
   }
 }
 
+function removeLatestCanvasCid(strokes: CanvasStroke[], cid: string): CanvasStroke[] {
+  let startIndex = -1
+  let endIndex = -1
+
+  for (let index = strokes.length - 1; index >= 0; index -= 1) {
+    if (strokes[index].cid === cid) {
+      if (endIndex === -1) {
+        endIndex = index
+      }
+      startIndex = index
+      continue
+    }
+
+    if (endIndex !== -1) {
+      break
+    }
+  }
+
+  if (startIndex === -1) {
+    return strokes
+  }
+
+  const nextStrokes = strokes.slice()
+  nextStrokes.splice(startIndex, endIndex - startIndex + 1)
+  return nextStrokes
+}
+
 export function reduceCanvasStrokeReceived(
   state: AppState,
   stroke: CanvasStroke,
@@ -72,13 +99,25 @@ export function reduceCanvasStrokesReceived(
 
 export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState {
   if (!state.room.currentTurn) {
+    const currentStrokes = state.room.lobbyCanvasStrokes ?? []
+    const nextStrokes = removeLatestCanvasCid(currentStrokes, cid)
+    if (nextStrokes === currentStrokes) {
+      return state
+    }
+
     return {
       ...state,
       room: {
         ...state.room,
-        lobbyCanvasStrokes: (state.room.lobbyCanvasStrokes ?? []).filter((stroke) => stroke.cid !== cid),
+        lobbyCanvasStrokes: nextStrokes,
       },
     }
+  }
+
+  const currentStrokes = state.room.currentTurn.canvasStrokes
+  const nextStrokes = removeLatestCanvasCid(currentStrokes, cid)
+  if (nextStrokes === currentStrokes) {
+    return state
   }
 
   return {
@@ -87,7 +126,7 @@ export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState
       ...state.room,
       currentTurn: {
         ...state.room.currentTurn,
-        canvasStrokes: state.room.currentTurn.canvasStrokes.filter((stroke) => stroke.cid !== cid),
+        canvasStrokes: nextStrokes,
       },
     },
   }

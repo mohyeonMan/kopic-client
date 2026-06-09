@@ -74,8 +74,22 @@ export function useCommittedCanvasRenderer({
       context.fillStyle = '#ffffff'
       context.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT)
 
-      nextStrokes.forEach((stroke) => drawCommittedStroke(context, stroke))
-      renderedStrokeIdsRef.current = nextStrokes.map((stroke) => stroke.id)
+      let replayStartIndex = 0
+      for (let index = nextStrokes.length - 1; index >= 0; index -= 1) {
+        if (nextStrokes[index].clear) {
+          replayStartIndex = index + 1
+          break
+        }
+      }
+
+      for (let index = replayStartIndex; index < nextStrokes.length; index += 1) {
+        drawCommittedStroke(context, nextStrokes[index])
+      }
+
+      renderedStrokeIds.length = 0
+      for (const stroke of nextStrokes) {
+        renderedStrokeIds.push(stroke.id)
+      }
       return
     }
 
@@ -83,9 +97,11 @@ export function useCommittedCanvasRenderer({
       return
     }
 
-    const appendedStrokes = nextStrokes.slice(renderedStrokeIds.length)
-    appendedStrokes.forEach((stroke) => drawCommittedStroke(context, stroke))
-    renderedStrokeIdsRef.current = [...renderedStrokeIds, ...appendedStrokes.map((stroke) => stroke.id)]
+    for (let index = renderedStrokeIds.length; index < nextStrokes.length; index += 1) {
+      const stroke = nextStrokes[index]
+      drawCommittedStroke(context, stroke)
+      renderedStrokeIds.push(stroke.id)
+    }
   }, [committedCanvasRef, drawCommittedStroke, renderedStrokeIdsRef])
 
   const redrawDraft = useCallback(() => {
@@ -121,7 +137,7 @@ export function useCommittedCanvasRenderer({
     }
 
     drawCommittedStroke(context, stroke)
-    renderedStrokeIdsRef.current = [...renderedStrokeIdsRef.current, stroke.id]
+    renderedStrokeIdsRef.current.push(stroke.id)
   }, [committedCanvasRef, drawCommittedStroke, renderedStrokeIdsRef])
 
   useLayoutEffect(() => {
