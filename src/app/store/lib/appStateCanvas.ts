@@ -14,7 +14,7 @@ function createCanvasClearStroke(cid?: string): CanvasStroke {
   }
 }
 
-function removeLatestCanvasCid(strokes: CanvasStroke[], cid: string): CanvasStroke[] {
+function removeLatestCanvasCid(strokes: CanvasStroke[], cid: string) {
   let startIndex = -1
   let endIndex = -1
 
@@ -33,12 +33,12 @@ function removeLatestCanvasCid(strokes: CanvasStroke[], cid: string): CanvasStro
   }
 
   if (startIndex === -1) {
-    return strokes
+    return null
   }
 
   const nextStrokes = strokes.slice()
-  nextStrokes.splice(startIndex, endIndex - startIndex + 1)
-  return nextStrokes
+  const removedGroup = nextStrokes.splice(startIndex, endIndex - startIndex + 1)
+  return { nextStrokes, removedGroup }
 }
 
 export function reduceCanvasStrokeReceived(
@@ -51,6 +51,7 @@ export function reduceCanvasStrokeReceived(
       room: {
         ...state.room,
         lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), stroke],
+        canvasRedoStack: [],
       },
     }
   }
@@ -59,6 +60,7 @@ export function reduceCanvasStrokeReceived(
     ...state,
     room: {
       ...state.room,
+      canvasRedoStack: [],
       currentTurn: {
         ...state.room.currentTurn,
         canvasStrokes: [...state.room.currentTurn.canvasStrokes, stroke],
@@ -81,6 +83,7 @@ export function reduceCanvasStrokesReceived(
       room: {
         ...state.room,
         lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), ...strokes],
+        canvasRedoStack: [],
       },
     }
   }
@@ -89,6 +92,7 @@ export function reduceCanvasStrokesReceived(
     ...state,
     room: {
       ...state.room,
+      canvasRedoStack: [],
       currentTurn: {
         ...state.room.currentTurn,
         canvasStrokes: [...state.room.currentTurn.canvasStrokes, ...strokes],
@@ -100,8 +104,8 @@ export function reduceCanvasStrokesReceived(
 export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState {
   if (!state.room.currentTurn) {
     const currentStrokes = state.room.lobbyCanvasStrokes ?? []
-    const nextStrokes = removeLatestCanvasCid(currentStrokes, cid)
-    if (nextStrokes === currentStrokes) {
+    const removal = removeLatestCanvasCid(currentStrokes, cid)
+    if (!removal) {
       return state
     }
 
@@ -109,14 +113,15 @@ export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState
       ...state,
       room: {
         ...state.room,
-        lobbyCanvasStrokes: nextStrokes,
+        lobbyCanvasStrokes: removal.nextStrokes,
+        canvasRedoStack: [...state.room.canvasRedoStack, removal.removedGroup],
       },
     }
   }
 
   const currentStrokes = state.room.currentTurn.canvasStrokes
-  const nextStrokes = removeLatestCanvasCid(currentStrokes, cid)
-  if (nextStrokes === currentStrokes) {
+  const removal = removeLatestCanvasCid(currentStrokes, cid)
+  if (!removal) {
     return state
   }
 
@@ -124,9 +129,41 @@ export function reduceCanvasStrokeUndone(state: AppState, cid: string): AppState
     ...state,
     room: {
       ...state.room,
+      canvasRedoStack: [...state.room.canvasRedoStack, removal.removedGroup],
       currentTurn: {
         ...state.room.currentTurn,
-        canvasStrokes: nextStrokes,
+        canvasStrokes: removal.nextStrokes,
+      },
+    },
+  }
+}
+
+export function reduceCanvasStrokeRedone(state: AppState, cid: string): AppState {
+  const redoGroup = state.room.canvasRedoStack[state.room.canvasRedoStack.length - 1]
+  if (!redoGroup || redoGroup[0]?.cid !== cid) {
+    return state
+  }
+
+  const nextRedoStack = state.room.canvasRedoStack.slice(0, -1)
+  if (!state.room.currentTurn) {
+    return {
+      ...state,
+      room: {
+        ...state.room,
+        lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), ...redoGroup],
+        canvasRedoStack: nextRedoStack,
+      },
+    }
+  }
+
+  return {
+    ...state,
+    room: {
+      ...state.room,
+      canvasRedoStack: nextRedoStack,
+      currentTurn: {
+        ...state.room.currentTurn,
+        canvasStrokes: [...state.room.currentTurn.canvasStrokes, ...redoGroup],
       },
     },
   }
@@ -141,6 +178,7 @@ export function reduceCanvasCleared(state: AppState, cid?: string): AppState {
       room: {
         ...state.room,
         lobbyCanvasStrokes: [...(state.room.lobbyCanvasStrokes ?? []), clearStroke],
+        canvasRedoStack: [],
       },
       soundEvents: appendGameSoundEvent(state.soundEvents, {
         id: `canvas:lobby:clear:${createUUID()}`,
@@ -153,6 +191,7 @@ export function reduceCanvasCleared(state: AppState, cid?: string): AppState {
     ...state,
     room: {
       ...state.room,
+      canvasRedoStack: [],
       currentTurn: {
         ...state.room.currentTurn,
         canvasStrokes: [...state.room.currentTurn.canvasStrokes, clearStroke],

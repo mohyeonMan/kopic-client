@@ -31,3 +31,16 @@ export function decodeCanvasUndoPayload(payload: unknown) {
 
   return null
 }
+
+export function decodeCanvasRedoPayload(payload: unknown) {
+  if (
+    Array.isArray(payload) &&
+    payload[0] === 5 &&
+    typeof payload[3] === 'string' &&
+    payload[3].trim().length > 0
+  ) {
+    return payload[3].trim()
+  }
+
+  return null
+}

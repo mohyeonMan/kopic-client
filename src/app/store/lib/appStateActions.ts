@@ -8,6 +8,7 @@ import type {
 } from '../appStateContextValue'
 import {
   createCanvasClearMarker,
+  createCanvasRedoMarker,
   createCanvasUndoMarker,
   createSystemMessage,
   encodeCompactGameSettings,
@@ -126,6 +127,15 @@ export function createAppActions({
 
       dispatch({ type: 'server/canvasStrokeUndone', payload: normalizedCid })
       sendClientEvent('DRAW_STROKE', createCanvasUndoMarker(normalizedCid))
+    },
+    requestCanvasRedo: (cid) => {
+      const normalizedCid = cid.trim()
+      if (!normalizedCid) {
+        return
+      }
+
+      dispatch({ type: 'server/canvasStrokeRedone', payload: normalizedCid })
+      sendClientEvent('DRAW_STROKE', createCanvasRedoMarker(normalizedCid))
     },
     requestCanvasClear: () => {
       const cid = `cid_${createUUID().replaceAll('-', '').slice(0, 6)}`

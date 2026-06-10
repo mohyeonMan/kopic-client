@@ -8,6 +8,7 @@ import {
 type BoardToolbarProps = {
   activePaletteColor: string
   canDraw: boolean
+  canRedoCanvas: boolean
   canUndoCanvas: boolean
   canUseFullPalette: boolean
   forcedPaletteColor?: string
@@ -17,6 +18,7 @@ type BoardToolbarProps = {
   onSetSize: (size: number) => void
   onSetTool: (tool: DrawingTool) => void
   onToggleSoundEnabled: () => void
+  onRedoCanvas: () => void
   onUndoCanvas: () => void
   size: number
   soundEnabled: boolean
@@ -26,6 +28,7 @@ type BoardToolbarProps = {
 export function BoardToolbar({
   activePaletteColor,
   canDraw,
+  canRedoCanvas,
   canUndoCanvas,
   canUseFullPalette,
   forcedPaletteColor,
@@ -35,6 +38,7 @@ export function BoardToolbar({
   onSetSize,
   onSetTool,
   onToggleSoundEnabled,
+  onRedoCanvas,
   onUndoCanvas,
   size,
   soundEnabled,
@@ -114,13 +118,25 @@ export function BoardToolbar({
           <button
             type="button"
             aria-label="되돌리기"
-            className="undo-button"
+            className="history-button"
             title="되돌리기"
             onClick={onUndoCanvas}
             disabled={!canUndoCanvas}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M9 7 4 12l5 5v-3h5.5a4.5 4.5 0 0 0 0-9H11v2h3.5a2.5 2.5 0 0 1 0 5H9V7Z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="다시 실행"
+            className="history-button"
+            title="다시 실행"
+            onClick={onRedoCanvas}
+            disabled={!canRedoCanvas}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m15 7 5 5-5 5v-3H9.5a4.5 4.5 0 0 1 0-9H13v2H9.5a2.5 2.5 0 0 0 0 5H15V7Z" />
             </svg>
           </button>
         </div>

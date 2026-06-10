@@ -28,6 +28,7 @@ type GameBoardPanelProps = {
   activeStageOverlay: StageOverlayPhase | null
   boardStrokes: CanvasStroke[]
   canDraw: boolean
+  canRedoCanvas: boolean
   canUndoCanvas: boolean
   canUseFullPalette: boolean
   centerPanelRef: RefObject<HTMLElement | null>
@@ -60,6 +61,7 @@ type GameBoardPanelProps = {
   onSetSize: (size: number) => void
   onSetTool: (tool: DrawingTool) => void
   onToggleSoundEnabled: () => void
+  onRedoCanvas: () => void
   onUndoCanvas: () => void
   onStageOverlayTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void
   onStartGame: () => void
@@ -88,6 +90,7 @@ export function GameBoardPanel({
   activeStageOverlay,
   boardStrokes,
   canDraw,
+  canRedoCanvas,
   canUndoCanvas,
   canUseFullPalette,
   centerPanelRef,
@@ -120,6 +123,7 @@ export function GameBoardPanel({
   onSetSize,
   onSetTool,
   onToggleSoundEnabled,
+  onRedoCanvas,
   onUndoCanvas,
   onStageOverlayTransitionEnd,
   onStartGame,
@@ -225,6 +229,7 @@ export function GameBoardPanel({
         <BoardToolbar
           activePaletteColor={activePaletteColor}
           canDraw={canDraw}
+          canRedoCanvas={canRedoCanvas}
           canUndoCanvas={canUndoCanvas}
           canUseFullPalette={canUseFullPalette}
           forcedPaletteColor={forcedPaletteColor}
@@ -234,6 +239,7 @@ export function GameBoardPanel({
           onSetSize={onSetSize}
           onSetTool={onSetTool}
           onToggleSoundEnabled={onToggleSoundEnabled}
+          onRedoCanvas={onRedoCanvas}
           onUndoCanvas={onUndoCanvas}
           size={size}
           soundEnabled={soundEnabled}

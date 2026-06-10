@@ -58,6 +58,7 @@ export function reduceGameStartedApplied(
       gameId: payload.gameId,
       currentRound: payload.currentRound,
       currentTurn: payload.currentTurn,
+      canvasRedoStack: [],
       chat: [...state.room.chat, ...(payload.chatMessages ?? [])],
     },
     soundEvents: appendGameSoundEvent(state.soundEvents, {
@@ -89,6 +90,7 @@ export function reduceGeGameStartedApplied(
       currentRound: null,
       currentTurn: null,
       lobbyCanvasStrokes: [],
+      canvasRedoStack: [],
       chat: [...state.room.chat, createSystemMessage(`400 GE_GAME_STARTED ${payload.gameId}`)],
     },
     soundEvents: appendGameSoundEvent(state.soundEvents, {
@@ -123,6 +125,7 @@ export function reduceGeRoundStartedApplied(
       },
       currentTurn: null,
       lobbyCanvasStrokes: [],
+      canvasRedoStack: [],
       chat: [...state.room.chat, createSystemMessage(`401 GE_ROUND_STARTED R${payload.roundNo}`)],
     },
     soundEvents: appendGameSoundEvent(state.soundEvents, {
@@ -167,6 +170,7 @@ export function reduceGeTurnStartedApplied(
       roundStartRemainingSec: undefined,
       roundStartDeadlineAtMs: undefined,
       currentRound: nextRound,
+      canvasRedoStack: [],
       currentTurn: {
         roundNo: payload.roundNo,
         turnNo,
@@ -354,6 +358,7 @@ export function reduceGeDrawingStartedApplied(
       roomState: 'RUNNING',
       gameId: payload.gameId,
       currentRound: activeRound,
+      canvasRedoStack: [],
       currentTurn: {
         roundNo: activeRound.roundNo,
         turnNo,
@@ -520,6 +525,7 @@ export function reduceGeReturnToLobbyApplied(
       currentRound: null,
       currentTurn: null,
       lobbyCanvasStrokes: [],
+      canvasRedoStack: [],
       participants: resetParticipantsForLobby(state.room.participants),
       chat: [
         ...state.room.chat,
@@ -545,6 +551,7 @@ export function reduceWordChoiceApplied(
     ...state,
     room: {
       ...state.room,
+      canvasRedoStack: [],
       currentTurn: {
         ...state.room.currentTurn,
         phase: 'DRAWING',

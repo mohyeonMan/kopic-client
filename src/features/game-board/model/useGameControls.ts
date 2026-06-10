@@ -16,6 +16,7 @@ import { playGameSound } from '@/features/game-board/model/gameSoundManager'
 type GameControlActions = {
   patchLobbySettings: (settings: Partial<GameSettings>) => void
   requestCanvasClear: () => void
+  requestCanvasRedo: (cid: string) => void
   requestCanvasUndo: (cid: string) => void
   requestGameStart: () => void
   requestWordChoice: (choiceIndex: number) => void
@@ -30,6 +31,7 @@ type GameControlServer = {
 type UseGameControlsArgs = {
   actions: GameControlActions
   canvasStrokes: CanvasStroke[]
+  canvasRedoStack: CanvasStroke[][]
   forcedPaletteColor?: string
   isHost: boolean
   onBeforeRequestWordChoice?: () => void
@@ -52,6 +54,7 @@ function findLastCanvasStrokeCid(strokes: CanvasStroke[]) {
 
 export function useGameControls({
   actions,
+  canvasRedoStack,
   canvasStrokes,
   forcedPaletteColor,
   isHost,
@@ -86,7 +89,9 @@ export function useGameControls({
   const canUseFullPalette = isDrawerDrawingPhase
   const activePaletteColor = isSharedDrawingPhase && forcedPaletteColor ? forcedPaletteColor : color
   const lastCanvasStrokeCid = findLastCanvasStrokeCid(canvasStrokes)
-  const canUndoCanvas = canDraw && Boolean(lastCanvasStrokeCid)
+  const lastRedoStrokeCid = canvasRedoStack[canvasRedoStack.length - 1]?.[0]?.cid
+  const canUndoCanvas = isDrawerDrawingPhase && Boolean(lastCanvasStrokeCid)
+  const canRedoCanvas = isDrawerDrawingPhase && Boolean(lastRedoStrokeCid)
 
   const applySetting = (key: NumericSettingKey, value: string) => {
     if (!isHost) {
@@ -167,6 +172,14 @@ export function useGameControls({
     actions.requestCanvasUndo(lastCanvasStrokeCid)
   }
 
+  const handleRedoCanvas = () => {
+    if (!lastRedoStrokeCid || !canRedoCanvas) {
+      return
+    }
+
+    actions.requestCanvasRedo(lastRedoStrokeCid)
+  }
+
   const handleToggleSettings = () => {
     const nextOpen = !settingsOpen
     if (nextOpen) {
@@ -219,6 +232,7 @@ export function useGameControls({
     applyCustomWordMode,
     applyCustomWordsRaw,
     canDraw,
+    canRedoCanvas,
     canUndoCanvas,
     canUseFullPalette,
     currentWordChoices,
@@ -228,6 +242,7 @@ export function useGameControls({
     handleColorChange,
     handleCommitStroke,
     handleRequestWordChoice,
+    handleRedoCanvas,
     handleSendStrokeChunk,
     handleSizeChange,
     handleStartGame,

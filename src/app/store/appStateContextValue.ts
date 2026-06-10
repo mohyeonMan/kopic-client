@@ -41,6 +41,7 @@ export type AppActions = {
   submitGuess: (text: string) => void
   sendCanvasStroke: (stroke: CanvasStroke) => void
   requestCanvasUndo: (cid: string) => void
+  requestCanvasRedo: (cid: string) => void
   requestCanvasClear: () => void
 }
 

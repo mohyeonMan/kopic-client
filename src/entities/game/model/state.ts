@@ -35,6 +35,7 @@ export const initialAppState: AppState = {
     hostSessionId: 's-100',
     participants: [],
     lobbyCanvasStrokes: [],
+    canvasRedoStack: [],
     settings: defaultSettings,
     roomState: 'LOBBY',
     gameId: null,

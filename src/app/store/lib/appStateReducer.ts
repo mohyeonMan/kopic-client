@@ -29,6 +29,7 @@ import {
   reduceCanvasCleared,
   reduceCanvasStrokeUndone,
   reduceCanvasStrokeReceived,
+  reduceCanvasStrokeRedone,
   reduceCanvasStrokesReceived,
 } from './appStateCanvas'
 import {
@@ -111,6 +112,7 @@ export type AppAction =
   | { type: 'server/canvasStrokeReceived'; payload: CanvasStroke }
   | { type: 'server/canvasStrokesReceived'; payload: CanvasStroke[] }
   | { type: 'server/canvasStrokeUndone'; payload: string }
+  | { type: 'server/canvasStrokeRedone'; payload: string }
   | { type: 'server/canvasCleared'; payload?: string }
   | { type: 'server/gameEndedApplied' }
   | { type: 'dev/turnPhaseForced'; payload: TurnPhase }
@@ -188,6 +190,8 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       return reduceCanvasStrokesReceived(state, action.payload)
     case 'server/canvasStrokeUndone':
       return reduceCanvasStrokeUndone(state, action.payload)
+    case 'server/canvasStrokeRedone':
+      return reduceCanvasStrokeRedone(state, action.payload)
     case 'server/canvasCleared':
       return reduceCanvasCleared(state, action.payload)
     case 'server/gameEndedApplied':

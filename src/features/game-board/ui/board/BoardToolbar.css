@@ -58,9 +58,10 @@
 .tool-history-actions {
   display: flex;
   align-items: center;
+  gap: clamp(4px, 0.6cqw, 6px);
 }
 
-.undo-button {
+.history-button {
   width: clamp(30px, 3.6cqw, 36px);
   height: clamp(30px, 3.6cqw, 36px);
   padding: clamp(4px, 0.55cqw, 5px);
@@ -78,16 +79,16 @@
     background 160ms ease;
 }
 
-.undo-button:hover:not(:disabled) {
+.history-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-.undo-button:disabled {
+.history-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.undo-button svg {
+.history-button svg {
   width: 100%;
   height: 100%;
   fill: currentColor;

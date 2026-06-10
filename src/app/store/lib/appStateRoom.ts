@@ -36,6 +36,9 @@ export function reduceRoomSnapshotApplied(
       lobbyCanvasStrokes: Array.isArray(snapshot.lobbyCanvasStrokes)
         ? snapshot.lobbyCanvasStrokes
         : [],
+      canvasRedoStack: Array.isArray(snapshot.canvasRedoStack)
+        ? snapshot.canvasRedoStack
+        : [],
       chat: Array.isArray(snapshot.chat)
         ? snapshot.chat
         : state.room.chat,

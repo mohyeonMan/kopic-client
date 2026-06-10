@@ -99,6 +99,7 @@ export type RoomSnapshot = {
   hostSessionId: string
   participants: Participant[]
   lobbyCanvasStrokes?: CanvasStroke[]
+  canvasRedoStack: CanvasStroke[][]
   settings: GameSettings
   roomState: RoomState
   gameId: string | null

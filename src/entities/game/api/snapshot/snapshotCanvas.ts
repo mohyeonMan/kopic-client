@@ -67,3 +67,13 @@ export function normalizeSnapshotCanvasStrokes(raw: unknown): CanvasStroke[] | n
 
   return strokes
 }
+
+export function normalizeSnapshotCanvasRedoStack(raw: unknown): CanvasStroke[][] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+
+  return raw
+    .map((group) => normalizeSnapshotCanvasStrokes(group))
+    .filter((group): group is CanvasStroke[] => Boolean(group?.length))
+}

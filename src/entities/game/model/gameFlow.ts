@@ -159,6 +159,7 @@ export function createLobbySnapshot(state: AppState): RoomSnapshot {
     resultDeadlineAtMs: undefined,
     currentRound: null,
     currentTurn: null,
+    canvasRedoStack: [],
     settings: { ...state.room.settings },
     participants: state.room.participants.map((participant) => ({
       ...participant,
@@ -205,6 +206,7 @@ export function createClearedRoomState(state: AppState): RoomSnapshot {
     hostSessionId: '',
     participants: [],
     lobbyCanvasStrokes: [],
+    canvasRedoStack: [],
     settings: { ...state.room.settings },
     roomState: 'LOBBY',
     gameId: null,

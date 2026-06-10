@@ -12,7 +12,10 @@ import {
   readNonEmptyString,
 } from './gameProtocol'
 import { readPointsMap } from './gamePayloadDecoders'
-import { normalizeSnapshotCanvasStrokes } from './snapshot/snapshotCanvas'
+import {
+  normalizeSnapshotCanvasRedoStack,
+  normalizeSnapshotCanvasStrokes,
+} from './snapshot/snapshotCanvas'
 import {
   applyTotalPointsToParticipants,
   normalizeParticipants,
@@ -164,6 +167,7 @@ export function normalizeRoomSnapshotPayload(
   const serverNowMs = readFiniteNumber(payload.now)
   const deadlineAtMs = readFiniteNumber(payload.dl)
   const currentCanvasStrokes = normalizeSnapshotCanvasStrokes(payload.cv)
+  const canvasRedoStack = normalizeSnapshotCanvasRedoStack(payload.cr)
   const inferredCurrentRound = snapshotGame
     ? normalizeCurrentRound(snapshotGame, settings)
     : null
@@ -212,6 +216,7 @@ export function normalizeRoomSnapshotPayload(
       hostSessionId,
       participants: normalizedParticipants,
       lobbyCanvasStrokes,
+      canvasRedoStack,
       settings,
       roomState,
       gameId:

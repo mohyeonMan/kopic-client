@@ -45,6 +45,10 @@ export function createCanvasUndoMarker(cid: string): CompactStrokePayload {
   return [4, 0, [], cid]
 }
 
+export function createCanvasRedoMarker(cid: string): CompactStrokePayload {
+  return [5, 0, [], cid]
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
