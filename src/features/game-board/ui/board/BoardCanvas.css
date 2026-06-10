@@ -30,7 +30,7 @@
     opacity 240ms ease;
   padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(255, 252, 247, 0.9);
+  background: rgba(255, 252, 247, 0.8);
   border: 1px solid var(--panel-border);
   color: var(--ink-strong);
   box-shadow: var(--shadow-soft);
@@ -41,7 +41,7 @@
 
 .secret-word-banner-open {
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: none;
   transform: translate3d(-50%, 0, 0);
 }
 
@@ -104,6 +104,7 @@
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .secret-word-description-bubble {
@@ -130,6 +131,7 @@
   text-wrap: pretty;
   overflow: visible;
   z-index: 8;
+  pointer-events: auto;
 }
 
 .secret-word-description-content {
