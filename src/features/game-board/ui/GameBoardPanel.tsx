@@ -153,6 +153,10 @@ export function GameBoardPanel({
   const hasMinimumParticipants = participantCount >= 2
   const canStartGame = isHost && hasMinimumParticipants && !isCustomOnlyWithoutRaw
   const shouldShowPrivateStartButton = isPrivateRoom && isHost
+  const revealDrawingAnswer =
+    currentTurn?.phase === 'DRAWING' &&
+    currentTurn.correctSessionIds.includes(mySessionId) &&
+    currentTurn.drawerSessionId !== mySessionId
   const boardFrameClassName = [
     'board-frame',
     isCorrectHighlightActive ? 'board-frame-correct-highlight' : '',
@@ -176,6 +180,7 @@ export function GameBoardPanel({
             onStartGame={onStartGame}
             onToggleSettings={onToggleSettings}
             revealedHintCount={revealedHintCount}
+            revealDrawingAnswer={revealDrawingAnswer}
             roomState={roomState}
             settingsOpen={settingsOpen}
             shouldShowPrivateStartButton={shouldShowPrivateStartButton}

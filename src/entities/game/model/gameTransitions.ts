@@ -215,6 +215,9 @@ export function reduceGeGuessCorrectApplied(
   const correctNickname =
     state.room.participants.find((participant) => participant.sessionId === payload.sessionId)?.nickname ??
     payload.sessionId
+  const applyOwnAnswerEntry =
+    state.room.currentTurn.phase === 'DRAWING' &&
+    payload.sessionId === state.session.sessionId
 
   return {
     ...state,
@@ -224,6 +227,14 @@ export function reduceGeGuessCorrectApplied(
       currentTurn: {
         ...state.room.currentTurn,
         correctSessionIds,
+        selectedWord:
+          applyOwnAnswerEntry && payload.selectedWord !== undefined
+            ? payload.selectedWord
+            : state.room.currentTurn.selectedWord,
+        selectedWordDescription:
+          applyOwnAnswerEntry && payload.selectedWordDescription !== undefined
+            ? payload.selectedWordDescription
+            : state.room.currentTurn.selectedWordDescription,
       },
       chat: alreadyCorrect
         ? state.room.chat

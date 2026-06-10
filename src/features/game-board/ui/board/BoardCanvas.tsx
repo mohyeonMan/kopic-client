@@ -16,6 +16,7 @@ type BoardCanvasProps = {
   onSendStrokeChunk: (stroke: CanvasStroke) => void
   onToggleSettings: () => void
   revealedHintCount: number
+  revealDrawingAnswer: boolean
   roomState: RoomState
   settingsOpen: boolean
   shouldShowPrivateStartButton: boolean
@@ -38,6 +39,7 @@ export function BoardCanvas({
   onSendStrokeChunk,
   onToggleSettings,
   revealedHintCount,
+  revealDrawingAnswer,
   roomState,
   settingsOpen,
   shouldShowPrivateStartButton,
@@ -54,10 +56,11 @@ export function BoardCanvas({
     maxHeight: 240,
   })
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
+  const showFullAnswer = viewerRole === 'drawer' || revealDrawingAnswer
   const secretWordText =
     !currentTurn
       ? ''
-      : viewerRole === 'drawer'
+      : showFullAnswer
         ? currentTurn.selectedWord ?? getMaskedWord(null, 0, currentTurn.answerLength)
         : currentTurn.hintPattern && currentTurn.hintPattern.length > 0
           ? currentTurn.hintPattern
@@ -68,7 +71,7 @@ export function BoardCanvas({
       ? `${currentTurn.turnId}:${selectedWordDescription}`
       : null
   const canShowDescriptionButton =
-    viewerRole === 'drawer' &&
+    showFullAnswer &&
     typeof selectedWordDescription === 'string' &&
     selectedWordDescription.length > 0
   const isDescriptionOpen =
@@ -205,20 +208,20 @@ export function BoardCanvas({
       {shouldShowSecretWordBanner && currentTurn ? (
         <div
           key={
-            viewerRole === 'drawer'
+            showFullAnswer
               ? `${currentTurn.turnId}-${currentTurn.selectedWord ?? 'hidden'}`
               : `${currentTurn.turnId}-masked-${currentTurn.hintPattern ?? currentTurn.answerLength ?? 'unknown'}`
           }
           className={
             isSecretWordBannerClosed
-              ? `secret-word-banner${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-closed`
-              : `secret-word-banner secret-word-banner-landing${viewerRole !== 'drawer' ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
+              ? `secret-word-banner${!showFullAnswer ? ' secret-word-banner-masked' : ''} secret-word-banner-closed`
+              : `secret-word-banner secret-word-banner-landing${!showFullAnswer ? ' secret-word-banner-masked' : ''} secret-word-banner-open`
           }
         >
           <div ref={descriptionAnchorRef} className="secret-word-banner-content">
             <span
               className={
-                viewerRole === 'drawer'
+                showFullAnswer
                   ? 'secret-word-banner-text'
                   : 'secret-word-banner-text secret-word-banner-text-masked'
               }

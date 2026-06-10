@@ -35,6 +35,8 @@ export type GeGuessCorrectPayload = {
   gameId: string
   turnId: string
   sessionId: string
+  selectedWord?: string | null
+  selectedWordDescription?: string | null
 }
 
 export type GeWordChoiceOpenedPayload = {

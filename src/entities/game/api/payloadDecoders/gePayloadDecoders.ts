@@ -105,10 +105,27 @@ export function decodeGeGuessCorrectPayload(payload: unknown): GeGuessCorrectPay
     return null
   }
 
+  const answerEntry = isRecord(payload.ae) ? payload.ae : null
+  const selectedWord = answerEntry
+    ? answerEntry.w === null
+      ? null
+      : readNonEmptyString(answerEntry.w) ?? undefined
+    : undefined
+  const selectedWordDescription =
+    answerEntry && Object.prototype.hasOwnProperty.call(answerEntry, 'd')
+      ? answerEntry.d === null
+        ? null
+        : typeof answerEntry.d === 'string'
+          ? answerEntry.d
+          : undefined
+      : undefined
+
   return {
     gameId,
     turnId,
     sessionId,
+    selectedWord,
+    selectedWordDescription,
   }
 }
 
