@@ -72,14 +72,6 @@ export function BoardToolbar({
         <button
           type="button"
           className="secondary-button"
-          onClick={onUndoCanvas}
-          disabled={!canUndoCanvas}
-        >
-          되돌리기
-        </button>
-        <button
-          type="button"
-          className="secondary-button"
           onClick={onClearCanvas}
           disabled={!canDraw}
         >
@@ -117,6 +109,20 @@ export function BoardToolbar({
               disabled={!canUseFullPalette}
             />
           ))}
+        </div>
+        <div className="tool-history-actions">
+          <button
+            type="button"
+            aria-label="되돌리기"
+            className="undo-button"
+            title="되돌리기"
+            onClick={onUndoCanvas}
+            disabled={!canUndoCanvas}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 7 4 12l5 5v-3h5.5a4.5 4.5 0 0 0 0-9H11v2h3.5a2.5 2.5 0 0 1 0 5H9V7Z" />
+            </svg>
+          </button>
         </div>
         <button
           type="button"
